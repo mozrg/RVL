@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>ready</title>
+  <link rel="stylesheet" href="style.css">
+<base target="_blank">
+</head>
+<body>
+
+  <!-- AHK DATA BRIDGE -->
+  <input type="hidden" id="__cfg_place">
+  <input type="hidden" id="__cfg_link">
+  <input type="hidden" id="__cfg_hotkey">
+  <input type="hidden" id="__cfg_enabled">
+  <input type="hidden" id="__cfg_presets">
+  <input type="hidden" id="__presets_out">
+
+  <!-- GUIDE MODAL OVERLAY -->
+  <div class="guide-overlay" id="guide-overlay">
+    <div class="guide-modal">
+      <div class="guide-header">
+        <span class="guide-title">КАК ДОБАВИТЬ ВИП СЕРВЕР</span>
+        <span class="guide-close" id="guide-close">&#215;</span>
+      </div>
+      <div class="guide-body">
+
+        <div class="guide-step">
+          <span class="guide-num">1</span>
+          <span class="guide-text">Скопируй ссылку на вип сервер в Roblox</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">2</span>
+          <span class="guide-text">Вставь эту ссылку в адрессную строку — ссылка автоматически преобразуется</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">3</span>
+          <span class="guide-text">Ты получишь ссылку вида:</span>
+        </div>
+
+        <div class="guide-code">
+          https://www.roblox.com/games/<span class="guide-hl-place">107573139811370</span>&amp;Anime-Crusaders?privateServerLinkCode=<span class="guide-hl-link">99973430516258557046893313426143</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">4</span>
+          <div class="guide-text">
+            Возьми цифры после <span class="guide-tag">/games/</span>
+            и вставь их в поле <span class="guide-tag">PLACE ID</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">5</span>
+          <div class="guide-text">
+            Возьми цифры после <span class="guide-tag">?privateServerLinkCode=</span>
+            и вставь их в поле <span class="guide-tag">LINK CODE</span>
+            после можешь сохранить то что ты написал нажав на кнопку <span class="guide-tag">+ NEW</span> и написав название прессета
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- TITLE BAR -->
+  <div id="titlebar" class="titlebar" unselectable="on">
+    <span class="tb-logo">&#9679;</span>
+    <span class="tb-title">ROBLOX LAUNCHER</span>
+    <span class="tb-ver">v1.0</span>
+    <div class="tb-controls">
+      <span id="btn-min"   class="tc-btn"          title="Save &amp; hide">&#8722;</span>
+      <span id="btn-close" class="tc-btn tc-close" title="Close">&#215;</span>
+    </div>
+  </div>
+  <div class="accent-bar"></div>
+
+  <!-- UPDATE BAR -->
+  <div class="update-bar" id="update-bar">
+    <span class="update-txt" id="update-txt">Доступно обновление</span>
+    <button class="btn-update" id="btn-update">&#8593;&nbsp;UPDATE</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- Place ID -->
+    <div class="field">
+      <label class="field-label" for="inp-place">PLACE ID</label>
+      <input class="field-input" id="inp-place" type="text"
+             spellcheck="false" autocomplete="off">
+    </div>
+
+    <!-- Link Code -->
+    <div class="field">
+      <label class="field-label" for="inp-link">LINK CODE</label>
+      <input class="field-input" id="inp-link" type="text"
+             spellcheck="false" autocomplete="off">
+    </div>
+
+    <!-- Hotkey -->
+    <div class="field">
+      <div class="field-label">HOTKEY</div>
+      <div class="hotkey-row">
+        <input class="field-input key-box" id="inp-key" type="text"
+               readonly spellcheck="false">
+        <button class="btn-capture" id="btn-capture">&#9673;&nbsp;CAPTURE</button>
+        <!-- FIX: changed <label> to <div> to prevent native double-toggle -->
+        <div class="chk-wrap">
+          <span class="toggle-track" id="toggle-track">
+            <span class="toggle-thumb" id="toggle-thumb"></span>
+          </span>
+          <input type="checkbox" id="chk-enabled" class="chk-hidden">
+          <span class="chk-txt">Enable hotkey</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- PRESETS SECTION -->
+    <div class="section-hd">
+      <span class="section-title">PRESETS</span>
+      <div class="section-btns">
+        <button class="btn-guide" id="btn-guide">&#63;</button>
+        <div class="guide-tooltip" id="guide-tooltip">Как добавить VIP сервер</div>
+        <button class="btn-ghost" id="btn-add-preset">&#43;&nbsp;NEW</button>
+      </div>
+    </div>
+
+    <div class="preset-form" id="preset-form">
+      <input class="field-input preset-name-inp" id="inp-preset-name"
+             type="text" placeholder="Preset name..." maxlength="32"
+             spellcheck="false" autocomplete="off">
+      <button class="btn-confirm" id="btn-preset-ok">SAVE</button>
+      <button class="btn-cancel"  id="btn-preset-cancel">&#215;</button>
+    </div>
+
+    <div class="presets-scroll" id="presets-list">
+      <!-- injected by JS -->
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="action-row">
+      <button class="btn-primary"   id="btn-launch">&#9654;&nbsp;LAUNCH</button>
+      <button class="btn-secondary" id="btn-save">SAVE &amp; CLOSE</button>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // Guide modal logic
+    var overlay = document.getElementById('guide-overlay');
+    var btnGuide = document.getElementById('btn-guide');
+    var btnClose = document.getElementById('guide-close');
+
+    function openGuide() {
+      overlay.style.display = 'flex';
+      setTimeout(function() { overlay.className = 'guide-overlay guide-overlay-visible'; }, 10);
+    }
+    function closeGuide() {
+      overlay.className = 'guide-overlay';
+      setTimeout(function() { overlay.style.display = 'none'; }, 220);
+    }
+
+    btnGuide.onclick = function(e) { e.stopPropagation(); openGuide(); };
+    btnClose.onclick = closeGuide;
+    overlay.onclick = function(e) { if (e.target === overlay) closeGuide(); };
+
+    document.onkeydown = function(e) {
+      var key = e.key || e.keyCode;
+      if (key === 'Escape' || key === 27) closeGuide();
+    };
+  </script>
+</body>
+</html>
