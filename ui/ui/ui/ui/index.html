@@ -405,7 +405,7 @@
     <div class="startup-orbit startup-orbit-two"></div>
     <div class="startup-grid"></div>
     <div class="startup-content">
-      <div class="startup-mark">RVL</div>
+      <div class="startup-mark"><span>R</span><i></i><span>V</span><span>L</span></div>
       <div class="startup-kicker">PRIVATE SERVER LAUNCHER</div>
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
@@ -425,43 +425,6 @@
       <div class="update-prompt-actions">
         <button class="update-prompt-later" id="update-prompt-later" onclick="closeUpdatePrompt();">ПОЗЖЕ</button>
         <button class="update-prompt-install" id="update-prompt-install" onclick="installUpdate();">ОБНОВИТЬ</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- UPDATE SCREEN: stays inside RVL while the background worker downloads. -->
-  <div class="update-screen-overlay" id="update-screen-overlay" style="display:none;">
-    <div class="update-screen-glow update-screen-glow-one"></div>
-    <div class="update-screen-glow update-screen-glow-two"></div>
-    <div class="update-screen-card">
-      <div class="update-screen-header">
-        <div class="update-screen-brand"><span>RVL</span><span class="update-screen-version" id="update-screen-version">v1.11</span></div>
-        <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
-      </div>
-      <div class="update-screen-main">
-        <div class="update-ring-wrap">
-          <svg class="update-ring" viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="update-ring-track" cx="60" cy="60" r="51"></circle>
-            <circle class="update-ring-fill" id="update-ring-fill" cx="60" cy="60" r="51"></circle>
-          </svg>
-          <div class="update-ring-center"><span id="update-screen-percent">0%</span><small>RVL</small></div>
-        </div>
-        <div class="update-screen-copy">
-          <div class="update-screen-kicker">ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ</div>
-          <div class="update-screen-title" id="update-screen-title">Скачиваем новую версию</div>
-          <div class="update-screen-status" id="update-screen-status">Подключаемся к GitHub...</div>
-          <div class="update-screen-details"><span id="update-screen-size">Подготовка загрузки</span><span id="update-screen-speed">Не закрывайте окно</span></div>
-        </div>
-      </div>
-      <div class="update-screen-steps">
-        <div class="update-screen-step active" id="update-step-download"><i>01</i><span>СКАЧИВАНИЕ</span></div>
-        <div class="update-screen-step" id="update-step-install"><i>02</i><span>УСТАНОВКА</span></div>
-        <div class="update-screen-step" id="update-step-restart"><i>03</i><span>ПЕРЕЗАПУСК</span></div>
-      </div>
-      <div class="update-screen-line"><div id="update-screen-line-fill"></div></div>
-      <div class="update-screen-footer">
-        <span id="update-screen-footer-text">Файлы приложения обновляются безопасно</span>
-        <button id="update-screen-dismiss" onclick="retryUpdateFromScreen();" style="display:none;">ПОВТОРИТЬ</button>
       </div>
     </div>
   </div>
