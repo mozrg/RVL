@@ -606,7 +606,7 @@ StartUpdateDownload:
     psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
     if (!FileExist(psExe))
         psExe := "powershell.exe"
-    psArgs := "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "
+    psArgs := "-NoProfile -NoLogo -NonInteractive -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "
     psArgs .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
     psArgs .= " -Target " . UpdateQuote(A_ScriptDir)
     psArgs .= " -RestartPath " . UpdateQuote(restartPath)
@@ -623,7 +623,9 @@ StartUpdateDownload:
     ; ShellExecute can return without launching the script on some Windows
     ; configurations, which previously produced a delayed false error.
     try {
-        runCommand := UpdateQuote(psExe) . " " . psArgs
+        ; Keep the executable unquoted like the known-good Mmacro launcher.
+        ; Only the script and value arguments need quoting.
+        runCommand := "powershell.exe " . psArgs
         Run, %runCommand%, %A_ScriptDir%, Hide, workerPid
         g_update_worker_pid := workerPid
         if (ErrorLevel)
@@ -664,7 +666,7 @@ PollUpdateStatus:
         return
     parts := StrSplit(statusRaw, "|")
     workerState := parts[1]
-    if (workerState = "downloading") {
+    if (workerState = "starting" || workerState = "downloading") {
         workerProgress := parts.MaxIndex() >= 2 ? parts[2] + 0 : 0
         workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Скачиваю обновление..."
         g_update_state := "downloading"

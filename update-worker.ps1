@@ -25,6 +25,7 @@ function Write-WorkerStatus([string]$state, [int]$progress, [string]$message) {
 }
 
 try {
+    Write-WorkerStatus "starting" 0 "Запускаем фоновый загрузчик..."
     if ($Url -notmatch '^https://(github\.com|codeload\.github\.com|api\.github\.com)/') {
         throw "Недопустимый источник обновления"
     }

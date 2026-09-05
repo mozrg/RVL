@@ -50,7 +50,7 @@ try {
         $rect = New-Object System.Drawing.Rectangle(0, 0, $sender.Width, $sender.Height)
         $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
             $rect,
-            [System.Drawing.Color]::FromArgb(20, 24, 42),
+            [System.Drawing.Color]::FromArgb(20, 20, 20),
             [System.Drawing.Color]::FromArgb(7, 9, 17),
             135
         )
@@ -61,13 +61,13 @@ try {
     $card = New-Object System.Windows.Forms.Panel
     $card.Location = New-Object System.Drawing.Point(1, 1)
     $card.Size = New-Object System.Drawing.Size(538, 348)
-    $card.BackColor = [System.Drawing.Color]::FromArgb(18, 20, 28)
+    $card.BackColor = [System.Drawing.Color]::FromArgb(18, 18, 18)
     $form.Controls.Add($card)
 
     $accent = New-Object System.Windows.Forms.Panel
     $accent.Location = New-Object System.Drawing.Point(0, 0)
     $accent.Size = New-Object System.Drawing.Size(538, 3)
-    $accent.BackColor = [System.Drawing.Color]::FromArgb(132, 147, 255)
+    $accent.BackColor = [System.Drawing.Color]::FromArgb(232, 232, 232)
     $card.Controls.Add($accent)
 
     $icon = New-Object System.Windows.Forms.Label
@@ -76,8 +76,8 @@ try {
     $icon.Text = [char]0x2193
     $icon.TextAlign = "MiddleCenter"
     $icon.Font = New-Object System.Drawing.Font("Segoe UI Symbol", 20, [System.Drawing.FontStyle]::Bold)
-    $icon.ForeColor = [System.Drawing.Color]::FromArgb(184, 193, 255)
-    $icon.BackColor = [System.Drawing.Color]::FromArgb(39, 44, 76)
+    $icon.ForeColor = [System.Drawing.Color]::FromArgb(232, 232, 232)
+    $icon.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
     $icon.Location = New-Object System.Drawing.Point(28, 23)
     $card.Controls.Add($icon)
 
@@ -95,8 +95,8 @@ try {
     $badge.Text = "ЗАГРУЗКА"
     $badge.TextAlign = "MiddleCenter"
     $badge.Font = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
-    $badge.ForeColor = [System.Drawing.Color]::FromArgb(170, 181, 255)
-    $badge.BackColor = [System.Drawing.Color]::FromArgb(34, 37, 54)
+    $badge.ForeColor = [System.Drawing.Color]::FromArgb(232, 232, 232)
+    $badge.BackColor = [System.Drawing.Color]::FromArgb(27, 27, 27)
     $badge.Location = New-Object System.Drawing.Point(382, 20)
     $card.Controls.Add($badge)
 
@@ -123,20 +123,20 @@ try {
     $percent.Text = "0%"
     $percent.TextAlign = "MiddleRight"
     $percent.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-    $percent.ForeColor = [System.Drawing.Color]::FromArgb(170, 181, 255)
+    $percent.ForeColor = [System.Drawing.Color]::FromArgb(232, 232, 232)
     $percent.Location = New-Object System.Drawing.Point(430, 133)
     $card.Controls.Add($percent)
 
     $track = New-Object System.Windows.Forms.Panel
     $track.Location = New-Object System.Drawing.Point(28, 178)
     $track.Size = New-Object System.Drawing.Size(482, 10)
-    $track.BackColor = [System.Drawing.Color]::FromArgb(43, 46, 61)
+    $track.BackColor = [System.Drawing.Color]::FromArgb(43, 43, 43)
     $card.Controls.Add($track)
 
     $fill = New-Object System.Windows.Forms.Panel
     $fill.Location = New-Object System.Drawing.Point(28, 178)
     $fill.Size = New-Object System.Drawing.Size(2, 10)
-    $fill.BackColor = [System.Drawing.Color]::FromArgb(132, 147, 255)
+    $fill.BackColor = [System.Drawing.Color]::FromArgb(232, 232, 232)
     $card.Controls.Add($fill)
 
     $stage = New-Object System.Windows.Forms.Label
@@ -144,7 +144,7 @@ try {
     $stage.Size = New-Object System.Drawing.Size(482, 25)
     $stage.Text = "01  СКАЧАТЬ                 02  УСТАНОВИТЬ                 03  ПЕРЕЗАПУСК"
     $stage.Font = New-Object System.Drawing.Font("Segoe UI", 8)
-    $stage.ForeColor = [System.Drawing.Color]::FromArgb(114, 122, 148)
+    $stage.ForeColor = [System.Drawing.Color]::FromArgb(130, 130, 130)
     $stage.Location = New-Object System.Drawing.Point(28, 214)
     $card.Controls.Add($stage)
 
@@ -153,7 +153,7 @@ try {
     $hint.Size = New-Object System.Drawing.Size(482, 34)
     $hint.Text = "Не закрывайте окно — RVL перезапустится автоматически."
     $hint.Font = New-Object System.Drawing.Font("Segoe UI", 8)
-    $hint.ForeColor = [System.Drawing.Color]::FromArgb(114, 122, 148)
+    $hint.ForeColor = [System.Drawing.Color]::FromArgb(130, 130, 130)
     $hint.Location = New-Object System.Drawing.Point(28, 270)
     $card.Controls.Add($hint)
 
