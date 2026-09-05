@@ -55,9 +55,6 @@ html {
     overflow: hidden;
     border-radius: 16px;
 }
-html.has-update {
-    height: 544px;
-}
 
 body {
     width: 100%;
@@ -70,9 +67,6 @@ body {
     -ms-user-select: none;
     user-select: none;
     border-radius: 16px;
-}
-body.has-update {
-    height: 544px;
 }
 
 button, input {
@@ -206,49 +200,6 @@ button, input {
     background: linear-gradient(to right, #000000 0%, #555555 20%, #FFFFFF 50%, #555555 80%, #000000 100%);
 }
 
-<<<<<<< HEAD
-=======
-/* ── Update bar ─────────────────────────────────────────── */
-.update-bar {
-    display: none;
-    -ms-flex-align: center;
-    align-items: center;
-    -ms-flex-pack: justify;
-    justify-content: space-between;
-    padding: 7px 16px;
-    background: #0E0E1A;
-    border-bottom: 1px solid #4F46E5;
-    width: 420px;
-    box-sizing: border-box;
-}
-.update-bar.visible {
-    display: -ms-flexbox;
-    display: flex;
-}
-.update-txt {
-    font-size: 11px;
-    letter-spacing: 0.05em;
-    color: #A5B4FC;
-}
-.btn-update {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    color: #818CF8;
-    background: transparent;
-    border: 1px solid #4F46E5;
-    border-radius: 4px;
-    padding: 3px 10px;
-    cursor: pointer;
-    -ms-transition: background 0.15s, color 0.15s;
-    transition: background 0.15s, color 0.15s;
-}
-.btn-update:hover {
-    background: #4F46E5;
-    color: #FFFFFF;
-}
-
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 /* ============================================================
    §content · CONTENT
    ============================================================ */
@@ -3791,9 +3742,6 @@ body.theme-light .tooltip-arrow {
     -ms-transition: background 0.22s;
     transition: background 0.22s;
 }
-body.has-update .guide-overlay {
-    height: 544px;
-}
 .guide-overlay-visible {
     background: rgba(0, 0, 0, 0.82);
 }
@@ -3937,59 +3885,33 @@ body.has-update .guide-overlay {
 .settings-overlay {
     display: none;
     position: absolute;
-<<<<<<< HEAD
     top: 0; left: 0;
     width: 100%; height: 100%;
     background: rgba(0,0,0,0);
     -ms-flex-align: center; align-items: center;
     -ms-flex-pack: center;  justify-content: center;
-=======
-    top: 0;
-    left: 0;
-    width: 420px;
-    height: 510px;
-    background: rgba(0, 0, 0, 0);
-    -ms-flex-align: center;
-    align-items: center;
-    -ms-flex-pack: center;
-    justify-content: center;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     z-index: 110;
     border-radius: 16px;
     -ms-transition: background 0.22s;
     transition: background 0.22s;
 }
-<<<<<<< HEAD
 .settings-overlay-visible {
     display: -ms-flexbox;
     display: flex;
-=======
-body.has-update .settings-overlay {
-    height: 544px;
-}
-.settings-overlay-visible {
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     background: rgba(0, 0, 0, 0.82);
 }
 
 .settings-modal {
-<<<<<<< HEAD
     width: calc(100% - 76px);
-=======
-    width: 344px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     background: #0F0F0F;
     border: 1px solid #252525;
     border-radius: 12px;
     overflow: hidden;
-<<<<<<< HEAD
     display: -ms-flexbox;
     display: flex;
     -ms-flex-direction: column;
     flex-direction: column;
     max-height: calc(100% - 40px);
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     -ms-transform: translateY(6px);
     transform: translateY(6px);
     -ms-transition: transform 0.22s;
@@ -4008,11 +3930,8 @@ body.has-update .settings-overlay {
     padding: 14px 16px 13px;
     border-bottom: 1px solid #1A1A1A;
     background: #0D0D0D;
-<<<<<<< HEAD
     -ms-flex-negative: 0;
     flex-shrink: 0;
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 .settings-title {
     -ms-flex: 1 1 auto;
@@ -4049,7 +3968,6 @@ body.has-update .settings-overlay {
 
 .settings-body {
     padding: 14px 16px 16px;
-<<<<<<< HEAD
     overflow-y: auto;
     overflow-x: hidden;
     -ms-flex: 1 1 auto;
@@ -4079,22 +3997,13 @@ body.has-update .settings-overlay {
 .settings-body::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
 .settings-block {
     margin-bottom: 10px;
-=======
-}
-.settings-block {
-    margin-bottom: 14px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 .settings-label {
     color: #444444;
     font-size: 8px;
     font-weight: 700;
     letter-spacing: 0.18em;
-<<<<<<< HEAD
     margin-bottom: 6px;
-=======
-    margin-bottom: 8px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     display: block;
     text-transform: uppercase;
 }
@@ -4102,11 +4011,7 @@ body.has-update .settings-overlay {
 .theme-options {
     display: -ms-flexbox;
     display: flex;
-<<<<<<< HEAD
     width: 100%;
-=======
-    width: 312px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 .theme-option {
     -ms-flex: 1 1 auto;
@@ -4144,11 +4049,7 @@ body.has-update .settings-overlay {
     transition: max-height 0.25s, opacity 0.25s;
 }
 .custom-theme.open {
-<<<<<<< HEAD
     max-height: 620px;
-=======
-    max-height: 182px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     opacity: 1;
     margin-bottom: 14px;
 }
@@ -4157,11 +4058,7 @@ body.has-update .settings-overlay {
     display: flex;
     -ms-flex-align: center;
     align-items: center;
-<<<<<<< HEAD
     width: 100%;
-=======
-    width: 312px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     height: 32px;
     margin-bottom: 7px;
 }
@@ -4172,22 +4069,15 @@ body.has-update .settings-overlay {
     font-size: 11px;
 }
 .color-swatch {
-<<<<<<< HEAD
     position: relative;
     display: inline-block;
     width: 24px;
     height: 24px;
     border-radius: 6px;
-=======
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     border: 1px solid #333333;
     margin-right: 8px;
     -ms-flex: 0 0 auto;
     flex: 0 0 auto;
-<<<<<<< HEAD
     cursor: pointer;
     -ms-transition: opacity 0.15s, -ms-transform 0.12s;
     transition: opacity 0.15s, transform 0.12s;
@@ -4200,11 +4090,6 @@ body.has-update .settings-overlay {
 }
 .color-input {
     width: 72px;
-=======
-}
-.color-input {
-    width: 86px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     height: 28px;
     background: #111111;
     border: 1px solid #222222;
@@ -4217,11 +4102,7 @@ body.has-update .settings-overlay {
     user-select: text;
 }
 .settings-save {
-<<<<<<< HEAD
     width: 100%;
-=======
-    width: 312px;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     height: 36px;
     background: #FFFFFF;
     border: none;
@@ -4241,7 +4122,6 @@ body.has-update .settings-overlay {
     transform: translateY(-1px);
 }
 
-<<<<<<< HEAD
 /* ── Opacity slider row ──────────────────────────────────── */
 .opacity-slider-row {
     display: -ms-flexbox;
@@ -4307,8 +4187,6 @@ body.has-update .settings-overlay {
     user-select: none;
 }
 
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 /* ============================================================
    LIGHT THEME
    ============================================================ */
@@ -4391,15 +4269,12 @@ body.theme-light .btn-confirm:hover,
 body.theme-light .settings-save:hover {
     background: #2A2D33;
 }
-<<<<<<< HEAD
 body.theme-light .opacity-slider { background: #D0D4DC; }
 body.theme-light .opacity-slider::-webkit-slider-thumb { background: #17181C; border-color: #9099A8; }
 body.theme-light .opacity-slider::-ms-thumb { background: #17181C; border-color: #9099A8; }
 body.theme-light .opacity-slider::-ms-fill-lower { background: #9099A8; }
 body.theme-light .opacity-slider::-ms-fill-upper { background: #D0D4DC; }
 body.theme-light .opacity-display { color: #9099A8; }
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 body.theme-light .toggle-track {
     background: #DADDE3;
     border-color: #C8CCD3;
@@ -4411,7 +4286,6 @@ body.theme-light .toggle-track.on {
 body.theme-light .toggle-track.on .toggle-thumb {
     background: #FFFFFF;
 }
-<<<<<<< HEAD
 body.theme-light .chk-wrap {
     background: #FFFFFF;
     border-color: #DADDE3;
@@ -4423,8 +4297,6 @@ body.theme-light .chk-wrap:hover {
 body.theme-light .chk-wrap.chk-on {
     border-color: #9099A8;
 }
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 body.theme-light .chk-txt,
 body.theme-light .color-name,
 body.theme-light .guide-text,
@@ -4434,7 +4306,6 @@ body.theme-light .preset-name {
 body.theme-light .divider {
     background: #DADDE3;
 }
-<<<<<<< HEAD
 
 /* ── Roblox status dot ──────────────────────────────────── */
 .roblox-status {
@@ -4494,12 +4365,6 @@ body.theme-light .divider {
 }
 .btn-io:hover { border-color: #666666; color: #CCCCCC; }
 
-=======
-body.theme-light .preset-row {
-    background: #FFFFFF;
-    border-color: #E1E4EA;
-}
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 body.theme-light .preset-row:hover {
     background: #F9FAFB;
     border-color: #C8CCD3;
@@ -4516,7 +4381,6 @@ body.theme-light .preset-del {
     border-color: #E1E4EA;
     color: #A3A9B3;
 }
-<<<<<<< HEAD
 body.theme-light .preset-dup {
     border-color: #E1E4EA;
     color: #A3A9B3;
@@ -4601,11 +4465,6 @@ body.theme-light .preset-hk-capturing {
 }
 body.theme-light .guide-modal,
 body.theme-light .settings-modal {
-=======
-body.theme-light .guide-modal,
-body.theme-light .settings-modal,
-body.theme-light .guide-tooltip {
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     background: #FFFFFF;
     border-color: #DADDE3;
 }
@@ -4619,7 +4478,6 @@ body.theme-light .guide-tag {
     border-color: #DADDE3;
     color: #17181C;
 }
-<<<<<<< HEAD
 body.theme-light .search-inp {
     background: #F4F5F7;
     border-color: #DADDE3;
@@ -12232,17 +12090,3 @@ body.compact-mode .pd-icon { width: 30px; height: 30px; }
 body.compact-mode .btn-go.btn-primary,
 body.compact-mode .btn-tool { height: 28px; }
 body.compact-mode .btn-tool { width: 28px; }
-=======
-body.theme-light .update-bar {
-    background: #EEF2FF;
-    border-color: #4F46E5;
-}
-body.theme-light .update-txt,
-body.theme-light .btn-update {
-    color: #4F46E5;
-}
-body.theme-light .btn-update:hover {
-    background: #4F46E5;
-    color: #FFFFFF;
-}
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a

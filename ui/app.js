@@ -1,9 +1,5 @@
 ﻿/* ============================================================
-<<<<<<< HEAD
    app.js  ·  RVL v1.5.1
-=======
-   app.js  ·  RVL v1.0
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
    IE 11 / Shell.Explorer compatible
    AHK bridge: document.title for commands, hidden inputs for data
    ============================================================ */
@@ -559,7 +555,6 @@ var presets       = [];
 var capturingKey  = false;
 var formOpen      = false;
 var themeMode     = "dark";
-<<<<<<< HEAD
 var autoMinimize  = false;
 var isLaunching   = false;
 var uiScale       = 1.0;
@@ -606,14 +601,10 @@ var drag = {
     sx: 0, sy: 0, ox: 0, oy: 0,
     ghost: null, line: null
 };
-=======
-var updateVisible = false;
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 var customTheme   = {
     bg:      "#0A0A0A",
     surface: "#111111",
     text:    "#E8E8E8",
-<<<<<<< HEAD
     accent:  "#FFFFFF",
     gradientEnabled: false,
     gradientBg2: "#0A0A0A",
@@ -654,10 +645,6 @@ var gridViewMode      = false;     /* false = list, true = grid cards */
 var contextMenu       = null;      /* active context menu element */
 var prevRobloxStatus  = "0";       /* for Roblox start/stop notifications */
 var newGroupDraftColor    = GROUP_COLORS[0];
-=======
-    accent:  "#FFFFFF"
-};
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 
 /* ============================================================
    INIT
@@ -669,7 +656,6 @@ function initApp() {
     var enabled = el("__cfg_enabled").value !== "0";
 
     themeMode = safeThemeMode(el("__cfg_theme_mode").value);
-<<<<<<< HEAD
 
     autoMinimize = el("__cfg_auto_minimize").value === "1";
     syncAutoMinToggle();
@@ -720,14 +706,11 @@ function initApp() {
     showHideKey = el("__cfg_sh_key") ? trim(el("__cfg_sh_key").value) : "";
     showHideEn  = el("__cfg_sh_en")  ? el("__cfg_sh_en").value === "1" : false;
     syncShowHideUI();
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     customTheme.bg      = normalizeHex(el("__cfg_theme_bg").value, "#0A0A0A");
     customTheme.surface = normalizeHex(el("__cfg_theme_surface").value, "#111111");
     customTheme.text    = normalizeHex(el("__cfg_theme_text").value, "#E8E8E8");
     customTheme.accent  = normalizeHex(el("__cfg_theme_accent").value, "#FFFFFF");
 
-<<<<<<< HEAD
     try {
         var tpRaw = el("__cfg_theme_presets").value;
         var tpParsed = JSON.parse(tpRaw || "[]");
@@ -744,8 +727,6 @@ function initApp() {
         groups = [];
     }
 
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     el("inp-place").value = place;
     el("inp-link").value  = link;
     el("inp-key").value   = hotkey;
@@ -761,7 +742,6 @@ function initApp() {
         presets = [];
     }
     renderPresets();
-<<<<<<< HEAD
     flushPresetHKMap();
 
     /* ── Startup preset loading ─────────────────────────────────
@@ -854,10 +834,6 @@ function initApp() {
     /* Publish titlebar metrics for AHK WM_NCHITTEST after layout settles.
        Use setTimeout to ensure scale/resize has been applied first. */
     setTimeout(function() { publishTitlebarMetrics(); }, 80);
-=======
-    syncThemeControls();
-    applyTheme();
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 
 /* ============================================================
@@ -869,11 +845,7 @@ window.onload = function () {
     sendCmd("CMD:ready");
 
     el("btn-min").onclick           = onMinimize;
-<<<<<<< HEAD
     el("btn-close").onclick         = function () { requestExit(); };
-=======
-    el("btn-close").onclick         = function () { sendCmd("CMD:close"); };
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     el("btn-settings").onclick      = openSettings;
     el("btn-launch").onclick        = onLaunch;
     el("btn-save").onclick          = onSaveClose;
@@ -881,21 +853,6 @@ window.onload = function () {
     el("btn-add-preset").onclick    = togglePresetForm;
     el("btn-preset-ok").onclick     = confirmNewPreset;
     el("btn-preset-cancel").onclick = closePresetForm;
-    el("settings-close").onclick    = closeSettings;
-    el("settings-save").onclick     = saveSettings;
-    el("theme-opt-dark").onclick    = function () { selectThemeMode("dark"); };
-    el("theme-opt-light").onclick   = function () { selectThemeMode("light"); };
-    el("theme-opt-custom").onclick  = function () { selectThemeMode("custom"); };
-    el("settings-overlay").onclick  = function (e) {
-        e = e || window.event;
-        var t = e.target || e.srcElement;
-        if (t && t.id === "settings-overlay") closeSettings();
-    };
-
-    bindColorInput("theme-bg");
-    bindColorInput("theme-surface");
-    bindColorInput("theme-text");
-    bindColorInput("theme-accent");
 
     /* Enhancement: track dirty state on input field changes */
     var dirtyFields = ["inp-place", "inp-link", "inp-share-code", "inp-key"];
@@ -2402,7 +2359,6 @@ function onMinimize() {
    ============================================================ */
 function openSettings() {
     syncThemeControls();
-<<<<<<< HEAD
     syncLangButtons();
 
     /* IE11: flex: 1 1 auto uses content height as basis, breaking layout.
@@ -2458,9 +2414,6 @@ function openSettings() {
     var overlay = el("settings-overlay");
     overlay.style.height  = winH + "px";
     overlay.style.display = "flex";
-=======
-    var overlay = el("settings-overlay");
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     overlay.style.display = "flex";
     setTimeout(function () {
         overlay.className = "settings-overlay settings-overlay-visible";
@@ -2470,7 +2423,6 @@ function openSettings() {
 function closeSettings() {
     var overlay = el("settings-overlay");
     overlay.className = "settings-overlay";
-<<<<<<< HEAD
     var modal = el("settings-modal");
     var sb    = modal ? modal.querySelector(".settings-body")   : null;
     var ftrEl = modal ? modal.querySelector(".settings-footer") : null;
@@ -2485,10 +2437,6 @@ function closeSettings() {
             sb.style.msFlexPreferredSize = ""; sb.style.flexGrow = "";
             sb.style.flexShrink = ""; sb.style.msFlexPositive = ""; sb.style.msFlexNegative = "";
         }
-=======
-    setTimeout(function () {
-        overlay.style.display = "none";
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     }, 220);
 }
 
@@ -2496,7 +2444,6 @@ function saveSettings() {
     syncCustomFromInputs(true);
     syncThemeControls();
     applyTheme();
-<<<<<<< HEAD
     flushThemePresetsOut();
     if (el("__cfg_lang"))    el("__cfg_lang").value    = currentLang;
     if (el("__cfg_opacity")) el("__cfg_opacity").value = uiOpacity.toString();
@@ -2509,8 +2456,6 @@ function saveSettings() {
     /* Enhancement: save compact mode and sort mode */
     if (el("__cfg_compact_mode")) el("__cfg_compact_mode").value = compactMode ? "1" : "0";
     if (el("__cfg_sort_mode"))    el("__cfg_sort_mode").value    = sortMode;
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     sendCmd("CMD:settings_save");
     closeSettings();
 }
@@ -2536,13 +2481,9 @@ function syncThemeControls() {
     el("theme-opt-custom").className = mode === "custom" ? "theme-option active" : "theme-option";
     el("custom-theme").className     = mode === "custom" ? "custom-theme open" : "custom-theme";
 
-<<<<<<< HEAD
     syncGradientUI();
     updateSwatches();
     syncColorPickers();
-=======
-    updateSwatches();
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 
 function bindColorInput(id) {
@@ -2561,7 +2502,6 @@ function syncCustomFromInputs(forceNormalize) {
     customTheme.text    = readColor("theme-text", customTheme.text, forceNormalize);
     customTheme.accent  = readColor("theme-accent", customTheme.accent, forceNormalize);
 
-<<<<<<< HEAD
     var gradEnChk = el("chk-gradient");
     if (gradEnChk) customTheme.gradientEnabled = gradEnChk.checked;
     customTheme.gradientBg2   = readColor("theme-grad-bg2", customTheme.gradientBg2, forceNormalize);
@@ -2570,17 +2510,12 @@ function syncCustomFromInputs(forceNormalize) {
         var a = parseInt(angleInp.value, 10);
         if (!isNaN(a)) customTheme.gradientAngle = Math.max(0, Math.min(360, a));
     }
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     if (forceNormalize) {
         el("theme-bg").value = customTheme.bg;
         el("theme-surface").value = customTheme.surface;
         el("theme-text").value = customTheme.text;
         el("theme-accent").value = customTheme.accent;
-<<<<<<< HEAD
         if (el("theme-grad-bg2")) el("theme-grad-bg2").value = customTheme.gradientBg2;
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     }
 }
 
@@ -2590,7 +2525,6 @@ function readColor(id, fallback, forceNormalize) {
     return forceNormalize ? fallback : fallback;
 }
 
-<<<<<<< HEAD
 /* ============================================================
    LANGUAGE
    ============================================================ */
@@ -2958,34 +2892,23 @@ function switchMethod(n) {
     if (appInitialized) sendResize();
 }
 
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 function updateSwatches() {
     el("swatch-bg").style.backgroundColor = customTheme.bg;
     el("swatch-surface").style.backgroundColor = customTheme.surface;
     el("swatch-text").style.backgroundColor = customTheme.text;
     el("swatch-accent").style.backgroundColor = customTheme.accent;
-<<<<<<< HEAD
     var sw2 = el("swatch-grad-bg2");
     if (sw2) sw2.style.backgroundColor = customTheme.gradientBg2 || customTheme.bg;
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 
 function applyTheme() {
     var cls = [];
-<<<<<<< HEAD
     if (themeMode === "light") cls.push("theme-light");
     if (themeMode === "custom") cls.push("theme-custom");
     /* Enhancement: preserve compact-mode class when theme changes.
        applyTheme() used to overwrite body.className completely,
        which wiped out the compact-mode class added by applyCompactMode(). */
     if (compactMode) cls.push("compact-mode");
-=======
-    if (updateVisible) cls.push("has-update");
-    if (themeMode === "light") cls.push("theme-light");
-    if (themeMode === "custom") cls.push("theme-custom");
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 
     document.documentElement.className = cls.join(" ");
     document.body.className = cls.join(" ");
@@ -2995,7 +2918,6 @@ function applyTheme() {
 function applyCustomThemeStyle() {
     var css = "";
     if (themeMode === "custom") {
-<<<<<<< HEAD
         var B = customTheme.bg;
         var S = customTheme.surface;
         var T = customTheme.text;
@@ -3508,18 +3430,6 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .btn-go.btn-primary:hover{background:" + ra(A,0.88) + " !important}");
 
         css = r.join("");
-=======
-        css =
-            "body.theme-custom{background:" + customTheme.bg + ";color:" + customTheme.text + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .titlebar,body.theme-custom .guide-modal,body.theme-custom .settings-modal,body.theme-custom .guide-header,body.theme-custom .settings-header{background:" + customTheme.surface + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .content,body.theme-custom .field-input,body.theme-custom .color-input,body.theme-custom .preset-row,body.theme-custom .btn-capture,body.theme-custom .btn-secondary,body.theme-custom .btn-ghost,body.theme-custom .btn-guide,body.theme-custom .btn-cancel,body.theme-custom .theme-option,body.theme-custom .preset-load,body.theme-custom .preset-del,body.theme-custom .guide-code,body.theme-custom .guide-tag{background:" + customTheme.surface + ";color:" + customTheme.text + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .accent-bar,body.theme-custom .btn-primary,body.theme-custom .btn-confirm,body.theme-custom .settings-save,body.theme-custom .toggle-track.on,body.theme-custom .theme-option.active{background:" + customTheme.accent + ";color:" + customTheme.bg + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .tb-logo,body.theme-custom .tb-title,body.theme-custom .guide-title,body.theme-custom .settings-title,body.theme-custom .tc-btn,body.theme-custom .guide-close,body.theme-custom .settings-close,body.theme-custom .field-label,body.theme-custom .section-title,body.theme-custom .settings-label,body.theme-custom .color-name,body.theme-custom .chk-txt,body.theme-custom .preset-sub,body.theme-custom .tb-ver,body.theme-custom .guide-text,body.theme-custom .preset-name{color:" + customTheme.text + ";}" +
-            "body.theme-custom .divider{background:" + customTheme.accent + ";}" +
-            "body.theme-custom .update-bar{background:" + customTheme.surface + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .update-txt,body.theme-custom .btn-update{color:" + customTheme.accent + ";border-color:" + customTheme.accent + ";}" +
-            "body.theme-custom .btn-update:hover{background:" + customTheme.accent + ";color:" + customTheme.bg + ";}";
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     }
     setStyleText("custom-theme-style", css);
 }
@@ -3536,7 +3446,6 @@ function setStyleText(id, css) {
 }
 
 /* ============================================================
-<<<<<<< HEAD
    THEME PRESETS
    ============================================================ */
 function applyThemePreset(p) {
@@ -4031,8 +3940,6 @@ function hsvToHex(h, s, v) {
 }
 
 /* ============================================================
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
    PRESETS CRUD
    ============================================================ */
 function togglePresetForm() {
@@ -5110,7 +5017,6 @@ function syncToggle(on) {
 /* ============================================================
    TOOLTIPS
    ============================================================ */
-<<<<<<< HEAD
 var _tipOver = null;
 var _tipOut  = null;
 var _tipCurrentTarget = null;
@@ -5277,30 +5183,6 @@ function contains(parent, child) {
 
 function htmlEscape(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-=======
-function showUpdateBar(version, changelog) {
-    var bar = el("update-bar");
-    var txt = el("update-txt");
-    updateVisible = true;
-    applyTheme();
-    if (txt) txt.innerHTML = "Update available: " + version + (changelog ? " &mdash; " + changelog : "");
-    if (bar) bar.className = "update-bar visible";
-    sendCmd("CMD:show_update");
-}
-
-function setUpdating(on) {
-    var btn = el("btn-update");
-    if (!btn) return;
-    if (on) {
-        btn.innerHTML     = "UPDATING...";
-        btn.disabled      = true;
-        btn.style.opacity = "0.5";
-    } else {
-        btn.innerHTML     = "&#8593;&nbsp;UPDATE";
-        btn.disabled      = false;
-        btn.style.opacity = "1";
-    }
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 }
 
 /* ============================================================
@@ -5402,7 +5284,6 @@ function normalizeHex(value, fallback) {
     }
     return value;
 }
-<<<<<<< HEAD
 
 function ra_hex(hex, alpha) {
     hex = (hex || "FFFFFF").replace("#", "");
@@ -6181,8 +6062,6 @@ function applyBulkLanguage() {
     if (bbtn) bbtn.setAttribute("data-tooltip", S.bulkEditTooltip || "Массовое редактирование");
 }
 
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
 function findPreset(id) {
     for (var i = 0; i < presets.length; i++) {
         if (presets[i].id === id) return presets[i];
@@ -6202,7 +6081,6 @@ function cancelEv(e) {
     try { e.returnValue = false; } catch(x){}
     return false;
 }
-<<<<<<< HEAD
 
 /* ============================================================
    §enhancements · NEW FEATURES IMPLEMENTATION
@@ -8314,5 +8192,3 @@ window.addEventListener("load", function () {
         sendResize();
     }, 80);
 });
-=======
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a

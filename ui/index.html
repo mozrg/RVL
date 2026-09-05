@@ -318,58 +318,6 @@
     </div>
   </div>
 
-  <!-- SETTINGS MODAL OVERLAY -->
-  <div class="settings-overlay" id="settings-overlay">
-    <div class="settings-modal">
-      <div class="settings-header">
-        <span class="settings-title">SETTINGS</span>
-        <span class="settings-close" id="settings-close">&#215;</span>
-      </div>
-      <div class="settings-body">
-        <input type="hidden" id="theme-mode">
-
-        <div class="settings-block">
-          <div class="settings-label">THEME</div>
-          <div class="theme-options">
-            <button class="theme-option" id="theme-opt-dark" data-mode="dark">DARK</button>
-            <button class="theme-option" id="theme-opt-light" data-mode="light">LIGHT</button>
-            <button class="theme-option" id="theme-opt-custom" data-mode="custom">CUSTOM</button>
-          </div>
-        </div>
-
-        <div class="custom-theme" id="custom-theme">
-          <div class="settings-label">CUSTOM COLORS</div>
-
-          <div class="color-row">
-            <span class="color-name">Background</span>
-            <span class="color-swatch" id="swatch-bg"></span>
-            <input class="color-input" id="theme-bg" type="text" maxlength="7">
-          </div>
-
-          <div class="color-row">
-            <span class="color-name">Surface</span>
-            <span class="color-swatch" id="swatch-surface"></span>
-            <input class="color-input" id="theme-surface" type="text" maxlength="7">
-          </div>
-
-          <div class="color-row">
-            <span class="color-name">Text</span>
-            <span class="color-swatch" id="swatch-text"></span>
-            <input class="color-input" id="theme-text" type="text" maxlength="7">
-          </div>
-
-          <div class="color-row">
-            <span class="color-name">Accent</span>
-            <span class="color-swatch" id="swatch-accent"></span>
-            <input class="color-input" id="theme-accent" type="text" maxlength="7">
-          </div>
-        </div>
-
-        <button class="settings-save" id="settings-save">SAVE</button>
-      </div>
-    </div>
-  </div>
-
   <!-- GUIDE MODAL OVERLAY -->
   <div class="guide-overlay" id="guide-overlay">
     <div class="guide-modal">
@@ -466,7 +414,6 @@
       </div>
     </div>
 
-<<<<<<< HEAD
     <!-- METHOD 2: Share Link Code -->
     <div id="method-panel-2" class="ir-panel" style="display:none;">
       <div class="field-input-wrap ir-field-wrap ir-field-wrap-wide">
@@ -476,35 +423,6 @@
         <button type="button" class="field-eye ir-eye" id="eye-share-code" tabindex="-1" data-tooltip="Показать">&#128065;</button>
         <button type="button" class="field-clear" id="clr-share-code" tabindex="-1" data-tooltip="Очистить">&#215;</button>
       </div>
-=======
-  <!-- TITLE BAR -->
-  <div id="titlebar" class="titlebar" unselectable="on">
-    <span class="tb-logo">&#9679;</span>
-    <span class="tb-title">RVL</span>
-    <span class="tb-ver">v1.02</span>
-    <div class="tb-controls">
-      <span id="btn-settings" class="tc-btn"          title="Settings">&#9881;</span>
-      <span id="btn-min"   class="tc-btn"          title="Save &amp; hide">&#8722;</span>
-      <span id="btn-close" class="tc-btn tc-close" title="Close">&#215;</span>
-    </div>
-  </div>
-  <div class="accent-bar"></div>
-
-  <!-- UPDATE BAR -->
-  <div class="update-bar" id="update-bar">
-    <span class="update-txt" id="update-txt">Update available</span>
-    <button class="btn-update" id="btn-update">&#8593;&nbsp;UPDATE</button>
-  </div>
-
-  <!-- CONTENT -->
-  <div class="content">
-
-    <!-- Place ID -->
-    <div class="field">
-      <label class="field-label" for="inp-place">PLACE ID</label>
-      <input class="field-input" id="inp-place" type="text"
-             spellcheck="false" autocomplete="off">
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
     </div>
 
     <span id="lbl-hotkey" class="hdr-ver" style="display:none;">HOTKEY</span>
@@ -783,19 +701,9 @@
     btnClose.onclick = closeGuide;
     overlay.onclick = function(e) { if (e.target === overlay) closeGuide(); };
 
-<<<<<<< HEAD
     /* Note: Escape-to-close-overlays is now handled centrally in
        app.js (window.onload → document.onkeydown) so it can also
        manage the search-field auto-reveal lifecycle. */
-=======
-    document.onkeydown = function(e) {
-      var key = e.key || e.keyCode;
-      if (key === 'Escape' || key === 27) {
-        closeGuide();
-        if (typeof closeSettings === 'function') closeSettings();
-      }
-    };
->>>>>>> 4395da58a544359830cd16750c7a4f8684bc599a
   </script>
 
   <!-- COLOR PICKER OVERLAY -->
