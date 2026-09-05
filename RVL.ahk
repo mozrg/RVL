@@ -66,6 +66,7 @@ global g_update_version := ""
 global g_update_notice := ""
 global g_update_exit_pending := false
 global g_update_started_at := 0
+global g_update_worker_pid := 0
 
 ; A previous updater writes a one-shot result before restarting the app.
 if (FileExist(UPDATE_STATUS_FILE)) {
@@ -624,6 +625,7 @@ StartUpdateDownload:
     try {
         runCommand := UpdateQuote(psExe) . " " . psArgs
         Run, %runCommand%, %A_ScriptDir%, Hide, workerPid
+        g_update_worker_pid := workerPid
         if (ErrorLevel)
             throw Exception("PowerShell не запустился")
     } catch e {
@@ -645,13 +647,19 @@ PollUpdateStatus:
     if (!FileExist(UPDATE_STATUS_FILE)) {
         if (g_update_state = "downloading" && g_update_started_at && A_TickCount - g_update_started_at > 10000) {
             g_update_state := "error"
-            SetUpdateBridge("error", g_update_version, "Загрузчик обновления не запустился", 0)
+            Process, Exist, %g_update_worker_pid%
+            if (ErrorLevel)
+                updateStartError := "Фоновый загрузчик запущен, но не отвечает"
+            else
+                updateStartError := "PowerShell не запустил фоновый загрузчик"
+            SetUpdateBridge("error", g_update_version, updateStartError, 0)
         }
         return
     }
     statusRaw := ""
     try FileRead, statusRaw, *P65001 %UPDATE_STATUS_FILE%
     statusRaw := Trim(statusRaw, " `t`r`n")
+    statusRaw := RegExReplace(statusRaw, "^\x{FEFF}", "")
     if (statusRaw = "")
         return
     parts := StrSplit(statusRaw, "|")

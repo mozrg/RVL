@@ -8387,9 +8387,7 @@ function refreshUpdateBridge() {
     /* Make failures and the actual start of installation visible even when
        the settings panel is closed behind the startup prompt. */
     if (state !== lastRenderedUpdateState) {
-        if (state === "downloading" && typeof showToast === "function") {
-            showToast(updateText().downloading, null, null, 4500);
-        } else if (state === "error" && typeof showToast === "function") {
+        if (state === "error" && !window.__rvlInstallScreenRequested && typeof showToast === "function") {
             /* AHK v1 builds made from an ANSI script can return mojibake.
                The external updater shows the detailed error; keep this
                compact toast localized and readable. */
@@ -8456,9 +8454,6 @@ function installUpdate() {
     window.__rvlInstallScreenRequested = true;
     var installVersion = el("__update_version") ? el("__update_version").value : "";
     renderUpdateScreen("downloading", installVersion, "Подключаемся к GitHub...", 0);
-    if (typeof showToast === "function") {
-        showToast(updateText().downloading, null, null, 4500);
-    }
     closeUpdatePrompt();
     var status = el("update-status");
     if (status) status.innerHTML = updateText().downloading;

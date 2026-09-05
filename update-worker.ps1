@@ -12,12 +12,16 @@ $work = $null
 
 function Write-WorkerStatus([string]$state, [int]$progress, [string]$message) {
     if (-not $StatusPath) { return }
+    $safeMessage = ($message -replace "\|", "/") -replace "[\r\n]", " "
+    $line = "{0}|{1}|{2}" -f $state, $progress, $safeMessage
     try {
-        $safeMessage = ($message -replace "\|", "/") -replace "[\r\n]", " "
-        $line = "{0}|{1}|{2}" -f $state, $progress, $safeMessage
-        $utf8 = New-Object System.Text.UTF8Encoding($false)
+        # No BOM: the AHK v1 bridge can read the first state immediately.
+        $utf8 = [System.Text.UTF8Encoding]::new($false)
         [System.IO.File]::WriteAllText($StatusPath, $line, $utf8)
-    } catch { }
+    } catch {
+        # Windows PowerShell 5.1 fallback if the UTF-8 constructor is absent.
+        try { Set-Content -LiteralPath $StatusPath -Value $line -Encoding UTF8 } catch { }
+    }
 }
 
 try {
