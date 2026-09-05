@@ -429,6 +429,43 @@
     </div>
   </div>
 
+  <!-- UPDATE SCREEN: stays inside RVL while the background worker downloads. -->
+  <div class="update-screen-overlay" id="update-screen-overlay" style="display:none;">
+    <div class="update-screen-glow update-screen-glow-one"></div>
+    <div class="update-screen-glow update-screen-glow-two"></div>
+    <div class="update-screen-card">
+      <div class="update-screen-header">
+        <div class="update-screen-brand"><span class="update-screen-brand-mark">R</span><span>RVL</span><span class="update-screen-version" id="update-screen-version">v1.12</span></div>
+        <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
+      </div>
+      <div class="update-screen-main">
+        <div class="update-ring-wrap">
+          <svg class="update-ring" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="update-ring-track" cx="60" cy="60" r="51"></circle>
+            <circle class="update-ring-fill" id="update-ring-fill" cx="60" cy="60" r="51"></circle>
+          </svg>
+          <div class="update-ring-center"><span id="update-screen-percent">0%</span><small>RVL</small></div>
+        </div>
+        <div class="update-screen-copy">
+          <div class="update-screen-kicker">ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ</div>
+          <div class="update-screen-title" id="update-screen-title">Скачиваем новую версию</div>
+          <div class="update-screen-status" id="update-screen-status">Подключаемся к GitHub...</div>
+          <div class="update-screen-details"><span id="update-screen-size">Подготовка загрузки</span><span id="update-screen-speed">Не закрывайте окно</span></div>
+        </div>
+      </div>
+      <div class="update-screen-steps">
+        <div class="update-screen-step active" id="update-step-download"><i>01</i><span>СКАЧИВАНИЕ</span></div>
+        <div class="update-screen-step" id="update-step-install"><i>02</i><span>УСТАНОВКА</span></div>
+        <div class="update-screen-step" id="update-step-restart"><i>03</i><span>ПЕРЕЗАПУСК</span></div>
+      </div>
+      <div class="update-screen-line"><div id="update-screen-line-fill"></div></div>
+      <div class="update-screen-footer">
+        <span id="update-screen-footer-text">Файлы приложения обновляются безопасно</span>
+        <button id="update-screen-dismiss" onclick="hideUpdateScreen();" style="display:none;">ЗАКРЫТЬ</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-shell" id="app-shell">
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">

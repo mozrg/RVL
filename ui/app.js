@@ -8260,6 +8260,77 @@ function refreshUpdateLanguage() {
     refreshUpdateBridge();
 }
 
+function hideUpdateScreen() {
+    var overlay = el("update-screen-overlay");
+    if (overlay) overlay.style.display = "none";
+    window.__rvlInstallScreenRequested = false;
+}
+
+function renderUpdateScreen(state, version, message, progress) {
+    var overlay = el("update-screen-overlay");
+    if (!overlay) return;
+
+    var requested = !!window.__rvlInstallScreenRequested;
+    var visible = state === "downloading" || state === "installing" || (state === "error" && requested);
+    if (!visible) {
+        overlay.style.display = "none";
+        return;
+    }
+    overlay.style.display = "-ms-flexbox";
+    overlay.style.display = "flex";
+    overlay.className = "update-screen-overlay" + (state === "error" ? " update-screen-error" : "");
+
+    progress = Math.max(0, Math.min(100, parseInt(progress, 10) || 0));
+    var ring = el("update-ring-fill");
+    if (ring) ring.setAttribute("stroke-dashoffset", String(320.44 * (1 - progress / 100)));
+    var percent = el("update-screen-percent");
+    if (percent) percent.innerHTML = progress + "%";
+    var ver = el("update-screen-version");
+    if (ver && version) ver.innerHTML = "v" + version;
+
+    var title = el("update-screen-title");
+    var status = el("update-screen-status");
+    var badge = el("update-screen-badge");
+    var footer = el("update-screen-footer-text");
+    var size = el("update-screen-size");
+    var speed = el("update-screen-speed");
+    var dismiss = el("update-screen-dismiss");
+    if (state === "error") {
+        if (title) title.innerHTML = "Не удалось обновить RVL";
+        if (badge) badge.innerHTML = "ОШИБКА";
+        if (status) status.innerHTML = message || "Попробуйте повторить попытку";
+        if (footer) footer.innerHTML = "Файлы приложения не изменены";
+        if (size) size.innerHTML = "Можно повторить обновление";
+        if (speed) speed.innerHTML = "";
+        if (dismiss) dismiss.style.display = "block";
+    } else if (state === "installing") {
+        if (title) title.innerHTML = "Перезапускаем RVL";
+        if (badge) badge.innerHTML = "ГОТОВО";
+        if (status) status.innerHTML = message || "Файлы готовы к установке...";
+        if (footer) footer.innerHTML = "Приложение запустится автоматически";
+        if (size) size.innerHTML = "Обновление загружено";
+        if (speed) speed.innerHTML = "Почти готово";
+        if (dismiss) dismiss.style.display = "none";
+    } else {
+        if (title) title.innerHTML = progress > 3 ? "Скачиваем новую версию" : "Проверяем обновление";
+        if (badge) badge.innerHTML = "ОБНОВЛЕНИЕ";
+        if (status) status.innerHTML = message || "Подключаемся к GitHub...";
+        if (footer) footer.innerHTML = "Не закрывайте окно — RVL перезапустится автоматически";
+        if (size) size.innerHTML = progress > 0 ? "Загрузка файлов" : "Подготовка загрузки";
+        if (speed) speed.innerHTML = "Идёт скачивание";
+        if (dismiss) dismiss.style.display = "none";
+    }
+
+    var stepDownload = el("update-step-download");
+    var stepInstall = el("update-step-install");
+    var stepRestart = el("update-step-restart");
+    if (stepDownload) stepDownload.className = "update-screen-step" + (progress < 100 ? " active" : " done");
+    if (stepInstall) stepInstall.className = "update-screen-step" + (state === "installing" ? " active" : (progress >= 100 ? " done" : ""));
+    if (stepRestart) stepRestart.className = "update-screen-step" + (state === "installing" ? " active" : "");
+    var line = el("update-screen-line-fill");
+    if (line) line.style.width = progress + "%";
+}
+
 function refreshUpdateBridge() {
     var stateEl = el("__update_state");
     var state = stateEl ? (stateEl.value || "idle") : "idle";
@@ -8274,7 +8345,7 @@ function refreshUpdateBridge() {
     var status = el("update-status");
     if (!button) return;
 
-    button.disabled = state === "checking" || state === "downloading";
+    button.disabled = state === "checking" || state === "downloading" || state === "installing";
     if (state === "available") {
         button.innerHTML = updateText().available + (version ? " " + version : "");
     } else if (state === "latest") {
@@ -8282,6 +8353,8 @@ function refreshUpdateBridge() {
     } else if (state === "checking") {
         button.innerHTML = updateText().checking;
     } else if (state === "downloading") {
+        button.innerHTML = updateText().downloading;
+    } else if (state === "installing") {
         button.innerHTML = updateText().downloading;
     } else {
         button.innerHTML = updateText().check;
@@ -8298,6 +8371,8 @@ function refreshUpdateBridge() {
         else if (state === "latest") text = U.title;
         status.innerHTML = text;
     }
+
+    renderUpdateScreen(state, version, message, progress);
 
     /* Make failures and the actual start of installation visible even when
        the settings panel is closed behind the startup prompt. */
@@ -8368,6 +8443,9 @@ function installUpdate() {
     /* Give immediate feedback before the modal disappears. This is useful
        with the legacy WebBrowser control where a click can otherwise look
        like a no-op while AHK is starting the downloader. */
+    window.__rvlInstallScreenRequested = true;
+    var installVersion = el("__update_version") ? el("__update_version").value : "";
+    renderUpdateScreen("downloading", installVersion, "Подключаемся к GitHub...", 0);
     if (typeof showToast === "function") {
         showToast(updateText().downloading, null, null, 4500);
     }

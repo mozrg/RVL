@@ -64,6 +64,8 @@ global g_update_state := "idle"
 global g_update_url := ""
 global g_update_version := ""
 global g_update_notice := ""
+global g_update_exit_pending := false
+global g_update_started_at := 0
 
 ; A previous updater writes a one-shot result before restarting the app.
 if (FileExist(UPDATE_STATUS_FILE)) {
@@ -170,6 +172,8 @@ SetTimer, ProcessCommands,    50
 SetTimer, PollUpdateInstall, 100
 ; Lightweight command bridge used by the working Mmacro updater pattern.
 SetTimer, PollJSCmd, 20
+; Read real download progress from the background updater worker.
+SetTimer, PollUpdateStatus, 100
 SetTimer, UpdateRobloxStatus, 2000
 Return
 
@@ -590,7 +594,9 @@ StartUpdateDownload:
         restartArgs := A_ScriptFullPath
     }
 
-    helper := A_ScriptDir "\update-helper.ps1"
+    ; The visible progress screen now lives in the RVL HTML UI. This worker
+    ; only downloads/extracts/replaces files in the background.
+    helper := A_ScriptDir "\update-worker.ps1"
     if (!FileExist(helper)) {
         SetUpdateBridge("error", "", "Файл обновления не найден", 0)
         return
@@ -610,6 +616,7 @@ StartUpdateDownload:
     psArgs .= " -WaitPid " . currentPid
 
     g_update_state := "downloading"
+    g_update_started_at := A_TickCount
     SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
     ; ShellExecute receives the executable and arguments separately, so paths
     ; with spaces and Cyrillic characters cannot break the launch command.
@@ -622,28 +629,54 @@ StartUpdateDownload:
         return
     }
 
-    ; Wait until the helper confirms that it really started. This prevents
-    ; the app from closing silently when PowerShell is blocked or unavailable.
-    helperStarted := false
-    Loop, 30 {
-        Sleep, 100
-        helperStatus := ""
-        if (FileExist(UPDATE_STATUS_FILE)) {
-            FileRead, helperStatus, %UPDATE_STATUS_FILE%
-            helperStatus := Trim(helperStatus)
-            if (InStr(helperStatus, "downloading") || InStr(helperStatus, "done") || InStr(helperStatus, "error|")) {
-                helperStarted := true
-                break
-            }
+    ; Keep RVL open: the HTML overlay renders the worker's real progress.
+    ; The worker waits for this process to exit before replacing any files.
+Return
+
+; ============================================================
+;  UPDATE STATUS POLLER
+;  Format: state|progress|message
+; ============================================================
+PollUpdateStatus:
+    Critical
+    if (!FileExist(UPDATE_STATUS_FILE)) {
+        if (g_update_state = "downloading" && g_update_started_at && A_TickCount - g_update_started_at > 10000) {
+            g_update_state := "error"
+            SetUpdateBridge("error", g_update_version, "Загрузчик обновления не запустился", 0)
         }
-    }
-    if (!helperStarted) {
-        g_update_state := "error"
-        SetUpdateBridge("error", "", "Загрузчик обновления не запустился", 0)
         return
     }
-    FileDelete, %TMP_HTML%
-    ExitApp
+    statusRaw := ""
+    try FileRead, statusRaw, *P65001 %UPDATE_STATUS_FILE%
+    statusRaw := Trim(statusRaw, " `t`r`n")
+    if (statusRaw = "")
+        return
+    parts := StrSplit(statusRaw, "|")
+    workerState := parts[1]
+    if (workerState = "downloading") {
+        workerProgress := parts.MaxIndex() >= 2 ? parts[2] + 0 : 0
+        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Скачиваю обновление..."
+        g_update_state := "downloading"
+        SetUpdateBridge("downloading", g_update_version, workerMessage, workerProgress)
+    } else if (workerState = "ready") {
+        if (!g_update_exit_pending) {
+            g_update_exit_pending := true
+            g_update_state := "installing"
+            SetUpdateBridge("installing", g_update_version, "Файлы готовы. Перезапускаем RVL...", 100)
+            SetTimer, FinishUpdateRestart, -700
+        }
+    } else if (workerState = "error") {
+        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Не удалось скачать обновление"
+        g_update_state := "error"
+        SetUpdateBridge("error", g_update_version, workerMessage, 0)
+    }
+Return
+
+FinishUpdateRestart:
+    if (g_update_exit_pending) {
+        FileDelete, %TMP_HTML%
+        ExitApp
+    }
 Return
 
 ; ============================================================

@@ -12215,3 +12215,52 @@ body.theme-light .update-prompt-card { border-color: #D9DDE9; background: #FFFFF
 body.theme-light .update-prompt-title { color: #222631; }
 body.theme-light .update-prompt-text { color: #7B8292; }
 body.theme-light .update-prompt-later { border-color: #D9DDE9; color: #737B8B; }
+
+/* ── In-app updater screen ────────────────────────────────
+   The download worker stays invisible; this screen renders inside RVL and
+   receives real progress through the AHK status bridge. IE11-safe by design.
+   ───────────────────────────────────────────────────────── */
+.update-screen-overlay { position: fixed; z-index: 1200; top: 0; right: 0; bottom: 0; left: 0; display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: center; justify-content: center; overflow: hidden; background: #080A12; color: #F3F5FF; }
+.update-screen-glow { position: absolute; border-radius: 50%; pointer-events: none; }
+.update-screen-glow-one { width: 260px; height: 260px; top: -100px; right: -96px; background: rgba(127,143,255,0.20); box-shadow: 0 0 100px 45px rgba(127,143,255,0.11); }
+.update-screen-glow-two { width: 220px; height: 220px; bottom: -118px; left: -100px; background: rgba(80,214,190,0.11); box-shadow: 0 0 90px 38px rgba(80,214,190,0.08); }
+.update-screen-card { position: relative; width: 342px; min-height: 442px; padding: 22px; border: 1px solid #2C3148; border-radius: 20px; background: linear-gradient(150deg, #171A2A 0%, #10121C 57%, #0D1019 100%); box-shadow: 0 24px 70px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.045); }
+.update-screen-header { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: justify; justify-content: space-between; }
+.update-screen-brand { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; color: #F2F3FA; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+.update-screen-brand-mark { display: inline-block; width: 26px; height: 26px; margin-right: 9px; border-radius: 8px; background: #AAB5FF; color: #111426; line-height: 26px; text-align: center; font-size: 12px; box-shadow: 0 0 20px rgba(170,181,255,0.28); }
+.update-screen-version { margin-left: 7px; color: #707A9A; font-size: 8px; font-weight: 600; letter-spacing: 0.03em; }
+.update-screen-badge { padding: 7px 9px; border: 1px solid #353C60; border-radius: 8px; background: rgba(126,143,255,0.12); color: #AEB8FF; font-size: 7px; font-weight: 800; letter-spacing: 0.11em; }
+.update-screen-main { padding-top: 34px; text-align: center; }
+.update-ring-wrap { position: relative; width: 142px; height: 142px; margin: 0 auto; }
+.update-ring { width: 142px; height: 142px; overflow: visible; }
+.update-ring-track, .update-ring-fill { fill: none; stroke-width: 7; }
+.update-ring-track { stroke: #292E43; }
+.update-ring-fill { stroke: #AAB5FF; stroke-dasharray: 320.44; stroke-dashoffset: 320.44; stroke-linecap: round; -ms-transform: rotate(-90deg); transform: rotate(-90deg); -ms-transform-origin: 60px 60px; transform-origin: 60px 60px; -ms-transition: stroke-dashoffset 0.35s ease, stroke 0.25s ease; transition: stroke-dashoffset 0.35s ease, stroke 0.25s ease; filter: drop-shadow(0 0 5px rgba(170,181,255,0.75)); }
+.update-ring-center { position: absolute; top: 42px; right: 0; left: 0; text-align: center; }
+.update-ring-center span { display: block; color: #F3F5FF; font-size: 26px; font-weight: 800; letter-spacing: -0.04em; }
+.update-ring-center small { display: block; margin-top: 2px; color: #7E88A9; font-size: 7px; font-weight: 700; letter-spacing: 0.24em; }
+.update-screen-copy { margin-top: 24px; }
+.update-screen-kicker { color: #8490BC; font-size: 7px; font-weight: 800; letter-spacing: 0.21em; }
+.update-screen-title { margin-top: 9px; color: #F3F5FF; font-size: 17px; font-weight: 800; letter-spacing: -0.015em; }
+.update-screen-status { min-height: 18px; margin-top: 8px; color: #A2AAC1; font-size: 9px; }
+.update-screen-details { display: -ms-flexbox; display: flex; -ms-flex-pack: justify; justify-content: space-between; margin-top: 8px; color: #626D8D; font-size: 7px; }
+.update-screen-details span:last-child { text-align: right; }
+.update-screen-steps { display: -ms-flexbox; display: flex; margin-top: 31px; border-top: 1px solid #2B3043; padding-top: 14px; }
+.update-screen-step { -ms-flex: 1 1 0px; flex: 1 1 0px; color: #59627D; font-size: 7px; font-weight: 700; text-align: center; }
+.update-screen-step i { display: block; margin-bottom: 6px; color: #59627D; font-size: 8px; font-style: normal; }
+.update-screen-step.active { color: #B3BCFF; }
+.update-screen-step.active i { color: #AAB5FF; }
+.update-screen-step.done { color: #77D9B8; }
+.update-screen-step.done i { color: #77D9B8; }
+.update-screen-line { height: 4px; margin-top: 16px; overflow: hidden; border-radius: 4px; background: #292E43; }
+.update-screen-line div { width: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, #7D8EFF, #AAB5FF); box-shadow: 0 0 12px rgba(170,181,255,0.62); -ms-transition: width 0.35s ease, background 0.25s ease; transition: width 0.35s ease, background 0.25s ease; }
+.update-screen-footer { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: justify; justify-content: space-between; margin-top: 19px; color: #616B88; font-size: 7px; line-height: 1.4; }
+.update-screen-footer button { height: 25px; padding: 0 10px; border: 1px solid #AAB5FF; border-radius: 7px; background: #AAB5FF; color: #121526; font-size: 7px; font-weight: 800; cursor: pointer; }
+.update-screen-overlay.update-screen-error .update-ring-fill { stroke: #F0788B; }
+.update-screen-overlay.update-screen-error .update-screen-line div { background: #F0788B; box-shadow: 0 0 12px rgba(240,120,139,0.55); }
+.update-screen-overlay.update-screen-error .update-screen-badge { border-color: #663747; background: rgba(240,120,139,0.12); color: #F48EA0; }
+body.theme-light .update-screen-overlay { background: #EEF1F9; }
+body.theme-light .update-screen-card { border-color: #D4D9E8; background: linear-gradient(150deg, #FFFFFF, #F2F4FC); box-shadow: 0 24px 70px rgba(57,64,92,0.18); }
+body.theme-light .update-screen-title, body.theme-light .update-ring-center span, body.theme-light .update-screen-brand { color: #252A38; }
+body.theme-light .update-screen-status { color: #70798F; }
+body.theme-light .update-ring-track { stroke: #D9DDE9; }
