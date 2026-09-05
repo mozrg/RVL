@@ -12196,3 +12196,22 @@ body.theme-light .startup-mark { color: #17181C; text-shadow: none; }
 body.theme-light .update-card { border-color: #DADDE8; background: linear-gradient(135deg, #F1F3FF, #FFFFFF); }
 body.theme-light .update-card-title { color: #282C35; }
 body.theme-light .update-card-hint { color: #7E8492; }
+
+/* ── Startup update confirmation ────────────────────────── */
+.update-prompt-overlay { position: fixed; z-index: 1100; top: 0; right: 0; bottom: 0; left: 0; display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: center; justify-content: center; padding: 18px; background: rgba(3,4,8,0.76); opacity: 1; }
+.update-prompt-card { width: 290px; padding: 17px; border: 1px solid #34384B; border-radius: 13px; background: #12141C; box-shadow: 0 18px 50px rgba(0,0,0,0.45), 0 0 35px rgba(126,143,255,0.09); }
+.update-prompt-icon { float: left; width: 34px; height: 34px; margin-right: 11px; border-radius: 10px; background: #AAB5FF; color: #111426; font-size: 20px; font-weight: 700; line-height: 34px; text-align: center; }
+.update-prompt-copy { min-height: 34px; overflow: hidden; }
+.update-prompt-title { color: #F0F1F8; font-size: 11px; font-weight: 800; }
+.update-prompt-text { margin-top: 5px; color: #8991A7; font-size: 8px; line-height: 1.4; }
+.update-prompt-actions { clear: both; display: -ms-flexbox; display: flex; padding-top: 16px; }
+.update-prompt-actions button { height: 29px; border-radius: 7px; font-size: 8px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer; }
+.update-prompt-later { -ms-flex: 1 1 0px; flex: 1 1 0px; border: 1px solid #303440; background: transparent; color: #8991A7; }
+.update-prompt-later:hover { border-color: #596078; color: #E4E6F0; }
+.update-prompt-install { -ms-flex: 1 1 0px; flex: 1 1 0px; margin-left: 7px; border: 1px solid #AAB5FF; background: #AAB5FF; color: #111426; }
+.update-prompt-install:hover { border-color: #C8CEFF; background: #C8CEFF; }
+body.theme-light .update-prompt-overlay { background: rgba(224,226,234,0.72); }
+body.theme-light .update-prompt-card { border-color: #D9DDE9; background: #FFFFFF; box-shadow: 0 18px 50px rgba(51,56,74,0.18); }
+body.theme-light .update-prompt-title { color: #222631; }
+body.theme-light .update-prompt-text { color: #7B8292; }
+body.theme-light .update-prompt-later { border-color: #D9DDE9; color: #737B8B; }

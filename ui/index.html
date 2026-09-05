@@ -83,6 +83,7 @@
   <input type="hidden" id="__update_message" value="">
   <input type="hidden" id="__update_progress" value="0">
   <input type="hidden" id="__update_notice" value="">
+  <input type="hidden" id="__update_install_req" value="0">
 
   <!-- UNIVERSAL TOOLTIP -->
   <div class="app-tooltip" id="app-tooltip">
@@ -256,7 +257,7 @@
               <div class="update-card-title" id="update-card-title">RVL всегда актуален</div>
               <div class="update-card-hint" id="update-card-hint">Проверка файлов приложения через GitHub</div>
             </div>
-            <button class="update-button" id="btn-check-update">ПРОВЕРИТЬ</button>
+            <button class="update-button" id="btn-check-update" onclick="handleUpdateButton();">ПРОВЕРИТЬ</button>
           </div>
           <div class="update-progress" id="update-progress-wrap" style="display:none;">
             <div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div>
@@ -410,6 +411,21 @@
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
       <div class="startup-meta"><span>RVL</span><span class="startup-meta-dot">•</span><span>v1.9</span></div>
+    </div>
+  </div>
+
+  <!-- UPDATE PROMPT: shown after a real version check finds a newer release. -->
+  <div class="update-prompt-overlay" id="update-prompt-overlay" style="display:none;">
+    <div class="update-prompt-card">
+      <div class="update-prompt-icon">&#8593;</div>
+      <div class="update-prompt-copy">
+        <div class="update-prompt-title" id="update-prompt-title">Доступно обновление</div>
+        <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия RVL</div>
+      </div>
+      <div class="update-prompt-actions">
+        <button class="update-prompt-later" id="update-prompt-later" onclick="closeUpdatePrompt();">ПОЗЖЕ</button>
+        <button class="update-prompt-install" id="update-prompt-install" onclick="installUpdate();">ОБНОВИТЬ</button>
+      </div>
     </div>
   </div>
 

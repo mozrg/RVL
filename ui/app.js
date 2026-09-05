@@ -8214,7 +8214,11 @@ var UPDATE_TEXT = {
         startupChecking: "Проверяем версию RVL",
         startupLatest: "Установлена последняя версия",
         startupAvailable: "Доступно обновление",
-        startupError: "Не удалось проверить обновления"
+        startupError: "Не удалось проверить обновления",
+        promptTitle: "Доступно обновление",
+        promptText: function(v) { return "Найдена новая версия RVL" + (v ? " · " + v : ""); },
+        promptLater: "ПОЗЖЕ",
+        promptInstall: "ОБНОВИТЬ"
     },
     en: {
         label: "UPDATE",
@@ -8231,7 +8235,11 @@ var UPDATE_TEXT = {
         startupChecking: "Checking RVL version",
         startupLatest: "You have the latest version",
         startupAvailable: "An update is available",
-        startupError: "Unable to check for updates"
+        startupError: "Unable to check for updates",
+        promptTitle: "Update available",
+        promptText: function(v) { return "A new RVL version is available" + (v ? " · " + v : ""); },
+        promptLater: "LATER",
+        promptInstall: "UPDATE"
     }
 };
 
@@ -8308,6 +8316,52 @@ function hideStartupScreen(resultState) {
         fill.style.marginLeft = "0";
     }
     setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, notice ? 680 : 430);
+    if (resultState === "available" && !notice) {
+        setTimeout(function () { openUpdatePrompt(); }, 920);
+    }
+}
+
+function openUpdatePrompt() {
+    if (window.__rvlUpdatePromptShown) return;
+    var state = el("__update_state") ? el("__update_state").value : "";
+    if (state !== "available") return;
+    window.__rvlUpdatePromptShown = true;
+    var U = updateText();
+    var version = el("__update_version") ? trim(el("__update_version").value) : "";
+    var title = el("update-prompt-title");
+    var copy = el("update-prompt-text");
+    var later = el("update-prompt-later");
+    var install = el("update-prompt-install");
+    if (title) title.innerHTML = U.promptTitle;
+    if (copy) copy.innerHTML = U.promptText(version);
+    if (later) later.innerHTML = U.promptLater;
+    if (install) install.innerHTML = U.promptInstall;
+    var overlay = el("update-prompt-overlay");
+    if (overlay) overlay.style.display = "-ms-flexbox";
+    if (overlay) overlay.style.display = "flex";
+}
+
+function closeUpdatePrompt() {
+    var overlay = el("update-prompt-overlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+function installUpdate() {
+    closeUpdatePrompt();
+    var status = el("update-status");
+    if (status) status.innerHTML = updateText().downloading;
+    /* Direct bridge fallback for old IE/WebBrowser builds where a queued
+       click command may be swallowed while the modal is closing. */
+    var request = el("__update_install_req");
+    if (request) request.value = "1";
+    sendCmd("CMD:install_update");
+}
+
+function handleUpdateButton() {
+    var state = el("__update_state") ? el("__update_state").value : "idle";
+    if (state === "available") openUpdatePrompt();
+    else sendCmd("CMD:check_update");
+    refreshUpdateBridge();
 }
 
 function startStartupVersionCheck() {
@@ -8353,11 +8407,12 @@ applyLanguage = function () {
 window.addEventListener("load", function () {
     var updateButton = el("btn-check-update");
     if (updateButton) {
-        updateButton.onclick = function () {
-            sendCmd("CMD:check_update");
-            refreshUpdateBridge();
-        };
+        updateButton.onclick = handleUpdateButton;
     }
+    var laterButton = el("update-prompt-later");
+    var installButton = el("update-prompt-install");
+    if (laterButton) laterButton.onclick = closeUpdatePrompt;
+    if (installButton) installButton.onclick = installUpdate;
     refreshUpdateLanguage();
     setInterval(refreshUpdateBridge, 250);
 });

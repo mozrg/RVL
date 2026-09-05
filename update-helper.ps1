@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory = $true)][string]$Target,
     [Parameter(Mandatory = $true)][string]$RestartPath,
     [string]$RestartArgs = "",
-    [string]$StatusPath = ""
+    [string]$StatusPath = "",
+    [int]$WaitPid = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,6 +29,14 @@ try {
     $headers = @{ 'User-Agent' = 'RVL-Updater'; 'Accept' = 'application/octet-stream' }
     Invoke-WebRequest -UseBasicParsing -Uri $Url -Headers $headers -OutFile $archive
     Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
+
+    # The app is still running while the archive downloads. Wait for it to
+    # exit before replacing files, especially the compiled executable.
+    if ($WaitPid -gt 0) {
+        while (Get-Process -Id $WaitPid -ErrorAction SilentlyContinue) {
+            Start-Sleep -Milliseconds 120
+        }
+    }
 
     $source = $extract
     $children = @(Get-ChildItem -LiteralPath $extract -Force)

@@ -300,6 +300,17 @@ ProcessCommands:
                 Gosub, DispatchCommand
             }
         }
+
+        ; Direct install bridge fallback. JS sets this flag before sending
+        ; the normal queue command, so an old WebBrowser control cannot lose
+        ; the user's click while an overlay is closing.
+        installReq := "0"
+        try installReq := WB.document.getElementById("__update_install_req").value
+        if (installReq = "1") {
+            try WB.document.getElementById("__update_install_req").value := "0"
+            if (g_update_state = "available")
+                Gosub, StartUpdateDownload
+        }
     }
 Return
 
@@ -374,6 +385,8 @@ DispatchCommand:
         Gosub, OnSaveWindowPos
     } else if (cmd = "CMD:check_update") {
         Gosub, OnCheckUpdate
+    } else if (cmd = "CMD:install_update") {
+        Gosub, StartUpdateDownload
     }
 Return
 
@@ -485,6 +498,10 @@ OnCheckUpdate:
             RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
         releaseVersion := Trim(rv1)
         releaseUrl := Trim(ru1)
+        ; GitHub's zipball API redirects; use codeload directly so both
+        ; UrlDownloadToFile and the PowerShell helper handle the archive.
+        releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
+        releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
         if (VersionToNumber(releaseVersion) > VersionToNumber(remoteVersion)) {
             remoteVersion := releaseVersion
             downloadUrl := releaseUrl
@@ -532,6 +549,14 @@ StartUpdateDownload:
         restartArgs := A_ScriptFullPath
     }
 
+    ; When running the source script, update it directly. This avoids relying
+    ; on a second PowerShell process just to replace files that Windows allows
+    ; the already-loaded .ahk script to overwrite.
+    if (!A_IsCompiled) {
+        Gosub, UpdateSourceFilesDirect
+        return
+    }
+
     helper := A_ScriptDir "\update-helper.ps1"
     if (!FileExist(helper)) {
         SetUpdateBridge("error", "", "Файл обновления не найден", 0)
@@ -541,25 +566,133 @@ StartUpdateDownload:
     psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
     if (!FileExist(psExe))
         psExe := "powershell.exe"
-    cmdLine := UpdateQuote(psExe) . " -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
-    cmdLine .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
-    cmdLine .= " -Target " . UpdateQuote(A_ScriptDir)
-    cmdLine .= " -RestartPath " . UpdateQuote(restartPath)
+    psArgs := "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
+    psArgs .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
+    psArgs .= " -Target " . UpdateQuote(A_ScriptDir)
+    psArgs .= " -RestartPath " . UpdateQuote(restartPath)
     if (restartArgs != "")
-        cmdLine .= " -RestartArgs " . UpdateQuote(restartArgs)
-    cmdLine .= " -StatusPath " . UpdateQuote(UPDATE_STATUS_FILE)
+        psArgs .= " -RestartArgs " . UpdateQuote(restartArgs)
+    psArgs .= " -StatusPath " . UpdateQuote(UPDATE_STATUS_FILE)
+    currentPid := DllCall("GetCurrentProcessId")
+    psArgs .= " -WaitPid " . currentPid
 
     g_update_state := "downloading"
     SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
-    Run, %cmdLine%,, UseErrorLevel, updaterPid
-    if (ErrorLevel = "ERROR") {
+    ; ShellExecute receives the executable and arguments separately, so paths
+    ; with spaces and Cyrillic characters cannot break the launch command.
+    try {
+        shell := ComObjCreate("Shell.Application")
+        shell.ShellExecute(psExe, psArgs, A_ScriptDir, "open", 0)
+    } catch e {
         g_update_state := "error"
         SetUpdateBridge("error", "", "Не удалось запустить загрузчик обновления", 0)
         return
     }
-    Sleep, 350
+
+    ; Wait until the helper confirms that it really started. This prevents
+    ; the app from closing silently when PowerShell is blocked or unavailable.
+    helperStarted := false
+    Loop, 30 {
+        Sleep, 100
+        helperStatus := ""
+        if (FileExist(UPDATE_STATUS_FILE)) {
+            FileRead, helperStatus, %UPDATE_STATUS_FILE%
+            helperStatus := Trim(helperStatus)
+            if (InStr(helperStatus, "downloading") || InStr(helperStatus, "done") || InStr(helperStatus, "error|")) {
+                helperStarted := true
+                break
+            }
+        }
+    }
+    if (!helperStarted) {
+        g_update_state := "error"
+        SetUpdateBridge("error", "", "Загрузчик обновления не запустился", 0)
+        return
+    }
     FileDelete, %TMP_HTML%
     ExitApp
+Return
+
+; ============================================================
+;  DIRECT SOURCE UPDATE (.ahk mode)
+; ============================================================
+UpdateSourceFilesDirect:
+    zipPath := A_Temp "\RVL_update.zip"
+    extractDir := A_Temp "\RVL_update_extract"
+    FileDelete, %zipPath%
+    FileRemoveDir, %extractDir%, 1
+    FileCreateDir, %extractDir%
+
+    SetUpdateBridge("downloading", g_update_version, "Скачиваю архив обновления...", 35)
+    UrlDownloadToFile, %g_update_url%, %zipPath%
+    if (ErrorLevel || !FileExist(zipPath)) {
+        SetUpdateBridge("error", g_update_version, "Не удалось скачать архив обновления", 0)
+        return
+    }
+    SetUpdateBridge("downloading", g_update_version, "Распаковываю файлы обновления...", 70)
+
+    try {
+        zipShell := ComObjCreate("Shell.Application")
+        zipNs := zipShell.NameSpace(zipPath)
+        destNs := zipShell.NameSpace(extractDir)
+        if (!zipNs || !destNs)
+            throw Exception("Не удалось открыть архив")
+        ; 4 = no progress UI, 16 = no confirmation UI.
+        destNs.CopyHere(zipNs.Items, 20)
+    } catch e {
+        FileDelete, %zipPath%
+        FileRemoveDir, %extractDir%, 1
+        SetUpdateBridge("error", g_update_version, "Не удалось распаковать обновление", 0)
+        return
+    }
+
+    sourceRoot := ""
+    Loop, 100 {
+        Sleep, 100
+        Loop, Files, %extractDir%\*, D
+        {
+            sourceRoot := A_LoopFileFullPath
+            break
+        }
+        if (sourceRoot != "")
+            break
+    }
+
+    ; Shell.Application extracts asynchronously; wait for the actual script
+    ; before copying the tree, not just for the root directory to appear.
+    if (sourceRoot != "") {
+        Loop, 100 {
+            if (FileExist(sourceRoot "\RVL.ahk"))
+                break
+            Sleep, 100
+        }
+    }
+
+    if (sourceRoot = "" || !FileExist(sourceRoot "\RVL.ahk")) {
+        FileDelete, %zipPath%
+        FileRemoveDir, %extractDir%, 1
+        SetUpdateBridge("error", g_update_version, "Архив обновления имеет неверный формат", 0)
+        return
+    }
+
+    Loop, Files, %sourceRoot%\*, FD
+    {
+        itemName := A_LoopFileName
+        if (itemName = "data" || itemName = ".git")
+            continue
+        targetPath := A_ScriptDir "\" itemName
+        if (InStr(FileExist(A_LoopFileFullPath), "D"))
+            FileCopyDir, %A_LoopFileFullPath%, %targetPath%, 1
+        else
+            FileCopy, %A_LoopFileFullPath%, %targetPath%, 1
+    }
+
+    FileDelete, %zipPath%
+    FileRemoveDir, %extractDir%, 1
+    SetUpdateBridge("latest", g_update_version, "Обновление установлено", 100)
+    Sleep, 350
+    FileDelete, %TMP_HTML%
+    Reload
 Return
 
 OnSetOpacity:
