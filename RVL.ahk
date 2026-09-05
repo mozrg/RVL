@@ -14,8 +14,8 @@ global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global APP_VERSION := "1.9"
-global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
+global UPDATE_RELEASES_FEED := "https://github.com/mozrg/RVL/releases.atom"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -512,7 +512,9 @@ Return
 
 ; ============================================================
 ;  UPDATE CHECK / DOWNLOAD
-;  The manifest is public and contains only a version + HTTPS ZIP URL.
+;  GitHub Releases is the source of truth for the installed version.
+;  update.json is not used for version detection, so a stale manifest
+;  cannot create a false update notice.
 ;  No GitHub token is embedded in the application.
 ; ============================================================
 OnCheckUpdate:
@@ -524,18 +526,11 @@ OnCheckUpdate:
     g_update_state := "checking"
     SetUpdateBridge("checking", "", "Проверяю наличие новой версии...", 0)
 
-    manifest := HttpGet(UPDATE_MANIFEST)
     remoteVersion := ""
     downloadUrl := ""
-    if (manifest != "") {
-        RegExMatch(manifest, """version""\s*:\s*""([^""]+)""", mv)
-        RegExMatch(manifest, """download_url""\s*:\s*""([^""]+)""", mu)
-        remoteVersion := Trim(mv1)
-        downloadUrl := Trim(mu1)
-    }
 
-    ; Always inspect Releases too. The manifest may lag behind a newer tag
-    ; (for example update.json=1.9 while the latest release is 1.10).
+    ; The latest published GitHub Release is authoritative. This reads the
+    ; real tag_name, not the version stored in update.json.
     release := HttpGet(UPDATE_RELEASES)
     if (release != "") {
         RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
@@ -548,16 +543,31 @@ OnCheckUpdate:
         ; UrlDownloadToFile and the PowerShell helper handle the archive.
         releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
         releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
-        if (VersionToNumber(releaseVersion) > VersionToNumber(remoteVersion)) {
+        if (releaseVersion != "" && releaseUrl != "") {
             remoteVersion := releaseVersion
             downloadUrl := releaseUrl
+        }
+    }
+
+    ; GitHub API has a strict anonymous rate limit. If it is unavailable,
+    ; use GitHub's public Atom feed, which also contains only real published
+    ; releases. Build the download URL from the feed's actual tag.
+    if (remoteVersion = "" || downloadUrl = "") {
+        feed := HttpGet(UPDATE_RELEASES_FEED)
+        if (feed != "") {
+            RegExMatch(feed, "s)<entry>.*?<link[^>]+href=""[^" "]+/releases/tag/([^" "]+)""", fr)
+            feedVersion := Trim(fr1)
+            if (feedVersion != "") {
+                remoteVersion := feedVersion
+                downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . feedVersion
+            }
         }
     }
 
     downloadUrl := StrReplace(downloadUrl, "\/", "/")
     if (remoteVersion = "" || downloadUrl = "") {
         g_update_state := "error"
-        SetUpdateBridge("error", "", "Не удалось получить информацию об обновлении", 0)
+        SetUpdateBridge("error", "", "Не удалось получить опубликованный релиз GitHub", 0)
         return
     }
 
