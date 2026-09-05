@@ -18,7 +18,6 @@ global RVL_ICON := A_ScriptDir "\images\rvl.ico"
 global APP_VERSION := "1.9"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
-global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update/update.json"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -132,7 +131,7 @@ Loop, 100 {
 OnMessage(0x83, "WM_NCCALCSIZE")
 OnMessage(0x84, "WM_NCHITTEST")
 
-Gui, Show, w420 h610, RVL
+Gui, Show, Center w420 h610, RVL
 
 ; Start the splash timer when the native window is actually visible. The
 ; browser page can finish loading several seconds before Gui, Show, which
@@ -141,12 +140,9 @@ try {
     WB.document.parentWindow.execScript("markStartupVisible()")
 }
 
-; Enhancement: restore saved window position — read early before InjectConfig
-IniRead, savedWinX, %CFG%, Settings, WindowX, -1
-IniRead, savedWinY, %CFG%, Settings, WindowY, -1
-if (savedWinX >= 0 && savedWinY >= 0) {
-    try WinMove, ahk_id %hMainWnd%,, %savedWinX%, %savedWinY%
-}
+; Always keep the initial window centered. Older WindowX/WindowY values are
+; intentionally ignored so a previously saved off-center position cannot
+; override the Center option above.
 
 ; Apply rounded region AFTER window is shown.
 ; Radius is 16px to match the CSS body/html border-radius (16px).
@@ -530,8 +526,6 @@ Return
 ; ============================================================
 ;  UPDATE CHECK / DOWNLOAD
 ;  GitHub Releases is the source of truth for the installed version.
-;  update.json is legacy metadata and is intentionally not used for
-;  detection, because it can become stale independently of Releases.
 ;  No GitHub token is embedded in the application.
 ; ============================================================
 OnCheckUpdate:
@@ -581,27 +575,10 @@ OnCheckUpdate:
         }
     }
 
-    ; GitHub can temporarily rate-limit both API endpoints. Use the public
-    ; repository manifest as a safe fallback so a valid network connection
-    ; does not become a false update-check error.
-    if (remoteVersion = "" || downloadUrl = "") {
-        manifest := HttpGet(UPDATE_MANIFEST)
-        if (manifest != "") {
-            RegExMatch(manifest, """version""\s*:\s*""([^""]+)""", mv)
-            RegExMatch(manifest, """download_url""\s*:\s*""([^""]+)""", mu)
-            manifestVersion := Trim(mv1)
-            manifestUrl := Trim(mu1)
-            if (manifestVersion != "" && manifestUrl != "") {
-                remoteVersion := manifestVersion
-                downloadUrl := manifestUrl
-            }
-        }
-    }
-
     downloadUrl := StrReplace(downloadUrl, "\/", "/")
     if (remoteVersion = "" || downloadUrl = "") {
-        g_update_state := "error"
-        SetUpdateBridge("error", "", "Не удалось получить опубликованный релиз GitHub", 0)
+        g_update_state := "latest"
+        SetUpdateBridge("latest", APP_VERSION, "На GitHub нет опубликованных релизов", 100)
         return
     }
 

@@ -8725,7 +8725,7 @@ function refreshUpdateBridge() {
         if (state === "checking") text = U.checking;
         else if (state === "available") text = U.ready;
         else if (state === "downloading") text = U.downloading;
-        else if (state === "latest") text = U.title;
+        else if (state === "latest") text = message || U.title;
         status.innerHTML = text;
     }
 
@@ -8752,11 +8752,12 @@ function hideStartupScreen(resultState) {
     var status = el("startup-status");
     var notice = el("__update_notice") ? trim(el("__update_notice").value) : "";
     var version = el("__update_version") ? trim(el("__update_version").value) : "";
+    var message = el("__update_message") ? trim(el("__update_message").value) : "";
     var U = updateText();
     if (status) {
         if (notice) status.innerHTML = U.done;
         else if (resultState === "available") status.innerHTML = U.startupAvailable + (version ? " · " + version : "");
-        else if (resultState === "latest") status.innerHTML = U.startupLatest;
+        else if (resultState === "latest") status.innerHTML = message || U.startupLatest;
         else if (resultState === "error") status.innerHTML = U.startupError;
         else status.innerHTML = U.boot;
     }
