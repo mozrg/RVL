@@ -640,8 +640,10 @@ StartUpdateDownload:
     try {
         ; The launcher path is ASCII, so the process start is independent of
         ; the user's project path and Windows code page.
-        runCommand := "powershell.exe " . psArgs
-        Run, %runCommand%, %A_ScriptDir%, Hide, workerPid
+        runCommand := UpdateQuote(psExe) . " " . psArgs
+        ; Use an ASCII temporary working directory. The project path may
+        ; contain Cyrillic characters and is already passed inside the PS1.
+        Run, %runCommand%, %A_Temp%, Hide, workerPid
         g_update_worker_pid := workerPid
         if (ErrorLevel)
             throw Exception("PowerShell не запустился")
