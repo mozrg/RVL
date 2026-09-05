@@ -8305,7 +8305,10 @@ function refreshUpdateBridge() {
         if (state === "downloading" && typeof showToast === "function") {
             showToast(updateText().downloading, null, null, 4500);
         } else if (state === "error" && typeof showToast === "function") {
-            showToast(message || updateText().startupError, null, null, 6500);
+            /* AHK v1 builds made from an ANSI script can return mojibake.
+               The external updater shows the detailed error; keep this
+               compact toast localized and readable. */
+            showToast(updateText().startupError, null, null, 6500);
         }
         lastRenderedUpdateState = state;
     }
