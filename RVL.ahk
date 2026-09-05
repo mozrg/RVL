@@ -1,5 +1,5 @@
 ; ============================================================
-;  RVL.ahk  v1.10
+;  RVL.ahk  v1.11
 ;  AHK v1.1+
 ; ============================================================
 #SingleInstance, Force
@@ -13,7 +13,7 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
-global APP_VERSION := "1.10"
+global APP_VERSION := "1.11"
 global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
@@ -165,6 +165,9 @@ Hotkey, $^x, AHKCut
 Hotkey, IfWinActive
 
 SetTimer, ProcessCommands,    50
+; Keep update installation independent from the general DOM command queue.
+; Some long-running UI actions temporarily pause ProcessCommands.
+SetTimer, PollUpdateInstall, 100
 SetTimer, UpdateRobloxStatus, 2000
 Return
 
@@ -308,6 +311,24 @@ ProcessCommands:
         try installReq := WB.document.getElementById("__update_install_req").value
         if (installReq = "1") {
             try WB.document.getElementById("__update_install_req").value := "0"
+            if (g_update_state = "available")
+                Gosub, StartUpdateDownload
+        }
+    }
+Return
+
+; ============================================================
+;  UPDATE INSTALL POLL
+;  Dedicated bridge for the install button. It deliberately does not rely
+;  on the command queue, because the legacy WebBrowser control can retain a
+;  queued command while another UI action is running.
+; ============================================================
+PollUpdateInstall:
+    Critical
+    try {
+        installReq := WB.document.getElementById("__update_install_req").value
+        if (installReq = "1") {
+            WB.document.getElementById("__update_install_req").value := "0"
             if (g_update_state = "available")
                 Gosub, StartUpdateDownload
         }
