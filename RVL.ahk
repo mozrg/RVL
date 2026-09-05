@@ -538,7 +538,10 @@ StartUpdateDownload:
         return
     }
 
-    cmdLine := "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
+    psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (!FileExist(psExe))
+        psExe := "powershell.exe"
+    cmdLine := UpdateQuote(psExe) . " -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
     cmdLine .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
     cmdLine .= " -Target " . UpdateQuote(A_ScriptDir)
     cmdLine .= " -RestartPath " . UpdateQuote(restartPath)
@@ -548,7 +551,12 @@ StartUpdateDownload:
 
     g_update_state := "downloading"
     SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
-    Run, %cmdLine%,, Hide
+    Run, %cmdLine%,, UseErrorLevel, updaterPid
+    if (ErrorLevel = "ERROR") {
+        g_update_state := "error"
+        SetUpdateBridge("error", "", "Не удалось запустить загрузчик обновления", 0)
+        return
+    }
     Sleep, 350
     FileDelete, %TMP_HTML%
     ExitApp

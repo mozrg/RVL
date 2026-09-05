@@ -8210,7 +8210,11 @@ var UPDATE_TEXT = {
         ready: "Готово к обновлению",
         downloading: "ОБНОВЛЕНИЕ...",
         done: "Обновление завершено",
-        boot: "Проверка локальных данных"
+        boot: "Проверка локальных данных",
+        startupChecking: "Проверяем версию RVL",
+        startupLatest: "Установлена последняя версия",
+        startupAvailable: "Доступно обновление",
+        startupError: "Не удалось проверить обновления"
     },
     en: {
         label: "UPDATE",
@@ -8223,7 +8227,11 @@ var UPDATE_TEXT = {
         ready: "Ready to update",
         downloading: "UPDATING...",
         done: "Update complete",
-        boot: "Checking local data"
+        boot: "Checking local data",
+        startupChecking: "Checking RVL version",
+        startupLatest: "You have the latest version",
+        startupAvailable: "An update is available",
+        startupError: "Unable to check for updates"
     }
 };
 
@@ -8280,12 +8288,20 @@ function refreshUpdateBridge() {
     }
 }
 
-function hideStartupScreen() {
+function hideStartupScreen(resultState) {
     var splash = el("startup-screen");
     if (!splash) return;
     var status = el("startup-status");
     var notice = el("__update_notice") ? trim(el("__update_notice").value) : "";
-    if (status) status.innerHTML = notice ? updateText().done : updateText().boot;
+    var version = el("__update_version") ? trim(el("__update_version").value) : "";
+    var U = updateText();
+    if (status) {
+        if (notice) status.innerHTML = U.done;
+        else if (resultState === "available") status.innerHTML = U.startupAvailable + (version ? " · " + version : "");
+        else if (resultState === "latest") status.innerHTML = U.startupLatest;
+        else if (resultState === "error") status.innerHTML = U.startupError;
+        else status.innerHTML = U.boot;
+    }
     var fill = el("startup-progress-fill");
     if (fill) {
         fill.style.width = "100%";
@@ -8294,13 +8310,37 @@ function hideStartupScreen() {
     setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, notice ? 680 : 430);
 }
 
+function startStartupVersionCheck() {
+    if (window.__rvlStartupCheckStarted) return;
+    window.__rvlStartupCheckStarted = true;
+    var status = el("startup-status");
+    if (status) status.innerHTML = updateText().startupChecking;
+    sendCmd("CMD:check_update");
+
+    var startedAt = new Date().getTime();
+    function waitForResult() {
+        var state = el("__update_state") ? (el("__update_state").value || "idle") : "idle";
+        if (state === "latest" || state === "available" || state === "error") {
+            hideStartupScreen(state);
+            return;
+        }
+        /* Do not leave the user behind a splash forever if GitHub is offline. */
+        if (new Date().getTime() - startedAt > 15000) {
+            hideStartupScreen("error");
+            return;
+        }
+        setTimeout(waitForResult, 120);
+    }
+    setTimeout(waitForResult, 120);
+}
+
 /* initApp is called by AHK after the saved state is injected. Wrapping it
    keeps the legacy initialization intact while giving startup a graceful exit. */
 var __rvlInitApp = initApp;
 initApp = function () {
     __rvlInitApp();
     refreshUpdateLanguage();
-    hideStartupScreen();
+    startStartupVersionCheck();
 };
 
 /* Keep update labels in sync with the existing language switcher. */
