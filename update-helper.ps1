@@ -218,12 +218,14 @@ try {
         $source = $children[0].FullName
     }
 
-    $skip = @("data", ".git", "package.zip")
-    Get-ChildItem -LiteralPath $source -Force |
-        Where-Object { $skip -notcontains $_.Name } |
-        ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force
-        }
+    # Never install repository data from the update archive. The local data
+    # folder contains user presets, settings, groups and launch history.
+    $protectedRootNames = @("data", ".git", "package.zip")
+    $updateItems = @(Get-ChildItem -LiteralPath $source -Force)
+    foreach ($item in $updateItems) {
+        if ($protectedRootNames -contains $item.Name) { continue }
+        Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Target $item.Name) -Recurse -Force
+    }
 
     $detail.Text = "Готово. Перезапускаем RVL…"
     $badge.Text = "ГОТОВО"

@@ -99,12 +99,15 @@ try {
         }
     }
 
-    $skip = @("data", ".git", "package.zip")
-    Get-ChildItem -LiteralPath $source -Force |
-        Where-Object { $skip -notcontains $_.Name } |
-        ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force
-        }
+    # User data is never part of an application update. GitHub source
+    # archives may contain the repository's data folder, but it must not be
+    # copied over the local folder with the user's presets and settings.
+    $protectedRootNames = @("data", ".git", "package.zip")
+    $updateItems = @(Get-ChildItem -LiteralPath $source -Force)
+    foreach ($item in $updateItems) {
+        if ($protectedRootNames -contains $item.Name) { continue }
+        Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Target $item.Name) -Recurse -Force
+    }
 
     Write-WorkerStatus "done" 100 "Обновление установлено"
     Start-Sleep -Milliseconds 250

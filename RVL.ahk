@@ -767,6 +767,8 @@ UpdateSourceFilesDirect:
         return
     }
 
+    ; Never copy the data folder from the update archive. It contains the
+    ; user's presets, settings, groups and launch history.
     Loop, Files, %sourceRoot%\*, FD
     {
         itemName := A_LoopFileName
