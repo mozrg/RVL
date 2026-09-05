@@ -254,7 +254,7 @@
           <div class="settings-label" id="lbl-update">ОБНОВЛЕНИЕ</div>
           <div class="update-card">
             <div class="update-card-copy">
-              <div class="update-card-title" id="update-card-title">RVL всегда актуален</div>
+              <div class="update-card-title" id="update-card-title"><span class="rvl-logo rvl-inline-logo" aria-label="RVL"></span> всегда актуален</div>
               <div class="update-card-hint" id="update-card-hint">Проверка файлов приложения через GitHub</div>
             </div>
             <button class="update-button" id="btn-check-update" onclick="handleUpdateButton();">ПРОВЕРИТЬ</button>
@@ -405,22 +405,22 @@
     <div class="startup-orbit startup-orbit-two"></div>
     <div class="startup-grid"></div>
     <div class="startup-content">
-      <div class="startup-mark">RVL</div>
+      <div class="startup-mark"><span class="rvl-logo startup-logo" aria-label="RVL"></span></div>
       <div class="startup-kicker">PRIVATE SERVER LAUNCHER</div>
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span>RVL</span><span class="startup-meta-dot">•</span><span>v1.9</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span>v1.9</span></div>
     </div>
   </div>
 
   <!-- UPDATE PROMPT: shown after a real version check finds a newer release. -->
   <div class="update-prompt-overlay" id="update-prompt-overlay" style="display:none;">
     <div class="update-prompt-card">
-      <div class="update-prompt-icon">&#8593;</div>
+      <div class="update-prompt-icon update-prompt-logo" aria-label="RVL"></div>
       <div class="update-prompt-copy">
         <div class="update-prompt-title" id="update-prompt-title">Доступно обновление</div>
-        <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия RVL</div>
+        <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия <span class="rvl-logo rvl-inline-logo" aria-label="RVL"></span></div>
       </div>
       <div class="update-prompt-actions">
         <button class="update-prompt-later" id="update-prompt-later" onclick="closeUpdatePrompt();">ПОЗЖЕ</button>
@@ -435,7 +435,7 @@
     <div class="update-screen-glow update-screen-glow-two"></div>
     <div class="update-screen-card">
       <div class="update-screen-header">
-        <div class="update-screen-brand"><span>RVL</span><span class="update-screen-version" id="update-screen-version">v1.9</span></div>
+        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.9</span></div>
         <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
       </div>
       <div class="update-screen-main">
@@ -444,7 +444,7 @@
             <circle class="update-ring-track" cx="60" cy="60" r="51"></circle>
             <circle class="update-ring-fill" id="update-ring-fill" cx="60" cy="60" r="51"></circle>
           </svg>
-          <div class="update-ring-center"><span id="update-screen-percent">0%</span><small>RVL</small></div>
+          <div class="update-ring-center"><span id="update-screen-percent">0%</span><small class="rvl-logo update-ring-logo" aria-label="RVL"></small></div>
         </div>
         <div class="update-screen-copy">
           <div class="update-screen-kicker">ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ</div>
@@ -469,7 +469,7 @@
   <div class="app-shell" id="app-shell">
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
-    <span class="tb-logo hdr-logo">RVL</span>
+    <span class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
     <span class="tb-ver hdr-ver">v1.9</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>

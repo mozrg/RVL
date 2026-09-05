@@ -16,6 +16,7 @@ global TMP_HTML := A_Temp "\RVL_ui.html"
 global APP_VERSION := "1.9"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_FEED := "https://github.com/mozrg/RVL/releases.atom"
+global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -95,6 +96,7 @@ if (ErrorLevel) {
 imgDir := "file:///" . StrReplace(A_ScriptDir "\images\", "\", "/")
 uiCSS := StrReplace(uiCSS, "images/icon_on.png",  imgDir . "icon_on.png")
 uiCSS := StrReplace(uiCSS, "images/icon_off.png", imgDir . "icon_off.png")
+uiCSS := StrReplace(uiCSS, "images/rvl.png",       imgDir . "rvl.png")
 
 styleTag  := "<style>`n" . uiCSS  . "`n</style>"
 scriptTag := "<script>`n" . uiJS . "`n</script>"
@@ -542,8 +544,21 @@ OnCheckUpdate:
         }
     }
 
-    ; Fall back to the Releases API only when the feed is unavailable or
-    ; malformed. This still reads the real tag_name, never update.json.
+    ; If the feed is unavailable or malformed, use the public releases list,
+    ; then the single-release API. Both fallbacks still use published release
+    ; metadata, never the version stored in update.json.
+    if (remoteVersion = "" || downloadUrl = "") {
+        releases := HttpGet(UPDATE_RELEASES_LIST)
+        if (releases != "") {
+            RegExMatch(releases, """tag_name""\s*:\s*""([^""]+)""", lr)
+            listVersion := Trim(lr1)
+            if (listVersion != "") {
+                remoteVersion := listVersion
+                downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . listVersion
+            }
+        }
+    }
+
     if (remoteVersion = "" || downloadUrl = "") {
         release := HttpGet(UPDATE_RELEASES)
         if (release != "") {

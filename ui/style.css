@@ -12427,6 +12427,103 @@ body.settings-popup { overflow: hidden; min-width: 0; min-height: 0; }
 body.settings-popup .settings-overlay { border-radius: 0; }
 body.settings-popup .settings-modal { width: calc(100% - 36px); max-height: calc(100% - 24px); }
 
+/* Final smooth-motion override: rotate each point around the real center of
+   its ellipse and compress the vertical axis. This avoids the visible
+   corner-to-corner interpolation of the earlier coordinate keyframes. */
+.startup-orbit-one:after {
+    left: -3px;
+    top: 50%;
+    right: auto;
+    margin-left: 0;
+    margin-top: -3px;
+    -ms-transform-origin: 178px 2.5px;
+    transform-origin: 178px 2.5px;
+    -ms-animation: rvl-orbit-one-smooth 5.8s linear infinite;
+    animation: rvl-orbit-one-smooth 5.8s linear infinite;
+}
+.startup-orbit-two:after {
+    left: auto;
+    top: 50%;
+    right: -3px;
+    margin-left: 0;
+    margin-top: -3px;
+    -ms-transform-origin: -133px 2.5px;
+    transform-origin: -133px 2.5px;
+    -ms-animation: rvl-orbit-two-smooth 4.9s linear infinite;
+    animation: rvl-orbit-two-smooth 4.9s linear infinite;
+}
+@-ms-keyframes rvl-orbit-one-smooth {
+    from { -ms-transform: scaleY(0.46) rotate(0deg); transform: scaleY(0.46) rotate(0deg); }
+    to   { -ms-transform: scaleY(0.46) rotate(360deg); transform: scaleY(0.46) rotate(360deg); }
+}
+@keyframes rvl-orbit-one-smooth {
+    from { -ms-transform: scaleY(0.46) rotate(0deg); transform: scaleY(0.46) rotate(0deg); }
+    to   { -ms-transform: scaleY(0.46) rotate(360deg); transform: scaleY(0.46) rotate(360deg); }
+}
+@-ms-keyframes rvl-orbit-two-smooth {
+    from { -ms-transform: scaleY(0.426) rotate(0deg); transform: scaleY(0.426) rotate(0deg); }
+    to   { -ms-transform: scaleY(0.426) rotate(-360deg); transform: scaleY(0.426) rotate(-360deg); }
+}
+@keyframes rvl-orbit-two-smooth {
+    from { -ms-transform: scaleY(0.426) rotate(0deg); transform: scaleY(0.426) rotate(0deg); }
+    to   { -ms-transform: scaleY(0.426) rotate(-360deg); transform: scaleY(0.426) rotate(-360deg); }
+}
+
+/* ── RVL logo asset ────────────────────────────────────────
+   The source PNG contains transparent padding, so these compact boxes crop
+   it through the background layer and keep the logo crisp at every size. */
+.rvl-logo {
+    display: inline-block;
+    vertical-align: middle;
+    background-image: url("images/rvl.png");
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: 100% auto;
+    text-indent: -9999px;
+    white-space: nowrap;
+}
+.hdr-logo {
+    width: 35px;
+    height: 23px;
+    margin-right: 11px;
+}
+.startup-logo {
+    width: 132px;
+    height: 48px;
+}
+.startup-meta-logo {
+    width: 30px;
+    height: 11px;
+    margin-right: 1px;
+}
+.update-prompt-logo {
+    background-color: #151515;
+    background-size: 150% auto;
+    border-color: #303030;
+}
+.update-screen-brand-logo {
+    width: 38px;
+    height: 20px;
+    margin-right: 1px;
+}
+.update-ring-logo {
+    width: 21px;
+    height: 8px;
+    margin: 2px auto 0;
+    background-size: 100% auto;
+}
+.rvl-inline-logo {
+    width: 25px;
+    height: 10px;
+    margin: 0 2px;
+    background-size: 100% auto;
+    vertical-align: -2px;
+}
+body.theme-light .rvl-logo {
+    -ms-filter: "progid:DXImageTransform.Microsoft.Invert()";
+    filter: invert(0.84);
+}
+
 .input-row {
     padding: 8px 96px 8px 11px;
     border-bottom-color: #1E2027;

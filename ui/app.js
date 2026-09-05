@@ -8487,10 +8487,14 @@ window.addEventListener("load", function () {
    The native host does all network/file work. The UI only publishes
    the user's intent and renders the current state from hidden inputs.
    ============================================================ */
+function rvlInlineLogo() {
+    return '<span class="rvl-logo rvl-inline-logo" aria-label="RVL"></span>';
+}
+
 var UPDATE_TEXT = {
     ru: {
         label: "ОБНОВЛЕНИЕ",
-        title: "RVL всегда актуален",
+        title: rvlInlineLogo() + " всегда актуален",
         hint: "Проверка файлов приложения через GitHub",
         check: "ПРОВЕРИТЬ",
         checking: "Проверяю...",
@@ -8500,18 +8504,18 @@ var UPDATE_TEXT = {
         downloading: "ОБНОВЛЕНИЕ...",
         done: "Обновление завершено",
         boot: "Проверка локальных данных",
-        startupChecking: "Проверяем версию RVL",
+        startupChecking: "Проверяем версию " + rvlInlineLogo(),
         startupLatest: "Установлена последняя версия",
         startupAvailable: "Доступно обновление",
         startupError: "Не удалось проверить обновления",
         promptTitle: "Доступно обновление",
-        promptText: function(v) { return "Найдена новая версия RVL" + (v ? " · " + v : ""); },
+        promptText: function(v) { return "Найдена новая версия " + rvlInlineLogo() + (v ? " · " + v : ""); },
         promptLater: "ПОЗЖЕ",
         promptInstall: "ОБНОВИТЬ"
     },
     en: {
         label: "UPDATE",
-        title: "RVL is up to date",
+        title: rvlInlineLogo() + " is up to date",
         hint: "Check application files through GitHub",
         check: "CHECK",
         checking: "CHECKING...",
@@ -8521,12 +8525,12 @@ var UPDATE_TEXT = {
         downloading: "UPDATING...",
         done: "Update complete",
         boot: "Checking local data",
-        startupChecking: "Checking RVL version",
+        startupChecking: "Checking " + rvlInlineLogo() + " version",
         startupLatest: "You have the latest version",
         startupAvailable: "An update is available",
         startupError: "Unable to check for updates",
         promptTitle: "Update available",
-        promptText: function(v) { return "A new RVL version is available" + (v ? " · " + v : ""); },
+        promptText: function(v) { return "A new " + rvlInlineLogo() + " version is available" + (v ? " · " + v : ""); },
         promptLater: "LATER",
         promptInstall: "UPDATE"
     }
@@ -8589,7 +8593,7 @@ function renderUpdateScreen(state, version, message, progress) {
     var speed = el("update-screen-speed");
     var dismiss = el("update-screen-dismiss");
     if (state === "error") {
-        if (title) title.innerHTML = "Не удалось обновить RVL";
+        if (title) title.innerHTML = "Не удалось обновить " + rvlInlineLogo();
         if (badge) badge.innerHTML = "ОШИБКА";
         if (status) status.innerHTML = message || "Попробуйте повторить попытку";
         if (footer) footer.innerHTML = "Файлы приложения не изменены";
@@ -8600,7 +8604,7 @@ function renderUpdateScreen(state, version, message, progress) {
             dismiss.style.display = "block";
         }
     } else if (state === "installing") {
-        if (title) title.innerHTML = "Перезапускаем RVL";
+        if (title) title.innerHTML = "Перезапускаем " + rvlInlineLogo();
         if (badge) badge.innerHTML = "ГОТОВО";
         if (status) status.innerHTML = message || "Файлы готовы к установке...";
         if (footer) footer.innerHTML = "Приложение запустится автоматически";
@@ -8611,7 +8615,7 @@ function renderUpdateScreen(state, version, message, progress) {
         if (title) title.innerHTML = progress > 3 ? "Скачиваем новую версию" : "Проверяем обновление";
         if (badge) badge.innerHTML = "ОБНОВЛЕНИЕ";
         if (status) status.innerHTML = message || "Подключаемся к GitHub...";
-        if (footer) footer.innerHTML = "Не закрывайте окно — RVL перезапустится автоматически";
+        if (footer) footer.innerHTML = "Не закрывайте окно — " + rvlInlineLogo() + " перезапустится автоматически";
         if (size) size.innerHTML = progress > 0 ? "Загрузка файлов" : "Подготовка загрузки";
         if (speed) speed.innerHTML = "Идёт скачивание";
         if (dismiss) dismiss.style.display = "none";
