@@ -8359,6 +8359,12 @@ function closeUpdatePrompt() {
 }
 
 function installUpdate() {
+    /* Give immediate feedback before the modal disappears. This is useful
+       with the legacy WebBrowser control where a click can otherwise look
+       like a no-op while AHK is starting the downloader. */
+    if (typeof showToast === "function") {
+        showToast(updateText().downloading, null, null, 4500);
+    }
     closeUpdatePrompt();
     var status = el("update-status");
     if (status) status.innerHTML = updateText().downloading;
@@ -8371,7 +8377,9 @@ function installUpdate() {
 
 function handleUpdateButton() {
     var state = el("__update_state") ? el("__update_state").value : "idle";
-    if (state === "available") openUpdatePrompt();
+    /* The settings button is an explicit install action once a version was
+       found. The startup dialog still offers the separate LATER choice. */
+    if (state === "available") installUpdate();
     else sendCmd("CMD:check_update");
     refreshUpdateBridge();
 }

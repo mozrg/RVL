@@ -1,5 +1,5 @@
 ; ============================================================
-;  RVL.ahk  v1.9
+;  RVL.ahk  v1.10
 ;  AHK v1.1+
 ; ============================================================
 #SingleInstance, Force
@@ -13,7 +13,7 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
-global APP_VERSION := "1.9"
+global APP_VERSION := "1.10"
 global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
@@ -914,6 +914,7 @@ HttpGet(url) {
     try {
         req := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         req.Open("GET", url, false)
+        req.Option(6) := true ; WinHttpRequestOption_EnableRedirects
         req.SetTimeouts(5000, 5000, 10000, 10000)
         req.SetRequestHeader("User-Agent", "RVL-Updater")
         req.SetRequestHeader("Accept", "application/vnd.github+json")
@@ -930,6 +931,7 @@ DownloadFile(url, path) {
     try {
         req := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         req.Open("GET", url, false)
+        req.Option(6) := true ; WinHttpRequestOption_EnableRedirects
         req.SetTimeouts(5000, 5000, 30000, 30000)
         req.SetRequestHeader("User-Agent", "RVL-Updater")
         req.SetRequestHeader("Accept", "application/octet-stream")
