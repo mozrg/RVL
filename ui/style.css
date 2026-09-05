@@ -12639,3 +12639,155 @@ body.theme-light .btn-go.btn-primary { background: #17181C; color: #FFFFFF; box-
 body.theme-light .btn-go.btn-primary:hover { background: #30343D; }
 body.theme-light .statusbar.status-bar { border-top-color: #DDE1E9; color: #8A919D; }
 body.theme-light .statusbar .green.status-bar-item { color: #4B515C; }
+
+/* ============================================================
+   §rvl-dark-palette · final dark-theme color normalization
+   The default RVL theme is intentionally monochrome. Keep the hierarchy
+   through brightness only so no control looks blue or out of place.
+   Custom and light themes are left to their own theme rules.
+   ============================================================ */
+body:not(.theme-light):not(.theme-custom) {
+    background: #0A0A0A;
+    color: #E8E8E8;
+}
+body:not(.theme-light):not(.theme-custom) .app-shell,
+body:not(.theme-light):not(.theme-custom) .main2,
+body:not(.theme-light):not(.theme-custom) .plist.presets-scroll {
+    background: #0A0A0A;
+}
+body:not(.theme-light):not(.theme-custom) .hdr,
+body:not(.theme-light):not(.theme-custom) .input-row,
+body:not(.theme-light):not(.theme-custom) .toolbar,
+body:not(.theme-light):not(.theme-custom) .statusbar.status-bar {
+    background: #0F0F0F;
+    border-color: #222222;
+}
+body:not(.theme-light):not(.theme-custom) .hdr:after {
+    background: -ms-linear-gradient(left, rgba(232,232,232,0), rgba(232,232,232,0.20), rgba(232,232,232,0));
+    background: linear-gradient(to right, rgba(232,232,232,0), rgba(232,232,232,0.20), rgba(232,232,232,0));
+}
+body:not(.theme-light):not(.theme-custom) .hdr-logo,
+body:not(.theme-light):not(.theme-custom) .pd-name {
+    color: #E8E8E8;
+}
+body:not(.theme-light):not(.theme-custom) .hdr-ver { color: #555555; }
+body:not(.theme-light):not(.theme-custom) .hdr-btn.tc-btn { color: #777777; }
+body:not(.theme-light):not(.theme-custom) .hdr-btn.tc-btn:hover { background: #1A1A1A; color: #E8E8E8; }
+
+body:not(.theme-light):not(.theme-custom) #roblox-status {
+    border-color: #222222;
+    background: #111111;
+}
+body:not(.theme-light):not(.theme-custom) #roblox-status:before { background: #777777; box-shadow: none; }
+body:not(.theme-light):not(.theme-custom) #roblox-status.roblox-on {
+    border-color: rgba(34,197,94,0.34);
+    background: rgba(34,197,94,0.10);
+}
+body:not(.theme-light):not(.theme-custom) #roblox-status.roblox-on:before {
+    background: #22C55E;
+    box-shadow: 0 0 7px rgba(34,197,94,0.55);
+}
+
+body:not(.theme-light):not(.theme-custom) .ir-tabs,
+body:not(.theme-light):not(.theme-custom) .ir-tab.method-tab,
+body:not(.theme-light):not(.theme-custom) .ir-field.field-input,
+body:not(.theme-light):not(.theme-custom) .ir-hk-key.key-box,
+body:not(.theme-light):not(.theme-custom) .ir-hk-capture.btn-capture,
+body:not(.theme-light):not(.theme-custom) .ir-hk-chk.chk-wrap,
+body:not(.theme-light):not(.theme-custom) .tb-search.search-inp,
+body:not(.theme-light):not(.theme-custom) .tb-sort.sort-toggle,
+body:not(.theme-light):not(.theme-custom) .tb-btn {
+    background: #111111 !important;
+    border-color: #222222 !important;
+}
+body:not(.theme-light):not(.theme-custom) .ir-tab.method-tab { color: #777777; }
+body:not(.theme-light):not(.theme-custom) .ir-tab.method-tab-active {
+    background: #E8E8E8 !important;
+    color: #0A0A0A !important;
+}
+body:not(.theme-light):not(.theme-custom) .ir-field.field-input:focus,
+body:not(.theme-light):not(.theme-custom) .tb-search.search-inp:focus {
+    background: #161616 !important;
+    border-color: #666666 !important;
+    box-shadow: 0 0 0 2px rgba(232,232,232,0.08);
+}
+body:not(.theme-light):not(.theme-custom) .ir-sep { background: #222222; }
+body:not(.theme-light):not(.theme-custom) .tb-btn,
+body:not(.theme-light):not(.theme-custom) .tb-sort.sort-toggle { color: #999999; }
+body:not(.theme-light):not(.theme-custom) .tb-btn:hover,
+body:not(.theme-light):not(.theme-custom) .tb-sort.sort-toggle:hover {
+    background: #1A1A1A;
+    border-color: #555555 !important;
+    color: #E8E8E8;
+}
+body:not(.theme-light):not(.theme-custom) .tb-btn.view-active {
+    background: #1E1E1E;
+    border-color: #888888 !important;
+    color: #E8E8E8;
+}
+body:not(.theme-light):not(.theme-custom) .tb-add.btn-ghost,
+body:not(.theme-light):not(.theme-custom) .btn-go.btn-primary {
+    background: #E8E8E8;
+    color: #0A0A0A;
+}
+body:not(.theme-light):not(.theme-custom) .tb-add.btn-ghost:hover,
+body:not(.theme-light):not(.theme-custom) .btn-go.btn-primary:hover { background: #FFFFFF; }
+
+body:not(.theme-light):not(.theme-custom) .plist.presets-scroll { border-right-color: #222222; }
+body:not(.theme-light):not(.theme-custom) .preset-row.pl-row:hover {
+    background: #171717;
+    border-color: #2A2A2A;
+    border-left-color: #555555;
+}
+body:not(.theme-light):not(.theme-custom) .preset-row.pl-row.preset-row-active {
+    background: #1E1E1E;
+    border-color: #333333;
+    border-left-color: #E8E8E8;
+    box-shadow: inset 0 0 18px rgba(255,255,255,0.025);
+}
+body:not(.theme-light):not(.theme-custom) .pl-name { color: #B8B8BE; }
+body:not(.theme-light):not(.theme-custom) .preset-row.pl-row.preset-row-active .pl-name { color: #E8E8E8; }
+body:not(.theme-light):not(.theme-custom) .pl-hk {
+    border-color: #333333;
+    background: #1A1A1A;
+    color: #CCCCCC;
+}
+body:not(.theme-light):not(.theme-custom) .pl-cnt { color: #777777; }
+body:not(.theme-light):not(.theme-custom) .pl-fav { color: #E8E8E8; }
+
+body:not(.theme-light):not(.theme-custom) .pdetail {
+    border-left-color: #222222;
+    background: -ms-linear-gradient(145deg, #111111 0%, #0D0D0D 100%);
+    background: linear-gradient(145deg, #111111 0%, #0D0D0D 100%);
+}
+body:not(.theme-light):not(.theme-custom) .pdetail:before { color: #555555; }
+body:not(.theme-light):not(.theme-custom) .pd-empty { color: #444444; }
+body:not(.theme-light):not(.theme-custom) .pd-empty-icon {
+    border-color: #2A2A2A;
+    background: #161616;
+    color: #777777;
+}
+body:not(.theme-light):not(.theme-custom) .pd-hdr,
+body:not(.theme-light):not(.theme-custom) .pd-ftr { border-color: #222222; }
+body:not(.theme-light):not(.theme-custom) .pd-tag {
+    background: #1A1A1A;
+    color: #CCCCCC;
+}
+body:not(.theme-light):not(.theme-custom) .pd-row { border-bottom-color: #222222; }
+body:not(.theme-light):not(.theme-custom) .pd-label { color: #777777; }
+body:not(.theme-light):not(.theme-custom) .pd-val { color: #B8B8BE; }
+body:not(.theme-light):not(.theme-custom) .pd-val-accent { color: #E8E8E8 !important; }
+body:not(.theme-light):not(.theme-custom) .pd-btn,
+body:not(.theme-light):not(.theme-custom) .btn-tool {
+    border-color: #222222;
+    background: #161616;
+    color: #999999;
+}
+body:not(.theme-light):not(.theme-custom) .pd-btn:hover,
+body:not(.theme-light):not(.theme-custom) .btn-tool:hover {
+    border-color: #555555;
+    background: #1E1E1E;
+    color: #E8E8E8;
+}
+body:not(.theme-light):not(.theme-custom) .statusbar .green.status-bar-item { color: #E8E8E8; }
+body:not(.theme-light):not(.theme-custom) #status-version { color: #555555; }
