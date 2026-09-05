@@ -81,10 +81,18 @@ try {
     New-Item -ItemType Directory -Path $extract -Force | Out-Null
     Expand-Archive -LiteralPath $archive -DestinationPath $extract -Force
 
+    # GitHub's source archive normally has one directory around the project,
+    # but an attached release ZIP may put the project files at the archive
+    # root. Resolve the directory by the required entry instead of assuming
+    # that the first child is the project.
     $source = $extract
-    $children = @(Get-ChildItem -LiteralPath $extract -Force)
-    if ($children.Count -eq 1 -and $children[0].PSIsContainer) {
-        $source = $children[0].FullName
+    if (-not (Test-Path -LiteralPath (Join-Path $source "RVL.ahk"))) {
+        $candidates = @(Get-ChildItem -LiteralPath $extract -Force -Directory | Where-Object {
+            Test-Path -LiteralPath (Join-Path $_.FullName "RVL.ahk")
+        })
+        if ($candidates.Count -eq 1) {
+            $source = $candidates[0].FullName
+        }
     }
     if (-not (Test-Path -LiteralPath (Join-Path $source "RVL.ahk"))) {
         throw "Архив обновления имеет неверный формат"
@@ -102,11 +110,45 @@ try {
     # User data is never part of an application update. GitHub source
     # archives may contain the repository's data folder, but it must not be
     # copied over the local folder with the user's presets and settings.
-    $protectedRootNames = @("data", ".git", "package.zip")
-    $updateItems = @(Get-ChildItem -LiteralPath $source -Force)
-    foreach ($item in $updateItems) {
-        if ($protectedRootNames -contains $item.Name) { continue }
-        Copy-Item -LiteralPath $item.FullName -Destination (Join-Path $Target $item.Name) -Recurse -Force
+    if (-not (Test-Path -LiteralPath $Target -PathType Container)) {
+        throw "Папка установки не найдена"
+    }
+
+    $protectedRootNames = @("data", ".git", "package.zip", "RVL.lnk")
+    $sourceFiles = @(Get-ChildItem -LiteralPath $source -Force -Recurse -File | Where-Object {
+        $relative = $_.FullName.Substring($source.Length).TrimStart('\')
+        $firstPart = $relative.Split('\')[0]
+        $protectedRootNames -notcontains $firstPart
+    })
+    if ($sourceFiles.Count -eq 0) {
+        throw "В архиве нет файлов приложения"
+    }
+
+    # Copy every file synchronously and verify its hash. Copy-Item on a whole
+    # directory can return before Shell/OneDrive has finished materializing a
+    # nested tree; that was the reason only the version appeared to change.
+    $fileIndex = 0
+    foreach ($file in $sourceFiles) {
+        $fileIndex++
+        $relative = $file.FullName.Substring($source.Length).TrimStart('\')
+        $destination = Join-Path $Target $relative
+        $destinationDir = Split-Path -Parent $destination
+        if (-not (Test-Path -LiteralPath $destinationDir -PathType Container)) {
+            New-Item -ItemType Directory -Path $destinationDir -Force | Out-Null
+        }
+
+        $progress = [int][Math]::Min(99, [Math]::Floor($fileIndex * 100 / $sourceFiles.Count))
+        Write-WorkerStatus "installing" $progress ("Устанавливаем {0}" -f $relative)
+        Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+        if (-not (Test-Path -LiteralPath $destination -PathType Leaf)) {
+            throw ("Не удалось установить файл: {0}" -f $relative)
+        }
+
+        $sourceHash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+        $destinationHash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash
+        if ($sourceHash -ne $destinationHash) {
+            throw ("Проверка файла не пройдена: {0}" -f $relative)
+        }
     }
 
     Write-WorkerStatus "done" 100 "Обновление установлено"

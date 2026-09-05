@@ -903,7 +903,7 @@ PollUpdateStatus:
         return
     parts := StrSplit(statusRaw, "|")
     workerState := parts[1]
-    if (workerState = "starting" || workerState = "downloading") {
+    if (workerState = "starting" || workerState = "downloading" || workerState = "installing") {
         workerProgress := parts.MaxIndex() >= 2 ? parts[2] + 0 : 0
         workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Скачиваю обновление..."
         g_update_state := "downloading"
