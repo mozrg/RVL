@@ -1,5 +1,5 @@
 ; ============================================================
-;  RVL.ahk  v1.11
+;  RVL.ahk  v1.12
 ;  AHK v1.1+
 ; ============================================================
 #SingleInstance, Force
@@ -13,7 +13,7 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
-global APP_VERSION := "1.11"
+global APP_VERSION := "1.12"
 global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
