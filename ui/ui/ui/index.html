@@ -1,0 +1,842 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>ready</title>
+  <link rel="stylesheet" href="style.css">
+  <base target="_blank">
+</head>
+<body>
+
+  <!-- AHK DATA BRIDGE -->
+  <input type="hidden" id="__cfg_place">
+  <input type="hidden" id="__cfg_link">
+  <input type="hidden" id="__cfg_hotkey">
+  <input type="hidden" id="__cfg_enabled">
+  <input type="hidden" id="__cfg_presets">
+  <input type="hidden" id="__cfg_theme_mode">
+  <input type="hidden" id="__cfg_theme_bg">
+  <input type="hidden" id="__cfg_theme_surface">
+  <input type="hidden" id="__cfg_theme_text">
+  <input type="hidden" id="__cfg_theme_accent">
+  <input type="hidden" id="__presets_out">
+  <input type="hidden" id="__roblox_status">
+  <input type="hidden" id="__import_data">
+  <input type="hidden" id="__preset_hk_map">
+  <input type="hidden" id="__preset_hk_pending">
+  <input type="hidden" id="__cfg_auto_minimize">
+  <input type="hidden" id="__cfg_scale">
+  <input type="hidden" id="__cfg_launch_delay">
+  <input type="hidden" id="__cfg_theme_grad_en">
+  <input type="hidden" id="__cfg_theme_grad_bg2">
+  <input type="hidden" id="__cfg_theme_grad_angle">
+  <input type="hidden" id="__resize_req">
+  <input type="hidden" id="__cfg_theme_presets">
+  <input type="hidden" id="__theme_presets_out">
+  <input type="hidden" id="__cfg_tooltips">
+  <input type="hidden" id="__cfg_lang">
+  <input type="hidden" id="__cfg_last_preset">
+  <input type="hidden" id="__cfg_opacity">
+  <input type="hidden" id="__cfg_sh_key">
+  <input type="hidden" id="__cfg_sh_en">
+  <input type="hidden" id="__cfg_mask_inputs">
+  <input type="hidden" id="__cfg_always_on_top">
+  <input type="hidden" id="__import_theme_data">
+  <input type="hidden" id="__cfg_method">
+  <input type="hidden" id="__last_loaded_preset_id">
+  <input type="hidden" id="__hotkey_launch_ping">
+  <input type="hidden" id="__cfg_preset_groups">
+  <input type="hidden" id="__preset_groups_out">
+  <input type="hidden" id="grp-color-draft" value="#5B8DEF">
+
+  <!-- COMMAND QUEUE: JS pushes commands here, AHK drains each tick.
+       Replaces document.title polling which lost commands fired
+       within the same 50ms window. Format: "CMD:foo\nCMD:bar\n..." -->
+  <input type="hidden" id="__cmd_queue">
+
+  <!-- TITLEBAR HEIGHT: JS reports actual rendered titlebar height
+       (accounting for scale) so WM_NCHITTEST can use it for drag zone. -->
+  <input type="hidden" id="__titlebar_h" value="46">
+
+  <!-- CONTROL ZONE WIDTH: JS reports width of the titlebar right-side
+       control cluster (settings/min/close) so WM_NCHITTEST can exclude
+       it from the drag zone. -->
+  <input type="hidden" id="__ctrl_zone_w" value="100">
+
+  <!-- NEW: Enhancement bridge inputs -->
+  <input type="hidden" id="__cfg_compact_mode" value="0">
+  <input type="hidden" id="__cfg_sort_mode" value="manual">
+  <input type="hidden" id="__dirty_state" value="0">
+  <input type="hidden" id="__history_data" value="">
+  <input type="hidden" id="__history_clear_req" value="">
+  <input type="hidden" id="__backup_create_req" value="">
+  <input type="hidden" id="__backup_restore_data" value="">
+  <input type="hidden" id="__clipboard_data" value="">
+  <input type="hidden" id="__tray_fav_launch" value="">
+  <input type="hidden" id="__exit_confirm_req" value="">
+  <input type="hidden" id="__free_resize_req" value="">
+  <input type="hidden" id="__magnetic_snap" value="1">
+  <input type="hidden" id="__dash_export_req" value="">
+  <input type="hidden" id="__update_state" value="idle">
+  <input type="hidden" id="__update_version" value="">
+  <input type="hidden" id="__update_message" value="">
+  <input type="hidden" id="__update_progress" value="0">
+  <input type="hidden" id="__update_notice" value="">
+  <input type="hidden" id="__update_install_req" value="0">
+
+  <!-- UNIVERSAL TOOLTIP -->
+  <div class="app-tooltip" id="app-tooltip">
+    <div class="tooltip-arrow"></div>
+    <div class="tooltip-content" id="tooltip-content"></div>
+  </div>
+
+  <!-- SETTINGS MODAL OVERLAY -->
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-modal" id="settings-modal">
+      <div class="settings-header">
+        <span class="settings-title" id="settings-title-text">НАСТРОЙКИ</span>
+        <span class="settings-close" id="settings-close">&#215;</span>
+      </div>
+      <div class="settings-body">
+        <input type="hidden" id="theme-mode">
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-lang-setting">ЯЗЫК</div>
+          <div class="theme-options">
+            <button class="theme-option active" id="lang-opt-ru" data-lang="ru">РУССКИЙ</button>
+            <button class="theme-option" id="lang-opt-en" data-lang="en">ENGLISH</button>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-theme-setting">ТЕМА</div>
+          <div class="theme-options">
+            <button class="theme-option" id="theme-opt-dark" data-mode="dark">ТЁМНАЯ</button>
+            <button class="theme-option" id="theme-opt-light" data-mode="light">СВЕТЛАЯ</button>
+            <button class="theme-option" id="theme-opt-custom" data-mode="custom">КАСТОМ</button>
+          </div>
+          <button class="btn-manage-presets" id="btn-manage-presets">Управление цветовыми пресетами</button>
+        </div>
+
+        <div class="custom-theme" id="custom-theme">
+
+          <div class="settings-label" id="lbl-custom-colors">СВОИ ЦВЕТА</div>
+
+          <div class="color-row">
+            <span class="color-name" id="lbl-color-bg">Фон</span>
+            <span class="color-swatch cp-swatch" id="swatch-bg" data-tooltip="Нажмите для выбора цвета"></span>
+            <input class="color-picker-native" id="cp-bg" type="color">
+            <input class="color-input" id="theme-bg" type="text" maxlength="7" placeholder="#RRGGBB">
+          </div>
+
+          <div class="color-row">
+            <span class="color-name" id="lbl-color-surface">Поверхность</span>
+            <span class="color-swatch cp-swatch" id="swatch-surface" data-tooltip="Нажмите для выбора цвета"></span>
+            <input class="color-picker-native" id="cp-surface" type="color">
+            <input class="color-input" id="theme-surface" type="text" maxlength="7" placeholder="#RRGGBB">
+          </div>
+
+          <div class="color-row">
+            <span class="color-name" id="lbl-color-text">Текст</span>
+            <span class="color-swatch cp-swatch" id="swatch-text" data-tooltip="Нажмите для выбора цвета"></span>
+            <input class="color-picker-native" id="cp-text" type="color">
+            <input class="color-input" id="theme-text" type="text" maxlength="7" placeholder="#RRGGBB">
+          </div>
+
+          <div class="color-row">
+            <span class="color-name" id="lbl-color-accent">Акцент</span>
+            <span class="color-swatch cp-swatch" id="swatch-accent" data-tooltip="Нажмите для выбора цвета"></span>
+            <input class="color-picker-native" id="cp-accent" type="color">
+            <input class="color-input" id="theme-accent" type="text" maxlength="7" placeholder="#RRGGBB">
+          </div>
+          <!-- Gradient section -->
+          <div class="gradient-section">
+            <div class="gradient-toggle-row">
+              <span class="gradient-label" id="lbl-gradient">ГРАДИЕНТ ФОНА</span>
+              <div class="chk-wrap" id="grad-toggle-wrap" style="border:none;background:transparent;padding:0;">
+                <span class="toggle-track" id="gradient-track"><span class="toggle-thumb"></span></span>
+                <input type="checkbox" id="chk-gradient" class="chk-hidden">
+              </div>
+            </div>
+            <div class="grad-options" id="grad-options-row" style="display:none;">
+              <div class="grad-options-row">
+                <span class="color-name" id="lbl-grad-color2">Цвет 2</span>
+                <span class="color-swatch cp-swatch" id="swatch-grad-bg2" data-tooltip="Нажмите для выбора цвета"></span>
+                <input class="color-picker-native" id="cp-grad-bg2" type="color">
+                <input class="color-input" id="theme-grad-bg2" type="text" maxlength="7" placeholder="#RRGGBB">
+              </div>
+              <div class="angle-row">
+                <span class="angle-label" id="lbl-grad-angle">УГОЛ</span>
+                <div class="angle-options theme-options" style="max-width:180px;">
+                  <button class="theme-option" id="angle-opt-45">45&#176;</button>
+                  <button class="theme-option active" id="angle-opt-135">135&#176;</button>
+                  <button class="theme-option" id="angle-opt-90">90&#176;</button>
+                  <button class="theme-option" id="angle-opt-180">180&#176;</button>
+                </div>
+                <input class="angle-input" id="theme-grad-angle" type="number" min="0" max="360" value="135">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-window-size">РАЗМЕР ОКНА</div>
+          <div class="theme-options">
+            <button class="theme-option" id="scale-opt-1" data-scale="1.0">100%</button>
+            <button class="theme-option" id="scale-opt-2" data-scale="1.15">115%</button>
+            <button class="theme-option" id="scale-opt-3" data-scale="1.30">130%</button>
+            <button class="theme-option" id="scale-opt-4" data-scale="1.50">150%</button>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-opacity">ПРОЗРАЧНОСТЬ ОКНА</div>
+          <div class="theme-options">
+            <button class="theme-option" id="op-opt-1">50%</button>
+            <button class="theme-option" id="op-opt-2">65%</button>
+            <button class="theme-option" id="op-opt-3">80%</button>
+            <button class="theme-option" id="op-opt-4">100%</button>
+          </div>
+          <div class="opacity-slider-row">
+            <input class="opacity-slider" id="opacity-slider" type="range" min="30" max="100" value="100" step="1">
+            <span class="opacity-display" id="opacity-display">100%</span>
+          </div>
+        </div>
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-behavior">ПОВЕДЕНИЕ</div>
+          <div class="chk-wrap">
+            <span class="toggle-track" id="auto-min-track">
+              <span class="toggle-thumb" id="auto-min-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-auto-minimize" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-automin">Скрыть окно после запуска</span>
+          </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="tooltip-track">
+              <span class="toggle-thumb" id="tooltip-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-tooltips" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-tooltips">Показывать подсказки</span>
+          </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="mask-track">
+              <span class="toggle-thumb" id="mask-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-mask-inputs" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-mask">Скрывать вводимые данные</span>
+          </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="aot-track">
+              <span class="toggle-thumb" id="aot-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-always-on-top" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-aot">Поверх всех окон</span>
+          </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="compact-track">
+              <span class="toggle-thumb" id="compact-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-compact-mode" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-compact">Компактный режим</span>
+          </div>
+          <div class="launch-delay-row" style="margin-top:8px;">
+            <span class="color-name" id="lbl-launch-delay">Задержка запуска</span>
+            <div class="delay-stepper">
+              <button class="delay-btn" id="delay-minus">&#8722;</button>
+              <span class="delay-value" id="delay-display">0с</span>
+              <button class="delay-btn" id="delay-plus">&#43;</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-block update-block">
+          <div class="settings-label" id="lbl-update">ОБНОВЛЕНИЕ</div>
+          <div class="update-card">
+            <div class="update-card-copy">
+              <div class="update-card-title" id="update-card-title">RVL всегда актуален</div>
+              <div class="update-card-hint" id="update-card-hint">Проверка файлов приложения через GitHub</div>
+            </div>
+            <button class="update-button" id="btn-check-update" onclick="handleUpdateButton();">ПРОВЕРИТЬ</button>
+          </div>
+          <div class="update-progress" id="update-progress-wrap" style="display:none;">
+            <div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div>
+            <span class="update-status" id="update-status">Проверка...</span>
+          </div>
+        </div>
+        <div class="settings-block settings-block-danger">
+          <div class="settings-label" id="lbl-factory-reset">СБРОС</div>
+          <button class="btn-factory-reset" id="btn-factory-reset">Сбросить к заводским</button>
+        </div>
+
+        <div class="settings-block">
+          <div class="settings-label" id="lbl-showhide">КЛАВИША СВЕРНУТЬ/РАЗВЕРНУТЬ</div>
+          <div class="sh-hotkey-row">
+            <input class="field-input key-box" id="sh-key-box" type="text" readonly spellcheck="false">
+            <button class="btn-capture" id="sh-btn-capture">&#9673;&nbsp;ЗАХВАТ</button>
+            <div class="chk-wrap">
+              <span class="toggle-track" id="sh-toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <input type="checkbox" id="sh-chk-enabled" class="chk-hidden">
+              <span class="chk-txt" id="chk-txt-showhide">Включить</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="settings-footer">
+        <button class="settings-save" id="settings-save">СОХРАНИТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THEME PRESETS MANAGER OVERLAY -->
+  <div class="tp-overlay" id="tp-overlay">
+    <div class="tp-modal">
+      <div class="tp-header">
+        <span class="tp-title" id="tp-title-text">ЦВЕТОВЫЕ ПРЕСЕТЫ</span>
+        <span class="tp-close" id="tp-close">&#215;</span>
+      </div>
+      <div class="tp-body">
+        <div class="tp-form" id="tp-form">
+          <input class="tp-name-inp" id="tp-name-inp" type="text" placeholder="Название пресета..." maxlength="32" spellcheck="false" autocomplete="off">
+          <button class="btn-tp-save" id="tp-name-ok">OK</button>
+          <button class="btn-tp-close" id="tp-name-cancel">Отмена</button>
+        </div>
+        <div class="tp-grid" id="tp-grid"></div>
+      </div>
+      <div class="tp-footer">
+        <button class="btn-tp-save" id="btn-tp-save">Сохранить</button>
+        <div class="tp-footer-right">
+          <button class="btn-io" id="btn-tp-export" data-tooltip="Экспорт цветовых пресетов">&#8679;</button>
+          <button class="btn-io" id="btn-tp-import" data-tooltip="Импорт цветовых пресетов">&#8681;</button>
+          <button class="btn-tp-close" id="btn-tp-cancel">Отмена</button>
+          <button class="btn-tp-save" id="btn-tp-done">Готово</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESET GROUPS MANAGER OVERLAY -->
+  <div class="grp-overlay" id="grp-overlay">
+    <div class="grp-modal">
+      <div class="grp-header">
+        <span class="grp-title" id="grp-title-text">ГРУППЫ</span>
+        <span class="grp-close" id="grp-close">&#215;</span>
+      </div>
+      <div class="grp-body">
+        <div class="grp-list" id="grp-list"><!-- injected by JS --></div>
+        <div class="grp-form">
+          <button type="button" class="grp-color-swatch" id="grp-new-color-swatch"></button>
+          <input class="field-input grp-name-inp" id="grp-name-inp" type="text"
+                 placeholder="Название группы..." maxlength="24"
+                 spellcheck="false" autocomplete="off">
+          <button class="btn-confirm grp-add-btn" id="grp-add-ok">&#43;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GUIDE MODAL OVERLAY -->
+  <div class="guide-overlay" id="guide-overlay">
+    <div class="guide-modal">
+      <div class="guide-header">
+        <span class="guide-title" id="guide-modal-title">КАК ДОБАВИТЬ VIP СЕРВЕР</span>
+        <div class="guide-nav" id="guide-nav">
+          <button class="guide-nav-btn" id="guide-nav-prev">&#8249;</button>
+          <span class="guide-nav-indicator" id="guide-nav-indicator">1 / 2</span>
+          <button class="guide-nav-btn" id="guide-nav-next">&#8250;</button>
+        </div>
+        <span class="guide-close" id="guide-close">&#215;</span>
+      </div>
+      <div class="guide-body" id="guide-body">
+        <!-- Page 1: Method 1 (dynamically updated by JS) -->
+        <div id="guide-page-1">
+
+        <div class="guide-step">
+          <span class="guide-num">1</span>
+          <span class="guide-text">Скопируй ссылку на VIP сервер в Roblox</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">2</span>
+          <span class="guide-text">Вставь эту ссылку в адресную строку — ссылка автоматически преобразуется</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">3</span>
+          <span class="guide-text">Ты получишь ссылку вида:</span>
+        </div>
+
+        <div class="guide-code">
+          https://www.roblox.com/games/<span class="guide-hl-place">107573139811370</span>&amp;Anime-Crusaders?privateServerLinkCode=<span class="guide-hl-link">99973430516258557046893313426143</span>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">4</span>
+          <div class="guide-text">
+            Возьми цифры после <span class="guide-tag">/games/</span>
+            и вставь их в поле <span class="guide-tag">PLACE ID</span>
+          </div>
+        </div>
+
+        <div class="guide-step">
+          <span class="guide-num">5</span>
+          <div class="guide-text">
+            Возьми цифры после <span class="guide-tag">?privateServerLinkCode=</span>
+            и вставь их в поле <span class="guide-tag">LINK CODE</span>.
+            После можешь сохранить нажав <span class="guide-tag">+ НОВЫЙ</span> и написав название пресета
+          </div>
+        </div>
+
+        </div><!-- /guide-page-1 -->
+
+        <!-- Page 2: Method 2 -->
+        <div id="guide-page-2" style="display:none;"></div>
+
+      </div><!-- /guide-body -->
+    </div>
+  </div>
+
+  <!-- STARTUP SPLASH: stays above the UI until AHK injects the saved state. -->
+  <div class="startup-screen" id="startup-screen">
+    <div class="startup-orbit startup-orbit-one"></div>
+    <div class="startup-orbit startup-orbit-two"></div>
+    <div class="startup-grid"></div>
+    <div class="startup-content">
+      <div class="startup-mark"><span>R</span><i></i><span>V</span><span>L</span></div>
+      <div class="startup-kicker">PRIVATE SERVER LAUNCHER</div>
+      <div class="startup-title">Готовим рабочее пространство</div>
+      <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
+      <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
+      <div class="startup-meta"><span>RVL</span><span class="startup-meta-dot">•</span><span>v1.11</span></div>
+    </div>
+  </div>
+
+  <!-- UPDATE PROMPT: shown after a real version check finds a newer release. -->
+  <div class="update-prompt-overlay" id="update-prompt-overlay" style="display:none;">
+    <div class="update-prompt-card">
+      <div class="update-prompt-icon">&#8593;</div>
+      <div class="update-prompt-copy">
+        <div class="update-prompt-title" id="update-prompt-title">Доступно обновление</div>
+        <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия RVL</div>
+      </div>
+      <div class="update-prompt-actions">
+        <button class="update-prompt-later" id="update-prompt-later" onclick="closeUpdatePrompt();">ПОЗЖЕ</button>
+        <button class="update-prompt-install" id="update-prompt-install" onclick="installUpdate();">ОБНОВИТЬ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="app-shell">
+  <!-- HEADER (maket .hdr) -->
+  <div id="titlebar" class="titlebar hdr" unselectable="on">
+    <span class="tb-logo hdr-logo">RVL</span>
+    <span class="tb-ver hdr-ver">v1.11</span>
+    <span class="hdr-spacer"></span>
+    <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
+    <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
+    <span id="btn-min"   class="tc-btn hdr-btn" data-tooltip="Сохранить &amp; свернуть">&#8722;</span>
+    <span id="btn-close" class="tc-btn hdr-btn close" data-tooltip="Закрыть">&#215;</span>
+  </div>
+
+  <!-- INPUT ROW (maket .input-row) -->
+  <div class="input-row" id="input-row">
+    <div class="method-tabs ir-tabs" id="method-tabs">
+      <button class="method-tab ir-tab method-tab-active" id="method-tab-1">СП 1</button>
+      <button class="method-tab ir-tab" id="method-tab-2">СП 2</button>
+    </div>
+
+    <!-- METHOD 1: Place ID + Link Code -->
+    <div id="method-panel-1" class="ir-panel">
+      <div class="field-input-wrap ir-field-wrap">
+        <input class="field-input ir-field" id="inp-place" type="password"
+               spellcheck="false" autocomplete="off" placeholder="PLACE ID">
+        <button type="button" class="field-eye ir-eye" id="eye-place" tabindex="-1" data-tooltip="Показать">&#128065;</button>
+        <button type="button" class="field-clear" id="clr-place" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+      </div>
+      <div class="field-input-wrap ir-field-wrap">
+        <input class="field-input ir-field" id="inp-link" type="password"
+               spellcheck="false" autocomplete="off" placeholder="LINK CODE">
+        <button type="button" class="field-eye ir-eye" id="eye-link" tabindex="-1" data-tooltip="Показать">&#128065;</button>
+        <button type="button" class="field-clear" id="clr-link" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+      </div>
+    </div>
+
+    <!-- METHOD 2: Share Link Code -->
+    <div id="method-panel-2" class="ir-panel" style="display:none;">
+      <div class="field-input-wrap ir-field-wrap ir-field-wrap-wide">
+        <input class="field-input ir-field" id="inp-share-code" type="password"
+               spellcheck="false" autocomplete="off"
+               placeholder="SHARE CODE / ссылка...">
+        <button type="button" class="field-eye ir-eye" id="eye-share-code" tabindex="-1" data-tooltip="Показать">&#128065;</button>
+        <button type="button" class="field-clear" id="clr-share-code" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+      </div>
+    </div>
+
+    <span id="lbl-hotkey" class="hdr-ver" style="display:none;">HOTKEY</span>
+    <div class="ir-sep"></div>
+    <input class="field-input key-box ir-hk-key" id="inp-key" type="text"
+           readonly spellcheck="false" data-tooltip="Нажми ЗАХВАТ, чтобы назначить">
+    <button class="btn-capture ir-hk-capture" id="btn-capture" data-tooltip="Захват клавиши"><span class="ir-hk-capture-ring"></span></button>
+    <div class="chk-wrap ir-hk-chk">
+      <span class="toggle-track ir-hk-toggle" id="toggle-track">
+        <span class="toggle-thumb" id="toggle-thumb"></span>
+      </span>
+      <input type="checkbox" id="chk-enabled" class="chk-hidden">
+      <span class="chk-txt ir-hk-chk-txt" id="chk-txt-hotkey" data-tooltip="Включить хоткей">HK</span>
+    </div>
+  </div>
+
+  <!-- PRESET NAME POPOVER (unchanged logic, restyled) -->
+  <div class="preset-form" id="preset-form">
+    <input class="field-input preset-name-inp" id="inp-preset-name"
+           type="text" placeholder="Название пресета..." maxlength="32"
+           spellcheck="false" autocomplete="off">
+    <button class="btn-confirm" id="btn-preset-ok">СОХРАНИТЬ</button>
+    <button class="btn-cancel"  id="btn-preset-cancel">&#215;</button>
+  </div>
+
+  <!-- TOOLBAR (maket .toolbar) -->
+  <div class="toolbar" id="toolbar">
+    <div class="search-wrap tb-search-wrap" id="search-wrap">
+      <input class="search-inp tb-search" id="search-inp" type="text"
+             placeholder="Поиск..." spellcheck="false" autocomplete="off">
+    </div>
+    <button class="sort-toggle tb-sort" id="sort-show" data-tooltip="Сортировка">СОРТ &#9662;</button>
+    <button class="btn-ghost tb-btn" id="btn-groups" data-tooltip="Группы">#</button>
+    <button class="btn-ghost tb-btn" id="btn-history" data-tooltip="История запусков">&#9778;</button>
+    <button class="btn-ghost tb-btn" id="btn-dashboard" data-tooltip="Статистика">&#9636;</button>
+    <button class="btn-ghost tb-btn" id="btn-backup" data-tooltip="Резервное копирование">&#9711;</button>
+    <button class="btn-ghost tb-btn" id="btn-bulk-edit" data-tooltip="Массовое редактирование">&#9776;</button>
+    <button class="btn-io tb-btn" id="btn-export" data-tooltip="Экспорт пресетов в файл">&#8679;</button>
+    <button class="btn-io tb-btn" id="btn-import" data-tooltip="Импорт пресетов из файла">&#8681;</button>
+    <button class="btn-guide tb-btn" id="btn-guide" data-tooltip="Как добавить VIP сервер">&#63;</button>
+    <div class="view-toggle tb-view-toggle" id="view-toggle-inline">
+      <button class="view-btn view-active tb-btn" id="view-list" data-tooltip="Список">&#9776;</button>
+      <button class="view-btn tb-btn" id="view-grid" data-tooltip="Сетка">&#9638;</button>
+    </div>
+    <button class="btn-ghost tb-add" id="btn-add-preset">&#43; Новый</button>
+  </div>
+
+  <!-- SORT DROPDOWN (floats under toolbar) -->
+  <div class="sort-bar" id="sort-bar" style="display:none">
+    <span class="sort-label" id="lbl-sort">СОРТИРОВКА</span>
+    <button class="sort-toggle" id="sort-toggle" data-tooltip="Скрыть сортировку">&#9650;</button>
+    <button class="sort-opt sort-opt-active" id="sort-manual">Вручную</button>
+    <button class="sort-opt" id="sort-name">По имени</button>
+    <button class="sort-opt" id="sort-date">По дате</button>
+    <button class="sort-opt" id="sort-launches">По запускам</button>
+    <button class="sort-opt" id="sort-fav">Избранное</button>
+  </div>
+  <div class="sort-collapsed" id="sort-collapsed" style="display:none"></div>
+
+  <div class="group-filter-bar" id="group-filter-bar" style="display:none">
+    <!-- injected by JS -->
+  </div>
+
+  <!-- MAIN: LIST (left) + DETAIL (right) -->
+  <div class="main2">
+
+    <div class="plist presets-scroll" id="presets-list">
+      <!-- injected by JS -->
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" id="empty-state" style="display:none">
+      <div class="empty-state-icon">&#43;</div>
+      <div class="empty-state-title" id="empty-state-title">Нет пресетов</div>
+      <div class="empty-state-hint" id="empty-state-hint">Нажми + НОВЫЙ, чтобы создать первый</div>
+      <div class="empty-state-hint2" id="empty-state-hint2">или перетащи .json файл сюда</div>
+    </div>
+
+    <!-- DRAG OVERLAY -->
+    <div class="drag-overlay" id="drag-overlay" style="display:none">
+      <div class="drag-overlay-text" id="drag-overlay-text">Отпустите для импорта</div>
+    </div>
+
+    <!-- RIGHT: DETAIL PANEL (new, maket .pdetail) -->
+    <div class="pdetail" id="pdetail">
+      <div class="pd-empty" id="pd-empty">
+        <div class="pd-empty-icon">&#9776;</div>
+        <div id="pd-empty-text">Выбери пресет слева</div>
+      </div>
+      <div class="pd-content" id="pd-content" style="display:none">
+        <div class="pd-hdr">
+          <div class="pd-icon" id="pd-icon">&#127918;</div>
+          <div class="pd-title-wrap">
+            <div class="pd-name" id="pd-name">—</div>
+            <div class="pd-tags" id="pd-tags"></div>
+          </div>
+        </div>
+        <div class="pd-info">
+          <div class="pd-row">
+            <span class="pd-label" id="pd-lbl-place">PLACE ID</span>
+            <span class="pd-val" id="pd-val-place">—</span>
+            <div class="pd-actions">
+              <button class="pd-btn" id="pd-copy-place" data-tooltip="Копировать">&#128203;</button>
+            </div>
+          </div>
+          <div class="pd-row">
+            <span class="pd-label" id="pd-lbl-link">LINK CODE</span>
+            <span class="pd-val" id="pd-val-link">—</span>
+            <div class="pd-actions">
+              <button class="pd-btn" id="pd-copy-link" data-tooltip="Копировать">&#128203;</button>
+              <button class="pd-btn" id="pd-eye-link" data-tooltip="Показать">&#128065;</button>
+            </div>
+          </div>
+          <div class="pd-row">
+            <span class="pd-label" id="pd-lbl-launches">ЗАПУСКОВ</span>
+            <span class="pd-val pd-val-accent" id="pd-val-launches">0</span>
+          </div>
+          <div class="pd-row">
+            <span class="pd-label" id="pd-lbl-last">ПОСЛЕДНИЙ</span>
+            <span class="pd-val" id="pd-val-last">—</span>
+          </div>
+          <div class="pd-row" id="pd-row-hk">
+            <span class="pd-label" id="pd-lbl-hk">ХОТКЕЙ</span>
+            <span class="pd-val" id="pd-val-hk">—</span>
+            <div class="pd-actions">
+              <button class="pd-btn" id="pd-hk-assign" data-tooltip="Назначить">&#9998;</button>
+            </div>
+          </div>
+        </div>
+        <div class="pd-ftr">
+          <button class="btn-primary btn-go" id="btn-launch">&#9654; ЗАПУСТИТЬ</button>
+          <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать">&#9998;</button>
+          <button class="btn-tool" id="pd-fav" data-tooltip="Избранное">&#9733;</button>
+          <button class="btn-tool" id="pd-del" data-tooltip="Удалить">&#128465;</button>
+          <button class="btn-tool" id="btn-save" data-tooltip="Сохранить &amp; закрыть">&#128190;</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar statusbar" id="status-bar">
+    <span class="status-bar-item green" id="status-count">0 пресетов</span>
+    <span class="status-bar-sep sep">&#183;</span>
+    <span class="status-bar-item" id="status-last">Последний: никогда</span>
+    <span class="status-bar-spacer"></span>
+    <span class="status-bar-item" id="status-version">v1.11</span>
+  </div>
+  </div><!-- /.app-shell -->
+
+  <!-- TOAST CONTAINER -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- CONTEXT MENU (right-click on preset) -->
+  <div class="ctx-menu" id="ctx-menu" style="display:none">
+    <div class="ctx-item" id="ctx-launch">&#9654;&nbsp;<span id="ctx-launch-text">Запустить</span></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" id="ctx-copy">&#128203;&nbsp;<span id="ctx-copy-text">Копировать ссылку</span></div>
+    <div class="ctx-item" id="ctx-duplicate">&#10064;&nbsp;<span id="ctx-dup-text">Дублировать</span></div>
+    <div class="ctx-item" id="ctx-edit">&#9998;&nbsp;<span id="ctx-edit-text">Редактировать</span></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" id="ctx-color">&#128396;&nbsp;<span id="ctx-color-text">Цвет метки</span></div>
+    <div class="ctx-item" id="ctx-icon">&#128221;&nbsp;<span id="ctx-icon-text">Иконка</span></div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item ctx-danger" id="ctx-delete">&#128465;&nbsp;<span id="ctx-del-text">Удалить</span></div>
+  </div>
+
+  <!-- MULTI-SELECT TOOLBAR -->
+  <div class="multi-toolbar" id="multi-toolbar" style="display:none">
+    <span class="multi-count" id="multi-count">0 выбрано</span>
+    <button class="multi-btn multi-delete" id="multi-delete-btn">Удалить</button>
+    <button class="multi-btn multi-export" id="multi-export-btn">Экспорт</button>
+    <button class="multi-btn multi-clear" id="multi-clear-btn">Снять</button>
+  </div>
+
+  <!-- HISTORY MODAL OVERLAY -->
+  <div class="history-overlay" id="history-overlay">
+    <div class="history-modal">
+      <div class="history-header">
+        <span class="history-title" id="history-title-text">ИСТОРИЯ ЗАПУСКОВ</span>
+        <span class="history-close" id="history-close">&#215;</span>
+      </div>
+      <div class="history-filters">
+        <button class="history-filter-opt history-filter-active" id="hist-filter-all">Все</button>
+        <button class="history-filter-opt" id="hist-filter-today">Сегодня</button>
+        <button class="history-filter-opt" id="hist-filter-week">За неделю</button>
+        <span class="history-filter-spacer"></span>
+        <button class="history-clear-btn" id="btn-history-clear">Очистить историю</button>
+      </div>
+      <div class="history-body">
+        <table class="history-table">
+          <thead><tr>
+            <th class="history-th" id="hist-th-preset">Пресет</th>
+            <th class="history-th" id="hist-th-date">Дата</th>
+            <th class="history-th" id="hist-th-status">Статус</th>
+            <th class="history-th" id="hist-th-place">Код</th>
+          </tr></thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD MODAL OVERLAY -->
+  <div class="dashboard-overlay" id="dashboard-overlay">
+    <div class="dashboard-modal">
+      <div class="dashboard-header">
+        <span class="dashboard-title" id="dashboard-title-text">СТАТИСТИКА</span>
+        <span class="dashboard-close" id="dashboard-close">&#215;</span>
+      </div>
+      <div class="dashboard-body">
+        <div class="dashboard-stats-row">
+          <div class="dashboard-stat-card">
+            <div class="dashboard-stat-value" id="dash-total">0</div>
+            <div class="dashboard-stat-label" id="dash-total-label">Всего запусков</div>
+          </div>
+          <div class="dashboard-stat-card">
+            <div class="dashboard-stat-value" id="dash-week">0</div>
+            <div class="dashboard-stat-label" id="dash-week-label">За неделю</div>
+          </div>
+          <div class="dashboard-stat-card">
+            <div class="dashboard-stat-value" id="dash-interval">—</div>
+            <div class="dashboard-stat-label" id="dash-interval-label">Средний интервал</div>
+          </div>
+        </div>
+        <div class="dashboard-section">
+          <div class="dashboard-section-title" id="dash-top-title">Топ пресетов</div>
+          <div class="dashboard-top-list" id="dashboard-top-list"></div>
+        </div>
+        <div class="dashboard-section">
+          <div class="dashboard-section-title">7 дней</div>
+          <canvas id="dashboard-chart" width="380" height="120"></canvas>
+        </div>
+      </div>
+      <div class="dashboard-footer">
+        <button class="btn-ghost" id="btn-dash-csv">Экспорт CSV</button>
+        <button class="btn-ghost" id="btn-dash-json">Экспорт JSON</button>
+        <button class="btn-secondary" id="dashboard-cancel">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BACKUP MODAL OVERLAY -->
+  <div class="backup-overlay" id="backup-overlay">
+    <div class="backup-modal">
+      <div class="backup-header">
+        <span class="backup-title" id="backup-title-text">РЕЗЕРВНОЕ КОПИРОВАНИЕ</span>
+        <span class="backup-close" id="backup-close">&#215;</span>
+      </div>
+      <div class="backup-body">
+        <button class="backup-action" id="btn-backup-create">Создать резервную копию</button>
+        <div class="backup-hint">Сохраняет конфиг, пресеты, темы и группы в один .rvlbackup файл</div>
+        <button class="backup-action" id="btn-backup-restore">Восстановить из копии</button>
+        <div class="backup-hint">Заменяет все текущие данные данными из файла</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    var overlay = document.getElementById('guide-overlay');
+    var btnGuide = document.getElementById('btn-guide');
+    var btnClose = document.getElementById('guide-close');
+
+    function openGuide() {
+      overlay.style.display = 'flex';
+      setTimeout(function() { overlay.className = 'guide-overlay guide-overlay-visible'; }, 10);
+    }
+    function closeGuide() {
+      overlay.className = 'guide-overlay';
+      setTimeout(function() { overlay.style.display = 'none'; }, 220);
+    }
+
+    btnGuide.onclick = function(e) { e.stopPropagation(); openGuide(); };
+    btnClose.onclick = closeGuide;
+    overlay.onclick = function(e) { if (e.target === overlay) closeGuide(); };
+
+    /* Note: Escape-to-close-overlays is now handled centrally in
+       app.js (window.onload → document.onkeydown) so it can also
+       manage the search-field auto-reveal lifecycle. */
+  </script>
+
+  <!-- COLOR PICKER OVERLAY -->
+  <div class="cpicker-overlay" id="cpicker-overlay">
+    <div class="cpicker-modal">
+      <div class="cpicker-header">
+        <span class="cpicker-title" id="cpicker-title-text">ВЫБОР ЦВЕТА</span>
+        <span class="cpicker-close" id="cpicker-close">&#215;</span>
+      </div>
+      <div class="cpicker-body">
+        <canvas id="cpicker-canvas" width="260" height="260"></canvas>
+        <div class="cpicker-preview-row">
+          <span class="cpicker-preview-label" id="cpicker-preview-text">ПРОСМОТР</span>
+          <div class="cpicker-preview-box" id="cpicker-preview"></div>
+        </div>
+        <div class="cpicker-hex-row">
+          <span class="cpicker-hex-label" id="cpicker-hex-text">HEX</span>
+          <input class="cpicker-hex-input" id="cpicker-hex" type="text" maxlength="7" placeholder="#RRGGBB">
+        </div>
+      </div>
+      <div class="cpicker-footer">
+        <button class="btn-tp-close" id="cpicker-cancel">Отмена</button>
+        <button class="btn-tp-save" id="cpicker-ok" style="margin-left:8px;">OK</button>
+      </div>
+    </div>
+  </div>
+  <!-- BULK EDIT OVERLAY -->
+  <div class="bulk-overlay" id="bulk-overlay" style="display:none;">
+    <div class="bulk-modal">
+      <div class="bulk-header">
+        <span class="bulk-title" id="bulk-title">Массовое редактирование</span>
+        <span class="bulk-close" id="bulk-close">&#215;</span>
+      </div>
+      <div class="bulk-body">
+        <div class="bulk-table-wrap">
+          <table class="bulk-table" id="bulk-table">
+            <thead><tr>
+              <th class="bulk-th bulk-th-name" id="bulk-col-name">Название</th>
+              <th class="bulk-th bulk-th-place" id="bulk-col-place">Place ID</th>
+              <th class="bulk-th bulk-th-link" id="bulk-col-link">Link Code</th>
+            </tr></thead>
+            <tbody id="bulk-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="bulk-footer">
+        <button class="btn-primary bulk-save" id="bulk-save">Сохранить</button>
+        <button class="bulk-cancel-btn" id="bulk-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPORT MODAL OVERLAY -->
+  <div class="export-overlay" id="export-overlay">
+    <div class="export-modal">
+      <div class="export-header">
+        <span class="export-title" id="export-title-text">ЭКСПОРТ ПРЕСЕТОВ</span>
+        <span class="export-close" id="export-close">&#215;</span>
+      </div>
+      <div class="export-body">
+        <div class="method-tabs export-mode-tabs">
+          <button type="button" class="method-tab method-tab-active" id="export-mode-presets">ПРЕСЕТЫ</button>
+          <button type="button" class="method-tab" id="export-mode-group">ГРУППА</button>
+        </div>
+
+        <div class="export-presets-panel" id="export-presets-panel">
+          <div class="export-select-row">
+            <span class="export-select-all" id="export-select-all">Выбрать все</span>
+            <span class="export-selected-count" id="export-selected-count">0 выбрано</span>
+          </div>
+          <div class="export-preset-list" id="export-preset-list"><!-- injected by JS --></div>
+        </div>
+
+        <div class="export-group-panel" id="export-group-panel" style="display:none;">
+          <div class="pe-group-row export-group-row" id="export-group-list"><!-- injected by JS --></div>
+        </div>
+      </div>
+      <div class="export-footer">
+        <button class="btn-primary export-confirm" id="export-confirm">Экспортировать</button>
+        <button class="btn-secondary export-cancel" id="export-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
