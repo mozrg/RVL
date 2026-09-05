@@ -17,6 +17,7 @@ global APP_VERSION := "1.9"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_FEED := "https://github.com/mozrg/RVL/releases.atom"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
+global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -515,8 +516,8 @@ Return
 ; ============================================================
 ;  UPDATE CHECK / DOWNLOAD
 ;  GitHub Releases is the source of truth for the installed version.
-;  update.json is not used for version detection, so a stale manifest
-;  cannot create a false update notice.
+;  update.json is used only as a last-resort compatibility fallback when
+;  GitHub's release endpoints are unavailable.
 ;  No GitHub token is embedded in the application.
 ; ============================================================
 OnCheckUpdate:
@@ -536,7 +537,9 @@ OnCheckUpdate:
     ; limit. The tag in the feed is the real release version.
     feed := HttpGet(UPDATE_RELEASES_FEED)
     if (feed != "") {
-        RegExMatch(feed, "s)<entry>.*?<link[^>]+href=""[^" "]+/releases/tag/([^" "]+)""", fr)
+        ; Match the release URL explicitly. The previous character class was
+        ; too permissive for some Atom responses returned by GitHub mirrors.
+        RegExMatch(feed, "s)<entry>.*?<link[^>]*href=""https://github\.com/mozrg/RVL/releases/tag/([^""?#]+)""", fr)
         feedVersion := Trim(fr1)
         if (feedVersion != "") {
             remoteVersion := feedVersion
@@ -575,6 +578,23 @@ OnCheckUpdate:
             if (releaseVersion != "" && releaseUrl != "") {
                 remoteVersion := releaseVersion
                 downloadUrl := releaseUrl
+            }
+        }
+    }
+
+    ; Last-resort compatibility fallback. Releases remain the preferred
+    ; source, but the public manifest keeps version checks working when the
+    ; GitHub API/Atom endpoints are blocked by a proxy or rate limiter.
+    if (remoteVersion = "" || downloadUrl = "") {
+        manifest := HttpGet(UPDATE_MANIFEST)
+        if (manifest != "") {
+            RegExMatch(manifest, """version""\s*:\s*""([^"" ]+)""", mmv)
+            RegExMatch(manifest, """download_url""\s*:\s*""([^"" ]+)""", mmu)
+            manifestVersion := Trim(mmv1)
+            manifestUrl := Trim(mmu1)
+            if (manifestVersion != "" && manifestUrl != "") {
+                remoteVersion := manifestVersion
+                downloadUrl := manifestUrl
             }
         }
     }
@@ -1035,9 +1055,14 @@ HttpGet(url) {
         req := ComObjCreate("WinHttp.WinHttpRequest.5.1")
         req.Open("GET", url, false)
         req.Option(6) := true ; WinHttpRequestOption_EnableRedirects
+        ; GitHub requires TLS 1.2. WinHTTP otherwise inherits an older
+        ; protocol on some Windows installations and fails before receiving
+        ; any response, which looked like a generic update-check error.
+        try req.Option(9) := 2048 ; WinHttpRequestOption_SecureProtocols / TLS 1.2
         req.SetTimeouts(5000, 5000, 10000, 10000)
         req.SetRequestHeader("User-Agent", "RVL-Updater")
-        req.SetRequestHeader("Accept", "application/vnd.github+json")
+        req.SetRequestHeader("Accept", "application/vnd.github+json, application/atom+xml, application/json")
+        req.SetRequestHeader("Cache-Control", "no-cache")
         req.Send()
         if (req.Status != 200)
             return ""

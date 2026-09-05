@@ -96,6 +96,8 @@ var currentGuidePage = 1;   /* guide modal page 1 or 2 */
    same HTML/CSS and forwards only settings commands to the main AHK bridge. */
 var __rvlSettingsPopupMode = false;
 var __rvlSettingsPopup = null;
+var RVL_STARTUP_MIN_DURATION = 3000;
+var rvlStartupShownAt = new Date().getTime();
 try {
     __rvlSettingsPopupMode = window.location.hash === "#settings";
 } catch (e) {}
@@ -8690,6 +8692,8 @@ function refreshUpdateBridge() {
 function hideStartupScreen(resultState) {
     var splash = el("startup-screen");
     if (!splash) return;
+    if (window.__rvlStartupHideScheduled) return;
+    window.__rvlStartupHideScheduled = true;
     var status = el("startup-status");
     var notice = el("__update_notice") ? trim(el("__update_notice").value) : "";
     var version = el("__update_version") ? trim(el("__update_version").value) : "";
@@ -8706,9 +8710,12 @@ function hideStartupScreen(resultState) {
         fill.style.width = "100%";
         fill.style.marginLeft = "0";
     }
-    setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, notice ? 680 : 430);
+    var elapsed = new Date().getTime() - rvlStartupShownAt;
+    var minimumDelay = Math.max(0, RVL_STARTUP_MIN_DURATION - elapsed);
+    var fadeDelay = Math.max(minimumDelay, notice ? 680 : 430);
+    setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, fadeDelay);
     if (resultState === "available" && !notice) {
-        setTimeout(function () { openUpdatePrompt(); }, 920);
+        setTimeout(function () { openUpdatePrompt(); }, fadeDelay + 490);
     }
 }
 
