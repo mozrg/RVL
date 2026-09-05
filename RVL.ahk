@@ -15,9 +15,7 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global APP_VERSION := "1.9"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
-global UPDATE_RELEASES_FEED := "https://github.com/mozrg/RVL/releases.atom"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
-global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -516,8 +514,8 @@ Return
 ; ============================================================
 ;  UPDATE CHECK / DOWNLOAD
 ;  GitHub Releases is the source of truth for the installed version.
-;  update.json is used only as a last-resort compatibility fallback when
-;  GitHub's release endpoints are unavailable.
+;  update.json is legacy metadata and is intentionally not used for
+;  detection, because it can become stale independently of Releases.
 ;  No GitHub token is embedded in the application.
 ; ============================================================
 OnCheckUpdate:
@@ -532,24 +530,29 @@ OnCheckUpdate:
     remoteVersion := ""
     downloadUrl := ""
 
-    ; GitHub's public Atom feed is the first source. It is tied to the
-    ; published Releases page and does not depend on the anonymous API rate
-    ; limit. The tag in the feed is the real release version.
-    feed := HttpGet(UPDATE_RELEASES_FEED)
-    if (feed != "") {
-        ; Match the release URL explicitly. The previous character class was
-        ; too permissive for some Atom responses returned by GitHub mirrors.
-        RegExMatch(feed, "s)<entry>.*?<link[^>]*href=""https://github\.com/mozrg/RVL/releases/tag/([^""?#]+)""", fr)
-        feedVersion := Trim(fr1)
-        if (feedVersion != "") {
-            remoteVersion := feedVersion
-            downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . feedVersion
+    ; The official /releases/latest API is the source of truth. Do not use
+    ; releases.atom here: GitHub can retain old/deleted release entries in
+    ; that feed, which may report a tag that is not the current Latest release.
+    release := HttpGet(UPDATE_RELEASES)
+    if (release != "") {
+        RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
+        RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
+        if (ru1 = "")
+            RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
+        releaseVersion := Trim(rv1)
+        releaseUrl := Trim(ru1)
+        ; GitHub's zipball API redirects; use codeload directly so both
+        ; UrlDownloadToFile and the PowerShell helper handle the archive.
+        releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
+        releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
+        if (releaseVersion != "" && releaseUrl != "") {
+            remoteVersion := releaseVersion
+            downloadUrl := releaseUrl
         }
     }
 
-    ; If the feed is unavailable or malformed, use the public releases list,
-    ; then the single-release API. Both fallbacks still use published release
-    ; metadata, never the version stored in update.json.
+    ; If the single-release endpoint is unavailable or malformed, use the
+    ; public releases list. It also contains only published releases.
     if (remoteVersion = "" || downloadUrl = "") {
         releases := HttpGet(UPDATE_RELEASES_LIST)
         if (releases != "") {
@@ -558,43 +561,6 @@ OnCheckUpdate:
             if (listVersion != "") {
                 remoteVersion := listVersion
                 downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . listVersion
-            }
-        }
-    }
-
-    if (remoteVersion = "" || downloadUrl = "") {
-        release := HttpGet(UPDATE_RELEASES)
-        if (release != "") {
-            RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
-            RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
-            if (ru1 = "")
-                RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
-            releaseVersion := Trim(rv1)
-            releaseUrl := Trim(ru1)
-            ; GitHub's zipball API redirects; use codeload directly so both
-            ; UrlDownloadToFile and the PowerShell helper handle the archive.
-            releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
-            releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
-            if (releaseVersion != "" && releaseUrl != "") {
-                remoteVersion := releaseVersion
-                downloadUrl := releaseUrl
-            }
-        }
-    }
-
-    ; Last-resort compatibility fallback. Releases remain the preferred
-    ; source, but the public manifest keeps version checks working when the
-    ; GitHub API/Atom endpoints are blocked by a proxy or rate limiter.
-    if (remoteVersion = "" || downloadUrl = "") {
-        manifest := HttpGet(UPDATE_MANIFEST)
-        if (manifest != "") {
-            RegExMatch(manifest, """version""\s*:\s*""([^"" ]+)""", mmv)
-            RegExMatch(manifest, """download_url""\s*:\s*""([^"" ]+)""", mmu)
-            manifestVersion := Trim(mmv1)
-            manifestUrl := Trim(mmu1)
-            if (manifestVersion != "" && manifestUrl != "") {
-                remoteVersion := manifestVersion
-                downloadUrl := manifestUrl
             }
         }
     }
@@ -642,7 +608,7 @@ StartUpdateDownload:
 
     ; The visible progress screen now lives in the RVL HTML UI. This worker
     ; only downloads/extracts/replaces files in the background.
-    helper := A_ScriptDir "\update-worker.ps1"
+    helper := A_ScriptDir "\update\update-worker.ps1"
     if (!FileExist(helper)) {
         SetUpdateBridge("error", "", "Файл обновления не найден", 0)
         return
