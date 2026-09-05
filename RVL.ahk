@@ -168,6 +168,8 @@ SetTimer, ProcessCommands,    50
 ; Keep update installation independent from the general DOM command queue.
 ; Some long-running UI actions temporarily pause ProcessCommands.
 SetTimer, PollUpdateInstall, 100
+; Lightweight command bridge used by the working Mmacro updater pattern.
+SetTimer, PollJSCmd, 20
 SetTimer, UpdateRobloxStatus, 2000
 Return
 
@@ -333,6 +335,24 @@ PollUpdateInstall:
                 Gosub, StartUpdateDownload
         }
     }
+Return
+
+; ============================================================
+;  SIMPLE JS COMMAND BRIDGE
+;  Mmacro uses window.ahkCmd for one-shot commands. Keep this dedicated
+;  poller for the update action so installation does not depend on the
+;  larger DOM queue or a modal animation finishing in the same tick.
+; ============================================================
+PollJSCmd:
+    Critical
+    cmd := ""
+    try {
+        cmd := WB.document.parentWindow.ahkCmd
+        if (cmd != "")
+            WB.document.parentWindow.ahkCmd := ""
+    }
+    if (cmd = "CMD:install_update" && g_update_state = "available")
+        Gosub, StartUpdateDownload
 Return
 
 ; ============================================================

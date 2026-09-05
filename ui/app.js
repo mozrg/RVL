@@ -8375,6 +8375,9 @@ function installUpdate() {
        click command may be swallowed while the modal is closing. */
     var request = el("__update_install_req");
     if (request) request.value = "1";
+    /* Same lightweight bridge as Mmacro: AHK polls one command property.
+       Keep the hidden flag too, so both current and older builds work. */
+    try { window.ahkCmd = "CMD:install_update"; } catch (e) {}
     sendCmd("CMD:install_update");
 }
 
