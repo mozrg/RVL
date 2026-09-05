@@ -6,6 +6,17 @@
   <title>ready</title>
   <link rel="stylesheet" href="style.css">
   <base target="_blank">
+  <script>
+    /* Apply the native settings marker before the body is painted. This
+       prevents the normal RVL startup screen from flashing in the child GUI. */
+    (function () {
+      try {
+        if (window.location.hash === "#settings-native") {
+          document.documentElement.className = "settings-popup";
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
 
@@ -55,6 +66,11 @@
        Replaces document.title polling which lost commands fired
        within the same 50ms window. Format: "CMD:foo\nCMD:bar\n..." -->
   <input type="hidden" id="__cmd_queue">
+
+  <!-- Direct one-shot bridge for opening the native settings window.  The
+       queue remains as a fallback, but this flag makes the first click
+       reliable even while the WebBrowser control is changing focus. -->
+  <input type="hidden" id="__open_settings_req" value="0">
 
   <!-- TITLEBAR HEIGHT: JS reports actual rendered titlebar height
        (accounting for scale) so WM_NCHITTEST can use it for drag zone. -->
@@ -411,7 +427,7 @@
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.9</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.10</span></div>
     </div>
   </div>
 
@@ -436,7 +452,7 @@
     <div class="update-screen-glow update-screen-glow-two"></div>
     <div class="update-screen-card">
       <div class="update-screen-header">
-        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.9</span></div>
+        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.10</span></div>
         <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
       </div>
       <div class="update-screen-main">
@@ -471,7 +487,7 @@
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
     <span class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
-    <span class="tb-ver hdr-ver" id="header-version">v1.9</span>
+    <span class="tb-ver hdr-ver" id="header-version">v1.10</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
@@ -658,7 +674,7 @@
     <span class="status-bar-sep sep">&#183;</span>
     <span class="status-bar-item" id="status-last">Последний: никогда</span>
     <span class="status-bar-spacer"></span>
-    <span class="status-bar-item" id="status-version">v1.9</span>
+    <span class="status-bar-item" id="status-version">v1.10</span>
   </div>
   </div><!-- /.app-shell -->
 

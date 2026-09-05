@@ -1,5 +1,5 @@
 ﻿; ============================================================
-;  RVL.ahk  v1.9
+;  RVL.ahk  v1.10
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -14,15 +14,22 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
+global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.9"
+global APP_VERSION := "1.10"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
 global WB
+global SettingsWB
 global hMainWnd := 0
+global hSettingsWnd := 0
+global g_command_source := "main"
+global g_settings_ready := false
+global SETTINGS_W := 540
+global SETTINGS_H := 720
 global HotkeyKey    := ""
 global HotkeyActive := false
 global g_auto_minimize := 0
@@ -106,6 +113,8 @@ uiHTML := StrReplace(uiHTML, "<script src=""app.js""></script>", scriptTag)
 
 FileDelete, %TMP_HTML%
 FileAppend, %uiHTML%, %TMP_HTML%, UTF-8
+FileDelete, %TMP_SETTINGS_HTML%
+FileAppend, %uiHTML%, %TMP_SETTINGS_HTML%, UTF-8
 
 ; ── GUI ─────────────────────────────────────────────────────
 Gui, +LastFound +ToolWindow -Caption -Border +HWNDhMainWnd
@@ -239,8 +248,8 @@ Return
 ;  Kill system frame rectangle (WM_NCCALCSIZE)
 ; ============================================================
 WM_NCCALCSIZE(wParam, lParam, msg, hwnd) {
-    global hMainWnd
-    if (hwnd = hMainWnd) {
+    global hMainWnd, hSettingsWnd
+    if (hwnd = hMainWnd || hwnd = hSettingsWnd) {
         return 0  ; entire window is client area → no border
     }
 }
@@ -252,15 +261,26 @@ WM_NCCALCSIZE(wParam, lParam, msg, hwnd) {
 ;  Fallbacks (46px / 100px) cover the period before JS reports metrics.
 ; ============================================================
 WM_NCHITTEST(wParam, lParam, msg, hwnd) {
-    global hMainWnd
-    if (hwnd != hMainWnd)
-        return
+    global hMainWnd, hSettingsWnd, WB
     mouseX := lParam & 0xFFFF
     mouseY := (lParam >> 16) & 0xFFFF
     if (mouseX >= 0x8000)
         mouseX -= 0x10000
     if (mouseY >= 0x8000)
         mouseY -= 0x10000
+
+    if (hwnd = hSettingsWnd) {
+        WinGetPos, settingsX, settingsY, , , ahk_id %hSettingsWnd%
+        settingsRelY := mouseY - settingsY
+        ; The settings header remains draggable even though the native frame
+        ; is removed, matching the frameless main RVL window.
+        if (settingsRelY >= 0 && settingsRelY <= 52)
+            return 2
+        return 1
+    }
+
+    if (hwnd != hMainWnd)
+        return
     WinGetPos, winX, winY, winW, , ahk_id %hMainWnd%
     relY := mouseY - winY
     relX := mouseX - winX
@@ -303,6 +323,16 @@ ProcessCommands:
             }
         }
 
+        ; Direct one-shot bridge for the settings button.  Keep the queue
+        ; fallback below for compatibility, but do not rely on it for the
+        ; first click while the WebBrowser control is changing focus.
+        openSettingsReq := "0"
+        try openSettingsReq := WB.document.getElementById("__open_settings_req").value
+        if (openSettingsReq = "1") {
+            try WB.document.getElementById("__open_settings_req").value := "0"
+            Gosub, OpenSettingsWindow
+        }
+
         ; ── Command queue: drain all pending commands in one tick ──
         ; Replaces document.title polling. JS pushes "CMD:foo\n" lines
         ; into __cmd_queue; we read the whole buffer, clear it, then
@@ -334,7 +364,55 @@ ProcessCommands:
             if (g_update_state = "available")
                 Gosub, StartUpdateDownload
         }
+
+        Gosub, ProcessSettingsCommands
+        Gosub, SyncUpdateToSettingsPopup
     }
+Return
+
+; ============================================================
+;  DETACHED SETTINGS WINDOW COMMANDS
+;  The settings page has its own queue. During dispatch WB temporarily points
+;  to that page, so all existing handlers keep working without duplicating the
+;  settings implementation or changing the visual design.
+; ============================================================
+ProcessSettingsCommands:
+    if (!hSettingsWnd)
+        return
+    ; The child document starts with the same HTML as the main page.  Ignore
+    ; its bridge until the host has copied the real current state and finished
+    ; initNativeSettingsPopup(), otherwise defaults can overwrite the main UI.
+    if (!g_settings_ready)
+        return
+
+    qBuf := ""
+    try qBuf := SettingsWB.document.getElementById("__cmd_queue").value
+    if (qBuf = "")
+        return
+    try SettingsWB.document.getElementById("__cmd_queue").value := ""
+
+    mainWB := WB
+    g_command_source := "settings"
+    Loop, Parse, qBuf, `n
+    {
+        cmd := Trim(A_LoopField)
+        if (cmd = "")
+            continue
+
+        ; Copy the current settings page state before every command. The
+        ; regular handlers then read the detached page through WB below.
+        WB := mainWB
+        Gosub, SyncSettingsPopupToMain
+        WB := SettingsWB
+        Gosub, DispatchCommand
+
+        ; settings_save closes the native child. Do not touch its COM object
+        ; again while draining a queue that may contain another line.
+        if (!hSettingsWnd)
+            break
+    }
+    WB := mainWB
+    g_command_source := "main"
 Return
 
 ; ============================================================
@@ -378,7 +456,11 @@ Return
 ; Sets global `cmd` and falls through to the matching handler.
 ; ============================================================
 DispatchCommand:
-    if (cmd = "CMD:ready") {
+    if (cmd = "CMD:open_settings") {
+        Gosub, OpenSettingsWindow
+    } else if (cmd = "CMD:close_settings") {
+        Gosub, CloseSettingsWindow
+    } else if (cmd = "CMD:ready") {
         Gosub, OnJsReady
     } else if (cmd = "CMD:launch") {
         Gosub, OnLaunch
@@ -398,6 +480,8 @@ DispatchCommand:
         Gosub, OnHotkeyUpdate
     } else if (cmd = "CMD:settings_save") {
         Gosub, OnSettingsSave
+    } else if (cmd = "CMD:settings_live") {
+        ; The popup state is copied to the main document before dispatch.
     } else if (cmd = "CMD:set_opacity") {
         Gosub, OnSetOpacity
     } else if (cmd = "CMD:set_always_on_top") {
@@ -450,6 +534,120 @@ DispatchCommand:
 Return
 
 ; ============================================================
+;  DETACHED SETTINGS WINDOW
+; ============================================================
+OpenSettingsWindow:
+    if (hSettingsWnd) {
+        if (g_settings_ready) {
+            Gui, Settings:Show
+            WinActivate, ahk_id %hSettingsWnd%
+        }
+        return
+    }
+
+    g_settings_ready := false
+    Gui, Settings:New, +LastFound +ToolWindow -Caption -Border +HWNDhSettingsWnd +Owner%hMainWnd%
+    Gui, Settings:Margin, 0, 0
+    ; Use a real dark background.  A lime transparency key leaked through
+    ; while the ActiveX document was painting and caused the green flash.
+    Gui, Settings:Color, 0F0F0F
+    Gui, Settings:Add, ActiveX, x0 y0 w%SETTINGS_W% h%SETTINGS_H% vSettingsWB, Shell.Explorer
+
+    SettingsWB.silent := true
+    SettingsWB.navigate("file:///" . StrReplace(TMP_SETTINGS_HTML, "\", "/") . "#settings-native")
+    SysGet, settingsArea, MonitorWorkArea, 1
+    settingsX := settingsAreaLeft + ((settingsAreaRight - settingsAreaLeft - SETTINGS_W) // 2)
+    settingsY := settingsAreaTop + ((settingsAreaBottom - settingsAreaTop - SETTINGS_H) // 2)
+    Gui, Settings:Show, Hide x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, RVL — Настройки
+
+    ; Match the rounded surface used by the existing HTML design.
+    settingsRgn := DllCall("CreateRoundRectRgn", "Int", 0, "Int", 0, "Int", SETTINGS_W, "Int", SETTINGS_H, "Int", CORNER_RADIUS, "Int", CORNER_RADIUS, "Ptr")
+    DllCall("SetWindowRgn", "Ptr", hSettingsWnd, "Ptr", settingsRgn, "Int", 1)
+
+    ; Initialize asynchronously so the main window is never blocked while the
+    ; child WebBrowser paints. The native-mode CSS already hides the splash.
+    SetTimer, InitSettingsWindow, 50
+    Gosub, InitSettingsWindow
+Return
+
+InitSettingsWindow:
+    if (!hSettingsWnd)
+        return
+    settingsState := 0
+    try settingsState := SettingsWB.readyState
+    if (settingsState != 4)
+        return
+    SetTimer, InitSettingsWindow, Off
+    Gosub, SyncMainToSettingsPopup
+    try SettingsWB.document.parentWindow.execScript("initNativeSettingsPopup()")
+    Gosub, SyncUpdateToSettingsPopup
+    g_settings_ready := true
+    Gui, Settings:Show, x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, RVL — Настройки
+    WinActivate, ahk_id %hSettingsWnd%
+Return
+
+CloseSettingsWindow:
+    g_settings_ready := false
+    if (!hSettingsWnd)
+        return
+    SetTimer, InitSettingsWindow, Off
+    Gui, Settings:Destroy
+    SettingsWB := ""
+    hSettingsWnd := 0
+Return
+
+; Copy all settings fields, including hidden AHK bridge values, between the
+; two identical HTML documents. Using one list keeps imports, theme presets,
+; hotkey capture and future settings controls working in the child window.
+CopySettingsDom(sourceWB, targetWB) {
+    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version"
+    Loop, Parse, valueIds, |
+    {
+        fieldId := A_LoopField
+        try targetWB.document.getElementById(fieldId).value := sourceWB.document.getElementById(fieldId).value
+    }
+
+    visibleIds := "inp-place|inp-link|inp-share-code|inp-key|theme-mode|theme-bg|theme-surface|theme-text|theme-accent|theme-grad-bg2|theme-grad-angle|opacity-slider|sh-key-box|tp-name-inp"
+    Loop, Parse, visibleIds, |
+    {
+        fieldId := A_LoopField
+        try targetWB.document.getElementById(fieldId).value := sourceWB.document.getElementById(fieldId).value
+    }
+
+    checkedIds := "chk-enabled|chk-gradient|chk-auto-minimize|chk-tooltips|chk-mask-inputs|chk-always-on-top|chk-compact-mode|sh-chk-enabled"
+    Loop, Parse, checkedIds, |
+    {
+        fieldId := A_LoopField
+        try targetWB.document.getElementById(fieldId).checked := sourceWB.document.getElementById(fieldId).checked
+    }
+}
+
+SyncMainToSettingsPopup:
+    if (!hSettingsWnd)
+        return
+    CopySettingsDom(WB, SettingsWB)
+Return
+
+SyncSettingsPopupToMain:
+    if (!hSettingsWnd || !g_settings_ready)
+        return
+    CopySettingsDom(SettingsWB, WB)
+    try WB.document.parentWindow.execScript("syncSettingsFromNativeBridge()")
+Return
+
+SyncUpdateToSettingsPopup:
+    if (!hSettingsWnd)
+        return
+    updateIds := "__update_state|__update_version|__update_message|__update_progress|__update_notice"
+    Loop, Parse, updateIds, |
+    {
+        fieldId := A_LoopField
+        try SettingsWB.document.getElementById(fieldId).value := WB.document.getElementById(fieldId).value
+    }
+    try SettingsWB.document.parentWindow.execScript("refreshUpdateBridge()")
+Return
+
+; ============================================================
 OnJsReady:
     isReady := true
     Gosub, InjectConfig
@@ -473,12 +671,14 @@ OnLaunch:
 Return
 
 OnSaveClose:
+    Gosub, CloseSettingsWindow
     Gosub, ReadDom
     Gosub, SaveConfig
     Gosub, WritePresets
     Gosub, WriteThemePresets
     Gosub, WritePresetGroups
     FileDelete, %TMP_HTML%
+    FileDelete, %TMP_SETTINGS_HTML%
     ExitApp
 Return
 
@@ -521,6 +721,8 @@ OnSettingsSave:
     Gosub, ReadDom
     Gosub, SaveConfig
     Gosub, WriteThemePresets
+    if (g_command_source = "settings")
+        Gosub, CloseSettingsWindow
 Return
 
 ; ============================================================
@@ -722,7 +924,9 @@ Return
 
 FinishUpdateRestart:
     if (g_update_exit_pending) {
+        Gosub, CloseSettingsWindow
         FileDelete, %TMP_HTML%
+        FileDelete, %TMP_SETTINGS_HTML%
         ExitApp
     }
 Return
@@ -806,7 +1010,9 @@ UpdateSourceFilesDirect:
     FileRemoveDir, %extractDir%, 1
     SetUpdateBridge("latest", g_update_version, "Обновление установлено", 100)
     Sleep, 350
+    Gosub, CloseSettingsWindow
     FileDelete, %TMP_HTML%
+    FileDelete, %TMP_SETTINGS_HTML%
     Reload
 Return
 
@@ -1395,6 +1601,11 @@ Return
 ;  NATIVE DRAG
 ; ============================================================
 OnDragStart:
+    if (g_command_source = "settings" && hSettingsWnd) {
+        DllCall("ReleaseCapture")
+        DllCall("SendMessage", "Ptr", hSettingsWnd, "UInt", 0xA1, "Ptr", 2, "Ptr", 0)
+        return
+    }
     if (!hMainWnd)
         return
     DllCall("ReleaseCapture")
@@ -2303,6 +2514,7 @@ TrayFavLaunch:
 Return
 
 ExitApp:
+    Gosub, CloseSettingsWindow
     Gosub, ReadDom
     Gosub, SaveConfig
     Gosub, WritePresets
@@ -2310,7 +2522,13 @@ ExitApp:
     Gosub, WritePresetGroups
     Gosub, OnSaveWindowPos
     FileDelete, %TMP_HTML%
+    FileDelete, %TMP_SETTINGS_HTML%
     ExitApp
+Return
+
+SettingsGuiClose:
+SettingsGuiEscape:
+    Gosub, CloseSettingsWindow
 Return
 
 GuiClose:

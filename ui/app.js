@@ -95,13 +95,15 @@ var currentGuidePage = 1;   /* guide modal page 1 or 2 */
 /* The settings page can also be opened as a real child window.  It uses the
    same HTML/CSS and forwards only settings commands to the main AHK bridge. */
 var __rvlSettingsPopupMode = false;
+var __rvlNativeSettingsPopup = false;
 var __rvlSettingsPopup = null;
 var RVL_STARTUP_MIN_DURATION = 4000;
 var RVL_VERSION_CHECK_MIN_DURATION = 4000;
 var rvlStartupShownAt = new Date().getTime();
 var rvlStartupCheckShownAt = 0;
 try {
-    __rvlSettingsPopupMode = window.location.hash === "#settings";
+    __rvlNativeSettingsPopup = window.location.hash === "#settings-native";
+    __rvlSettingsPopupMode = __rvlNativeSettingsPopup || window.location.hash === "#settings";
 } catch (e) {}
 
 var STRINGS = {
@@ -663,7 +665,7 @@ var newGroupDraftColor    = GROUP_COLORS[0];
 /* ============================================================
    INIT
    ============================================================ */
-function initApp() {
+function initApp(skipStartupPreset) {
     var place   = el("__cfg_place").value;
     var link    = el("__cfg_link").value;
     var hotkey  = el("__cfg_hotkey").value;
@@ -768,6 +770,13 @@ function initApp() {
          4. No match at all  → leave fields as-is (from PlaceId/LinkCode).
     ────────────────────────────────────────────────────────────── */
     var savedLastId = el("__cfg_last_preset") ? trim(el("__cfg_last_preset").value) : "";
+    if (skipStartupPreset) {
+        /* A detached settings window must represent the already-running
+           workspace.  Do not re-run the startup favourite/last-preset logic,
+           which can replace the user's current fields with an older preset. */
+        var liveLastId = el("__last_loaded_preset_id") ? trim(el("__last_loaded_preset_id").value) : "";
+        lastLoadedPresetId = liveLastId || savedLastId || null;
+    }
 
     var favs = [];
     for (var fi = 0; fi < presets.length; fi++) {
@@ -776,10 +785,10 @@ function initApp() {
 
     var targetId = null;
 
-    if (favs.length === 1) {
+    if (!skipStartupPreset && favs.length === 1) {
         targetId = favs[0].id;
 
-    } else if (favs.length > 1) {
+    } else if (!skipStartupPreset && favs.length > 1) {
         /* Try savedLastId first — but only if it's still starred */
         var savedIsFav = false;
         for (var si = 0; si < favs.length; si++) {
@@ -797,7 +806,7 @@ function initApp() {
             targetId = best;
         }
 
-    } else {
+    } else if (!skipStartupPreset) {
         /* No favourites — restore last loaded preset */
         if (savedLastId && findPreset(savedLastId)) {
             targetId = savedLastId;
@@ -859,12 +868,18 @@ function initApp() {
    ============================================================ */
 window.onload = function () {
     if (__rvlSettingsPopupMode) {
-        /* A popup has no AHK ActiveX control of its own. Copy the current
-           state from the owner window, initialize the same application page,
-           then show only the existing settings layout. */
-        syncSettingsFromOpener();
-        initApp();
-        prepareSettingsPopup();
+        /* The native AHK settings window receives its state from the host
+           after the second WebBrowser control has finished loading. A normal
+           browser popup can still initialize from window.opener. */
+        if (!__rvlNativeSettingsPopup) {
+            syncSettingsFromOpener();
+            initApp();
+            prepareSettingsPopup();
+        } else {
+            /* Hide the launcher immediately; the host injects the current
+               values and calls initNativeSettingsPopup shortly afterwards. */
+            prepareSettingsPopup();
+        }
     } else {
         /* Use the queue-based bridge. document.title is no longer used
            for command signalling (see sendCmd). */
@@ -1003,6 +1018,22 @@ window.onload = function () {
         var t = e.target || e.srcElement;
         if (t && t.id === "settings-overlay") { syncThemeControls(); closeSettings(); }
     };
+
+    /* The native settings page lives inside an ActiveX browser control, so
+       the parent AHK window cannot reliably receive WM_NCHITTEST over the
+       whole header.  Start the native drag from the header itself. */
+    var settingsHeader = document.querySelector(".settings-header");
+    if (settingsHeader) {
+        settingsHeader.onmousedown = function (e) {
+            e = e || window.event;
+            var t = e.target || e.srcElement;
+            if (t && t.id === "settings-close") return true;
+            if (__rvlNativeSettingsPopup) {
+                sendCmd("CMD:drag_start");
+                return cancelEv(e);
+            }
+        };
+    }
 
     bindColorInput("theme-bg");
     bindColorInput("theme-surface");
@@ -2178,6 +2209,15 @@ function sendResize() {
 
 function applyScale(s) {
     uiScale = s;
+    /* The detached settings page has a fixed native surface.  Scaling its
+       whole body makes the embedded IE/ActiveX document reflow outside the
+       host and can lock the window.  The host page applies the selected scale
+       to the main RVL window through syncSettingsFromNativeBridge(). */
+    if (__rvlSettingsPopupMode) {
+        el("__cfg_scale").value = s.toString();
+        syncScaleButtons();
+        return;
+    }
     document.body.style.width = BASE_W + "px";
     document.documentElement.style.height = "auto";
     document.body.style.height = "auto";
@@ -2457,9 +2497,13 @@ function openSettings() {
 
 function closeSettings() {
     if (__rvlSettingsPopupMode) {
-        /* The popup was created by window.open, so closing it restores the
-           owner window without touching unsaved settings. */
-        try { window.close(); } catch (e) {}
+        /* Native AHK settings pages cannot be closed with window.close().
+           Ask the host to destroy the dedicated settings GUI instead. */
+        if (__rvlNativeSettingsPopup) {
+            sendCmd("CMD:close_settings");
+        } else {
+            try { window.close(); } catch (e) {}
+        }
         return;
     }
     var overlay = el("settings-overlay");
@@ -2579,6 +2623,13 @@ function selectLang(lang) {
     currentLang = (lang === "en") ? "en" : "ru";
     syncLangButtons();
     if (el("__cfg_lang")) el("__cfg_lang").value = currentLang;
+
+    /* The detached settings page is already its own window. Reopening the
+       overlay here would only hide it and leave the native window unchanged. */
+    if (__rvlNativeSettingsPopup) {
+        applyLanguage();
+        return;
+    }
 
     var overlay = el("settings-overlay");
     var isOpen  = overlay && overlay.style.display === "flex";
@@ -5274,7 +5325,7 @@ var SETTINGS_BRIDGE_IDS = [
     "__cfg_presets", "__cfg_theme_mode", "__cfg_theme_bg", "__cfg_theme_surface",
     "__cfg_theme_text", "__cfg_theme_accent", "__cfg_auto_minimize", "__cfg_scale",
     "__cfg_launch_delay", "__cfg_theme_grad_en", "__cfg_theme_grad_bg2",
-    "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset",
+    "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset", "__last_loaded_preset_id",
     "__cfg_opacity", "__cfg_sh_key", "__cfg_sh_en", "__cfg_mask_inputs",
     "__cfg_always_on_top", "__cfg_compact_mode", "__cfg_sort_mode",
     "__cfg_theme_presets", "__cfg_preset_groups"
@@ -5290,7 +5341,7 @@ var SETTINGS_CHECK_IDS = [
 ];
 
 function settingsOpener() {
-    if (!__rvlSettingsPopupMode) return null;
+    if (!__rvlSettingsPopupMode || __rvlNativeSettingsPopup) return null;
     try {
         if (window.opener && !window.opener.closed) return window.opener;
     } catch (e) {}
@@ -5409,6 +5460,60 @@ function applySettingsToOpener() {
     } catch (e) {}
 }
 
+/* The native detached window shares settings through AHK's DOM bridge rather
+   than window.opener. Refresh only the live visual state of the main page;
+   persistence is still handled by the normal CMD:settings_save path. */
+function syncSettingsFromNativeBridge() {
+    if (__rvlSettingsPopupMode) return;
+    try {
+        themeMode = safeThemeMode(el("__cfg_theme_mode").value);
+        autoMinimize = el("__cfg_auto_minimize").value === "1";
+        var bridgeScale = parseFloat(el("__cfg_scale").value);
+        var scaleChanged = !isNaN(bridgeScale) && bridgeScale >= 0.8 && bridgeScale <= 2.0
+            && Math.abs(bridgeScale - uiScale) > 0.001;
+        if (scaleChanged) {
+            uiScale = bridgeScale;
+            applySavedScale();
+            syncScaleButtons();
+            sendResize();
+        }
+        uiOpacity = parseInt(el("__cfg_opacity").value, 10) || 255;
+        tooltipsEnabled = el("__cfg_tooltips").value !== "0";
+        maskInputsEnabled = el("__cfg_mask_inputs").value !== "0";
+        alwaysOnTop = el("__cfg_always_on_top").value === "1";
+        compactMode = el("__cfg_compact_mode").value === "1";
+        launchDelay = parseInt(el("__cfg_launch_delay").value, 10) || 0;
+        currentLang = trim(el("__cfg_lang").value) === "en" ? "en" : "ru";
+        showHideKey = trim(el("__cfg_sh_key").value || "");
+        showHideEn = el("__cfg_sh_en").value === "1";
+        customTheme.bg = normalizeHex(el("__cfg_theme_bg").value, customTheme.bg);
+        customTheme.surface = normalizeHex(el("__cfg_theme_surface").value, customTheme.surface);
+        customTheme.text = normalizeHex(el("__cfg_theme_text").value, customTheme.text);
+        customTheme.accent = normalizeHex(el("__cfg_theme_accent").value, customTheme.accent);
+        customTheme.gradientEnabled = el("__cfg_theme_grad_en").value === "1";
+        customTheme.gradientBg2 = normalizeHex(el("__cfg_theme_grad_bg2").value, customTheme.bg);
+        customTheme.gradientAngle = parseInt(el("__cfg_theme_grad_angle").value, 10) || 135;
+
+        try {
+            var nativeThemePresets = JSON.parse(el("__cfg_theme_presets").value || "[]");
+            if (isArray(nativeThemePresets)) userThemePresets = nativeThemePresets;
+        } catch (ignoreThemePresets) {}
+
+        syncAutoMinToggle();
+        syncTooltipToggle();
+        syncMaskToggle();
+        syncAOTToggle(true);
+        syncOpacityButtons();
+        syncShowHideUI();
+        syncDelayDisplay();
+        syncThemeControls();
+        syncLangButtons();
+        applyTheme();
+        applyCompactMode();
+        applyLanguage();
+    } catch (e) {}
+}
+
 function syncPopupUpdateBridge() {
     var owner = settingsOpener();
     if (!owner) return false;
@@ -5456,13 +5561,44 @@ function prepareSettingsPopup() {
     syncLangButtons();
     if (!window.__rvlSettingsPopupPoll) {
         window.__rvlSettingsPopupPoll = setInterval(function () {
-            if (!settingsOpener()) {
+            if (!settingsOpener() && !__rvlNativeSettingsPopup) {
                 try { window.close(); } catch (e) {}
                 return;
             }
-            syncPopupUpdateBridge();
+            if (__rvlNativeSettingsPopup) {
+                /* Keep visual changes live in the main window just like the
+                   original in-window settings panel. Persistence still
+                   happens only after the user presses SAVE. */
+                /* Do not copy the popup's initial/default state back into the
+                   main page before initNativeSettingsPopup has completed. */
+                if (appInitialized) sendCmd("CMD:settings_live");
+            } else {
+                syncPopupUpdateBridge();
+            }
         }, 180);
     }
+}
+
+/* Called by the host after it copies the main page's settings into this
+   document. Delaying initApp until then prevents default HTML values from
+   flashing in the detached window and keeps every control in sync. */
+function initNativeSettingsPopup() {
+    if (!__rvlNativeSettingsPopup) return;
+    /* Keep the fields exactly as they are in the already-running launcher.
+       initApp still needs to initialize all controls, but its normal startup
+       path is allowed to populate the launcher fields from saved config. */
+    var liveFields = {
+        place: el("inp-place") ? el("inp-place").value : "",
+        link: el("inp-link") ? el("inp-link").value : "",
+        share: el("inp-share-code") ? el("inp-share-code").value : "",
+        key: el("inp-key") ? el("inp-key").value : ""
+    };
+    initApp(true);
+    if (el("inp-place")) el("inp-place").value = liveFields.place;
+    if (el("inp-link")) el("inp-link").value = liveFields.link;
+    if (el("inp-share-code")) el("inp-share-code").value = liveFields.share;
+    if (el("inp-key")) el("inp-key").value = liveFields.key;
+    prepareSettingsPopup();
 }
 
 function sendCmd(cmd) {
@@ -8212,26 +8348,14 @@ calcWindowHeight = function () {
    below still apply on top of this). */
 openSettings = function () {
     if (!__rvlSettingsPopupMode) {
-        /* Keep one dedicated settings window. It loads this exact page, so
-           the complete existing settings design and all controls are reused. */
-        try {
-            if (__rvlSettingsPopup && !__rvlSettingsPopup.closed) {
-                __rvlSettingsPopup.focus();
-                return;
-            }
-            var popupUrl = window.location.href.replace(/#.*/, "") + "#settings";
-            __rvlSettingsPopup = window.open(
-                popupUrl,
-                "RVLSettings",
-                "width=540,height=720,resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no"
-            );
-            if (__rvlSettingsPopup && !__rvlSettingsPopup.closed) {
-                try { __rvlSettingsPopup.focus(); } catch (e) {}
-                return;
-            }
-        } catch (e) {}
-        /* If the host/browser blocks popups, continue with the existing
-           in-window modal as a safe fallback. */
+        /* The host creates a real second AHK GUI with the same combined HTML,
+           CSS and JavaScript. This avoids browser popup restrictions while
+           preserving the complete existing settings design. */
+        var openReq = el("__open_settings_req");
+        if (openReq) openReq.value = "1";
+        try { window.ahkCmd = "CMD:open_settings"; } catch (e) {}
+        sendCmd("CMD:open_settings");
+        return;
     }
     syncThemeControls();
     syncLangButtons();
@@ -8869,8 +8993,8 @@ function startStartupVersionCheck() {
 /* initApp is called by AHK after the saved state is injected. Wrapping it
    keeps the legacy initialization intact while giving startup a graceful exit. */
 var __rvlInitApp = initApp;
-initApp = function () {
-    __rvlInitApp();
+initApp = function (skipStartupPreset) {
+    __rvlInitApp(skipStartupPreset);
     refreshUpdateLanguage();
     if (!__rvlSettingsPopupMode) startStartupVersionCheck();
 };
