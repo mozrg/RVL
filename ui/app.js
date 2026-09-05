@@ -5225,6 +5225,9 @@ function sendCmd(cmd) {
             cur += "\n";
         }
         q.value = cur + cmd + "\n";
+        /* Keep the legacy title bridge alive as well. This lets a newer UI
+           talk to an older RVL.ahk binary during the first self-update. */
+        document.title = cmd;
     } catch (e) {
         /* Last-resort fallback: title-based signalling */
         document.title = cmd;
