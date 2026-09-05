@@ -12362,6 +12362,71 @@ body.theme-light .update-ring-track { stroke: #D9DDE9; }
 @-ms-keyframes rvl-status-pulse { 0%,100% { opacity: 0.72; } 50% { opacity: 1; } }
 @keyframes rvl-status-pulse { 0%,100% { opacity: 0.72; } 50% { opacity: 1; } }
 
+/* ── Animated startup orbit points ────────────────────────
+   Move the existing points around their ellipse instead of leaving them at
+   fixed left/right positions. Percentage coordinates stay IE11-safe and the
+   parent transform keeps each path visually tilted. */
+.startup-orbit-one:after {
+    -ms-animation: rvl-orbit-one 5.4s linear infinite;
+    animation: rvl-orbit-one 5.4s linear infinite;
+}
+.startup-orbit-two:after {
+    left: -3px;
+    right: auto;
+    -ms-animation: rvl-orbit-two 4.6s linear infinite;
+    animation: rvl-orbit-two 4.6s linear infinite;
+}
+@-ms-keyframes rvl-orbit-one {
+    0%   { left: -3px; top: 50%; margin-left: 0;  margin-top: -3px; transform: scale(1); }
+    12%  { left: 8%;   top: 16%; margin-left: 0;  margin-top: 0;    transform: scale(0.86); }
+    25%  { left: 50%;  top: -3px; margin-left: -3px; margin-top: 0; transform: scale(0.78); }
+    38%  { left: 92%;  top: 16%; margin-left: -2px; margin-top: 0; transform: scale(0.86); }
+    50%  { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1.08); }
+    62%  { left: 92%;  top: 84%; margin-left: -2px; margin-top: -5px; transform: scale(0.86); }
+    75%  { left: 50%;  top: 100%; margin-left: -3px; margin-top: -5px; transform: scale(0.78); }
+    88%  { left: 8%;   top: 84%; margin-left: 0; margin-top: -5px; transform: scale(0.86); }
+    100% { left: -3px; top: 50%; margin-left: 0; margin-top: -3px; transform: scale(1); }
+}
+@keyframes rvl-orbit-one {
+    0%   { left: -3px; top: 50%; margin-left: 0;  margin-top: -3px; transform: scale(1); }
+    12%  { left: 8%;   top: 16%; margin-left: 0;  margin-top: 0;    transform: scale(0.86); }
+    25%  { left: 50%;  top: -3px; margin-left: -3px; margin-top: 0; transform: scale(0.78); }
+    38%  { left: 92%;  top: 16%; margin-left: -2px; margin-top: 0; transform: scale(0.86); }
+    50%  { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1.08); }
+    62%  { left: 92%;  top: 84%; margin-left: -2px; margin-top: -5px; transform: scale(0.86); }
+    75%  { left: 50%;  top: 100%; margin-left: -3px; margin-top: -5px; transform: scale(0.78); }
+    88%  { left: 8%;   top: 84%; margin-left: 0; margin-top: -5px; transform: scale(0.86); }
+    100% { left: -3px; top: 50%; margin-left: 0; margin-top: -3px; transform: scale(1); }
+}
+@-ms-keyframes rvl-orbit-two {
+    0%   { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1); }
+    12%  { left: 92%;  top: 16%; margin-left: -2px; margin-top: 0; transform: scale(0.84); }
+    25%  { left: 50%;  top: -3px; margin-left: -3px; margin-top: 0; transform: scale(0.76); }
+    38%  { left: 8%;   top: 16%; margin-left: 0; margin-top: 0; transform: scale(0.84); }
+    50%  { left: -3px; top: 50%; margin-left: 0; margin-top: -3px; transform: scale(1.08); }
+    62%  { left: 8%;   top: 84%; margin-left: 0; margin-top: -5px; transform: scale(0.84); }
+    75%  { left: 50%;  top: 100%; margin-left: -3px; margin-top: -5px; transform: scale(0.76); }
+    88%  { left: 92%;  top: 84%; margin-left: -2px; margin-top: -5px; transform: scale(0.84); }
+    100% { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1); }
+}
+@keyframes rvl-orbit-two {
+    0%   { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1); }
+    12%  { left: 92%;  top: 16%; margin-left: -2px; margin-top: 0; transform: scale(0.84); }
+    25%  { left: 50%;  top: -3px; margin-left: -3px; margin-top: 0; transform: scale(0.76); }
+    38%  { left: 8%;   top: 16%; margin-left: 0; margin-top: 0; transform: scale(0.84); }
+    50%  { left: -3px; top: 50%; margin-left: 0; margin-top: -3px; transform: scale(1.08); }
+    62%  { left: 8%;   top: 84%; margin-left: 0; margin-top: -5px; transform: scale(0.84); }
+    75%  { left: 50%;  top: 100%; margin-left: -3px; margin-top: -5px; transform: scale(0.76); }
+    88%  { left: 92%;  top: 84%; margin-left: -2px; margin-top: -5px; transform: scale(0.84); }
+    100% { left: 100%; top: 50%; margin-left: -2px; margin-top: -3px; transform: scale(1); }
+}
+
+/* The detached window is only the settings surface; give that same surface
+   the full child viewport while keeping the original modal proportions. */
+body.settings-popup { overflow: hidden; min-width: 0; min-height: 0; }
+body.settings-popup .settings-overlay { border-radius: 0; }
+body.settings-popup .settings-modal { width: calc(100% - 36px); max-height: calc(100% - 24px); }
+
 .input-row {
     padding: 8px 96px 8px 11px;
     border-bottom-color: #1E2027;

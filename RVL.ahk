@@ -529,37 +529,37 @@ OnCheckUpdate:
     remoteVersion := ""
     downloadUrl := ""
 
-    ; The latest published GitHub Release is authoritative. This reads the
-    ; real tag_name, not the version stored in update.json.
-    release := HttpGet(UPDATE_RELEASES)
-    if (release != "") {
-        RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
-        RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
-        if (ru1 = "")
-            RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
-        releaseVersion := Trim(rv1)
-        releaseUrl := Trim(ru1)
-        ; GitHub's zipball API redirects; use codeload directly so both
-        ; UrlDownloadToFile and the PowerShell helper handle the archive.
-        releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
-        releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
-        if (releaseVersion != "" && releaseUrl != "") {
-            remoteVersion := releaseVersion
-            downloadUrl := releaseUrl
+    ; GitHub's public Atom feed is the first source. It is tied to the
+    ; published Releases page and does not depend on the anonymous API rate
+    ; limit. The tag in the feed is the real release version.
+    feed := HttpGet(UPDATE_RELEASES_FEED)
+    if (feed != "") {
+        RegExMatch(feed, "s)<entry>.*?<link[^>]+href=""[^" "]+/releases/tag/([^" "]+)""", fr)
+        feedVersion := Trim(fr1)
+        if (feedVersion != "") {
+            remoteVersion := feedVersion
+            downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . feedVersion
         }
     }
 
-    ; GitHub API has a strict anonymous rate limit. If it is unavailable,
-    ; use GitHub's public Atom feed, which also contains only real published
-    ; releases. Build the download URL from the feed's actual tag.
+    ; Fall back to the Releases API only when the feed is unavailable or
+    ; malformed. This still reads the real tag_name, never update.json.
     if (remoteVersion = "" || downloadUrl = "") {
-        feed := HttpGet(UPDATE_RELEASES_FEED)
-        if (feed != "") {
-            RegExMatch(feed, "s)<entry>.*?<link[^>]+href=""[^" "]+/releases/tag/([^" "]+)""", fr)
-            feedVersion := Trim(fr1)
-            if (feedVersion != "") {
-                remoteVersion := feedVersion
-                downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . feedVersion
+        release := HttpGet(UPDATE_RELEASES)
+        if (release != "") {
+            RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
+            RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
+            if (ru1 = "")
+                RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
+            releaseVersion := Trim(rv1)
+            releaseUrl := Trim(ru1)
+            ; GitHub's zipball API redirects; use codeload directly so both
+            ; UrlDownloadToFile and the PowerShell helper handle the archive.
+            releaseUrl := StrReplace(releaseUrl, "https://api.github.com/repos/", "https://codeload.github.com/")
+            releaseUrl := StrReplace(releaseUrl, "/zipball/", "/zip/")
+            if (releaseVersion != "" && releaseUrl != "") {
+                remoteVersion := releaseVersion
+                downloadUrl := releaseUrl
             }
         }
     }

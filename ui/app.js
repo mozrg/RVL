@@ -92,6 +92,14 @@ var currentMethod = 1;      /* 1 = Place ID + Link Code,  2 = Share Code */
 var appInitialized = false; /* true after initApp() completes */
 var currentGuidePage = 1;   /* guide modal page 1 or 2 */
 
+/* The settings page can also be opened as a real child window.  It uses the
+   same HTML/CSS and forwards only settings commands to the main AHK bridge. */
+var __rvlSettingsPopupMode = false;
+var __rvlSettingsPopup = null;
+try {
+    __rvlSettingsPopupMode = window.location.hash === "#settings";
+} catch (e) {}
+
 var STRINGS = {
     ru: {
         /* Titlebar tooltips */
@@ -843,9 +851,18 @@ function initApp() {
    DOM READY
    ============================================================ */
 window.onload = function () {
-    /* Use the queue-based bridge. document.title is no longer used
-       for command signalling (see sendCmd). */
-    sendCmd("CMD:ready");
+    if (__rvlSettingsPopupMode) {
+        /* A popup has no AHK ActiveX control of its own. Copy the current
+           state from the owner window, initialize the same application page,
+           then show only the existing settings layout. */
+        syncSettingsFromOpener();
+        initApp();
+        prepareSettingsPopup();
+    } else {
+        /* Use the queue-based bridge. document.title is no longer used
+           for command signalling (see sendCmd). */
+        sendCmd("CMD:ready");
+    }
 
     el("btn-min").onclick           = onMinimize;
     el("btn-close").onclick         = function () { requestExit(); };
@@ -2139,6 +2156,9 @@ function calcWindowHeight() {
 }
 
 function sendResize() {
+    /* The child settings window is a normal browser popup. Its layout must
+       never resize the native RVL window that owns the AHK bridge. */
+    if (__rvlSettingsPopupMode) return;
     var h = calcWindowHeight();
     var w = Math.round(BASE_W * uiScale);
     var scaledH = Math.round(h * uiScale);
@@ -2224,6 +2244,11 @@ function stopShowHideCaptureExternal(keyName) {
         if (el("__cfg_sh_key")) el("__cfg_sh_key").value = keyName;
         if (el("__cfg_sh_en"))  el("__cfg_sh_en").value  = "1";
         sendCmd("CMD:sh_hotkey_update");
+    }
+    /* AHK completes capture on the owner page. Mirror the result into the
+       detached settings window so its button never remains stuck on capture. */
+    if (!__rvlSettingsPopupMode && __rvlSettingsPopup && !__rvlSettingsPopup.closed) {
+        try { __rvlSettingsPopup.stopShowHideCaptureExternal(keyName); } catch (e) {}
     }
 }
 var OPACITY_OPTS = [
@@ -2424,6 +2449,12 @@ function openSettings() {
 }
 
 function closeSettings() {
+    if (__rvlSettingsPopupMode) {
+        /* The popup was created by window.open, so closing it restores the
+           owner window without touching unsaved settings. */
+        try { window.close(); } catch (e) {}
+        return;
+    }
     var overlay = el("settings-overlay");
     overlay.className = "settings-overlay";
     var modal = el("settings-modal");
@@ -2459,6 +2490,12 @@ function saveSettings() {
     /* Enhancement: save compact mode and sort mode */
     if (el("__cfg_compact_mode")) el("__cfg_compact_mode").value = compactMode ? "1" : "0";
     if (el("__cfg_sort_mode"))    el("__cfg_sort_mode").value    = sortMode;
+    if (__rvlSettingsPopupMode) {
+        /* The AHK host reads the owner's DOM. Copy the complete settings
+           state and apply it there before sending the normal save command. */
+        syncSettingsToOpener();
+        applySettingsToOpener();
+    }
     sendCmd("CMD:settings_save");
     closeSettings();
 }
@@ -2912,6 +2949,7 @@ function applyTheme() {
        applyTheme() used to overwrite body.className completely,
        which wiped out the compact-mode class added by applyCompactMode(). */
     if (compactMode) cls.push("compact-mode");
+    if (__rvlSettingsPopupMode) cls.push("settings-popup");
 
     document.documentElement.className = cls.join(" ");
     document.body.className = cls.join(" ");
@@ -5209,7 +5247,225 @@ function flushGroupsOut() {
     } catch (e) {}
 }
 
+/* ── Detached settings window bridge ──────────────────────
+   The popup uses this same page and CSS, but its AHK commands are forwarded
+   to the owner window. Keeping the bridge here means every existing setting
+   control, color picker, updater action and save path keeps the same design
+   and behavior. */
+var SETTINGS_BRIDGE_IDS = [
+    "__cfg_place", "__cfg_link", "__cfg_hotkey", "__cfg_enabled",
+    "__cfg_presets", "__cfg_theme_mode", "__cfg_theme_bg", "__cfg_theme_surface",
+    "__cfg_theme_text", "__cfg_theme_accent", "__cfg_auto_minimize", "__cfg_scale",
+    "__cfg_launch_delay", "__cfg_theme_grad_en", "__cfg_theme_grad_bg2",
+    "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset",
+    "__cfg_opacity", "__cfg_sh_key", "__cfg_sh_en", "__cfg_mask_inputs",
+    "__cfg_always_on_top", "__cfg_compact_mode", "__cfg_sort_mode",
+    "__cfg_theme_presets", "__cfg_preset_groups"
+];
+var SETTINGS_VISIBLE_IDS = [
+    "inp-place", "inp-link", "inp-key", "theme-mode", "theme-bg", "theme-surface",
+    "theme-text", "theme-accent", "theme-grad-bg2", "theme-grad-angle", "opacity-slider",
+    "sh-key-box"
+];
+var SETTINGS_CHECK_IDS = [
+    "chk-enabled", "chk-gradient", "chk-auto-minimize", "chk-tooltips",
+    "chk-mask-inputs", "chk-always-on-top", "chk-compact-mode", "sh-chk-enabled"
+];
+
+function settingsOpener() {
+    if (!__rvlSettingsPopupMode) return null;
+    try {
+        if (window.opener && !window.opener.closed) return window.opener;
+    } catch (e) {}
+    return null;
+}
+
+function copySettingsValue(srcDoc, dstDoc, id) {
+    try {
+        var src = srcDoc.getElementById(id);
+        var dst = dstDoc.getElementById(id);
+        if (src && dst) dst.value = src.value;
+    } catch (e) {}
+}
+
+function copySettingsChecked(srcDoc, dstDoc, id) {
+    try {
+        var src = srcDoc.getElementById(id);
+        var dst = dstDoc.getElementById(id);
+        if (src && dst) dst.checked = !!src.checked;
+    } catch (e) {}
+}
+
+function syncSettingsFromOpener() {
+    var owner = settingsOpener();
+    if (!owner) return false;
+    try {
+        var srcDoc = owner.document;
+        for (var i = 0; i < SETTINGS_BRIDGE_IDS.length; i++) {
+            copySettingsValue(srcDoc, document, SETTINGS_BRIDGE_IDS[i]);
+        }
+        for (var j = 0; j < SETTINGS_VISIBLE_IDS.length; j++) {
+            copySettingsValue(srcDoc, document, SETTINGS_VISIBLE_IDS[j]);
+        }
+        for (var k = 0; k < SETTINGS_CHECK_IDS.length; k++) {
+            copySettingsChecked(srcDoc, document, SETTINGS_CHECK_IDS[k]);
+        }
+        /* Unsaved in-memory collections are published to *_out when the
+           owner has already edited them; otherwise use the injected config. */
+        var outIds = [
+            { out:"__presets_out", cfg:"__cfg_presets" },
+            { out:"__theme_presets_out", cfg:"__cfg_theme_presets" },
+            { out:"__preset_groups_out", cfg:"__cfg_preset_groups" }
+        ];
+        for (var oi = 0; oi < outIds.length; oi++) {
+            var out = srcDoc.getElementById(outIds[oi].out);
+            var cfg = document.getElementById(outIds[oi].cfg);
+            if (out && cfg && out.value !== "") cfg.value = out.value;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function syncSettingsToOpener() {
+    var owner = settingsOpener();
+    if (!owner) return false;
+    try {
+        var dstDoc = owner.document;
+        for (var i = 0; i < SETTINGS_BRIDGE_IDS.length; i++) {
+            copySettingsValue(document, dstDoc, SETTINGS_BRIDGE_IDS[i]);
+        }
+        for (var j = 0; j < SETTINGS_VISIBLE_IDS.length; j++) {
+            copySettingsValue(document, dstDoc, SETTINGS_VISIBLE_IDS[j]);
+        }
+        for (var k = 0; k < SETTINGS_CHECK_IDS.length; k++) {
+            copySettingsChecked(document, dstDoc, SETTINGS_CHECK_IDS[k]);
+        }
+        /* Live collections are kept in these output bridge fields. */
+        var outIds = [
+            { out:"__presets_out", cfg:"__cfg_presets" },
+            { out:"__theme_presets_out", cfg:"__cfg_theme_presets" },
+            { out:"__preset_groups_out", cfg:"__cfg_preset_groups" }
+        ];
+        for (var oi = 0; oi < outIds.length; oi++) {
+            var out = document.getElementById(outIds[oi].out);
+            var cfg = dstDoc.getElementById(outIds[oi].cfg);
+            if (out && cfg && out.value !== "") cfg.value = out.value;
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function applySettingsToOpener() {
+    var owner = settingsOpener();
+    if (!owner) return;
+    try {
+        /* Keep the owner's live JS state in sync so theme/language/scale
+           changes are visible immediately, before AHK persists them. */
+        owner.currentLang = currentLang;
+        owner.themeMode = themeMode;
+        owner.autoMinimize = autoMinimize;
+        owner.uiScale = uiScale;
+        owner.uiOpacity = uiOpacity;
+        owner.showHideKey = showHideKey;
+        owner.showHideEn = showHideEn;
+        owner.tooltipsEnabled = tooltipsEnabled;
+        owner.maskInputsEnabled = maskInputsEnabled;
+        owner.alwaysOnTop = alwaysOnTop;
+        owner.compactMode = compactMode;
+        owner.launchDelay = launchDelay;
+        owner.customTheme.bg = customTheme.bg;
+        owner.customTheme.surface = customTheme.surface;
+        owner.customTheme.text = customTheme.text;
+        owner.customTheme.accent = customTheme.accent;
+        owner.customTheme.gradientEnabled = customTheme.gradientEnabled;
+        owner.customTheme.gradientBg2 = customTheme.gradientBg2;
+        owner.customTheme.gradientAngle = customTheme.gradientAngle;
+        if (owner.syncThemeControls) owner.syncThemeControls();
+        if (owner.applyTheme) owner.applyTheme();
+        if (owner.applyCompactMode) owner.applyCompactMode();
+        if (owner.syncOpacityButtons) owner.syncOpacityButtons();
+        if (owner.applyLanguage) owner.applyLanguage();
+    } catch (e) {}
+}
+
+function syncPopupUpdateBridge() {
+    var owner = settingsOpener();
+    if (!owner) return false;
+    try {
+        var srcDoc = owner.document;
+        var ids = ["__update_state", "__update_version", "__update_message", "__update_progress", "__update_notice"];
+        for (var i = 0; i < ids.length; i++) copySettingsValue(srcDoc, document, ids[i]);
+        refreshUpdateBridge();
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function prepareSettingsPopup() {
+    if (!__rvlSettingsPopupMode) return;
+    /* initApp restores hidden saved values into the visible fields. Copy the
+       owner's live fields once more so unsaved main-window edits are not
+       lost if the user saves from the detached settings window. */
+    syncSettingsFromOpener();
+    document.title = "RVL — Настройки";
+    document.documentElement.style.height = "100%";
+    document.body.style.width = "100%";
+    document.body.style.height = "100%";
+    document.body.style.msTransform = "none";
+    document.body.style.transform = "none";
+    if (document.body.className.indexOf("settings-popup") === -1) {
+        document.body.className += " settings-popup";
+    }
+    var shellEl = el("app-shell");
+    if (shellEl) shellEl.style.display = "none";
+    var splash = el("startup-screen");
+    if (splash) splash.style.display = "none";
+    var prompt = el("update-prompt-overlay");
+    if (prompt) prompt.style.display = "none";
+    var overlay = el("settings-overlay");
+    if (overlay) {
+        overlay.style.position = "fixed";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.display = "flex";
+        overlay.className = "settings-overlay settings-overlay-visible";
+    }
+    syncThemeControls();
+    syncLangButtons();
+    if (!window.__rvlSettingsPopupPoll) {
+        window.__rvlSettingsPopupPoll = setInterval(function () {
+            if (!settingsOpener()) {
+                try { window.close(); } catch (e) {}
+                return;
+            }
+            syncPopupUpdateBridge();
+        }, 180);
+    }
+}
+
 function sendCmd(cmd) {
+    var owner = settingsOpener();
+    if (owner) {
+        /* Resize/ready/drag belong to the native owner and must not leak from
+           the popup. All actual settings and updater commands use its queue. */
+        if (cmd === "CMD:resize" || cmd === "CMD:ready" || cmd === "CMD:drag_start") return;
+        syncSettingsToOpener();
+        try {
+            var ownerQueue = owner.document.getElementById("__cmd_queue");
+            if (ownerQueue) {
+                var ownerCur = ownerQueue.value || "";
+                if (ownerCur.length > 0 && ownerCur.charAt(ownerCur.length - 1) !== "\n") ownerCur += "\n";
+                ownerQueue.value = ownerCur + cmd + "\n";
+            }
+            owner.ahkCmd = cmd;
+            return;
+        } catch (e) {}
+    }
     /* Push command into the queue hidden input. AHK drains the queue
        every tick (50ms) and processes each line. This replaces the old
        document.title approach which lost commands fired within the same
@@ -7918,6 +8174,28 @@ calcWindowHeight = function () {
    overlay height directly (CSS max-height + the settings-body flex-fix
    below still apply on top of this). */
 openSettings = function () {
+    if (!__rvlSettingsPopupMode) {
+        /* Keep one dedicated settings window. It loads this exact page, so
+           the complete existing settings design and all controls are reused. */
+        try {
+            if (__rvlSettingsPopup && !__rvlSettingsPopup.closed) {
+                __rvlSettingsPopup.focus();
+                return;
+            }
+            var popupUrl = window.location.href.replace(/#.*/, "") + "#settings";
+            __rvlSettingsPopup = window.open(
+                popupUrl,
+                "RVLSettings",
+                "width=540,height=720,resizable=no,scrollbars=no,toolbar=no,menubar=no,location=no,status=no"
+            );
+            if (__rvlSettingsPopup && !__rvlSettingsPopup.closed) {
+                try { __rvlSettingsPopup.focus(); } catch (e) {}
+                return;
+            }
+        } catch (e) {}
+        /* If the host/browser blocks popups, continue with the existing
+           in-window modal as a safe fallback. */
+    }
     syncThemeControls();
     syncLangButtons();
 
@@ -8514,7 +8792,7 @@ var __rvlInitApp = initApp;
 initApp = function () {
     __rvlInitApp();
     refreshUpdateLanguage();
-    startStartupVersionCheck();
+    if (!__rvlSettingsPopupMode) startStartupVersionCheck();
 };
 
 /* Keep update labels in sync with the existing language switcher. */
@@ -8534,5 +8812,8 @@ window.addEventListener("load", function () {
     if (laterButton) laterButton.onclick = closeUpdatePrompt;
     if (installButton) installButton.onclick = installUpdate;
     refreshUpdateLanguage();
-    setInterval(refreshUpdateBridge, 250);
+    setInterval(function () {
+        if (__rvlSettingsPopupMode) syncPopupUpdateBridge();
+        refreshUpdateBridge();
+    }, 250);
 });
