@@ -624,8 +624,7 @@ UpdateSourceFilesDirect:
     FileCreateDir, %extractDir%
 
     SetUpdateBridge("downloading", g_update_version, "Скачиваю архив обновления...", 35)
-    UrlDownloadToFile, %g_update_url%, %zipPath%
-    if (ErrorLevel || !FileExist(zipPath)) {
+    if (!DownloadFile(g_update_url, zipPath) || !FileExist(zipPath)) {
         SetUpdateBridge("error", g_update_version, "Не удалось скачать архив обновления", 0)
         return
     }
@@ -924,6 +923,29 @@ HttpGet(url) {
         return req.ResponseText
     } catch e {
         return ""
+    }
+}
+
+DownloadFile(url, path) {
+    try {
+        req := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        req.Open("GET", url, false)
+        req.SetTimeouts(5000, 5000, 30000, 30000)
+        req.SetRequestHeader("User-Agent", "RVL-Updater")
+        req.SetRequestHeader("Accept", "application/octet-stream")
+        req.Send()
+        if (req.Status != 200)
+            return false
+
+        stream := ComObjCreate("ADODB.Stream")
+        stream.Type := 1 ; binary
+        stream.Open()
+        stream.Write(req.ResponseBody)
+        stream.SaveToFile(path, 2) ; overwrite
+        stream.Close()
+        return true
+    } catch e {
+        return false
     }
 }
 

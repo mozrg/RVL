@@ -8242,6 +8242,7 @@ var UPDATE_TEXT = {
         promptInstall: "UPDATE"
     }
 };
+var lastRenderedUpdateState = "";
 
 function updateText() { return UPDATE_TEXT[currentLang] || UPDATE_TEXT.ru; }
 
@@ -8293,6 +8294,17 @@ function refreshUpdateBridge() {
         else if (state === "downloading") text = U.downloading;
         else if (state === "latest") text = U.title;
         status.innerHTML = text;
+    }
+
+    /* Make failures and the actual start of installation visible even when
+       the settings panel is closed behind the startup prompt. */
+    if (state !== lastRenderedUpdateState) {
+        if (state === "downloading" && typeof showToast === "function") {
+            showToast(updateText().downloading, null, null, 4500);
+        } else if (state === "error" && typeof showToast === "function") {
+            showToast(message || updateText().startupError, null, null, 6500);
+        }
+        lastRenderedUpdateState = state;
     }
 }
 
