@@ -8192,3 +8192,132 @@ window.addEventListener("load", function () {
         sendResize();
     }, 80);
 });
+
+/* ============================================================
+   §updater · GitHub update bridge + startup splash
+   The native host does all network/file work. The UI only publishes
+   the user's intent and renders the current state from hidden inputs.
+   ============================================================ */
+var UPDATE_TEXT = {
+    ru: {
+        label: "ОБНОВЛЕНИЕ",
+        title: "RVL всегда актуален",
+        hint: "Проверка файлов приложения через GitHub",
+        check: "ПРОВЕРИТЬ",
+        checking: "Проверяю...",
+        latest: "АКТУАЛЬНАЯ ВЕРСИЯ",
+        available: "УСТАНОВИТЬ",
+        ready: "Готово к обновлению",
+        downloading: "ОБНОВЛЕНИЕ...",
+        done: "Обновление завершено",
+        boot: "Проверка локальных данных"
+    },
+    en: {
+        label: "UPDATE",
+        title: "RVL is up to date",
+        hint: "Check application files through GitHub",
+        check: "CHECK",
+        checking: "CHECKING...",
+        latest: "UP TO DATE",
+        available: "INSTALL",
+        ready: "Ready to update",
+        downloading: "UPDATING...",
+        done: "Update complete",
+        boot: "Checking local data"
+    }
+};
+
+function updateText() { return UPDATE_TEXT[currentLang] || UPDATE_TEXT.ru; }
+
+function refreshUpdateLanguage() {
+    var U = updateText();
+    var label = el("lbl-update");
+    var title = el("update-card-title");
+    var hint = el("update-card-hint");
+    if (label) label.innerHTML = U.label;
+    if (title) title.innerHTML = U.title;
+    if (hint) hint.innerHTML = U.hint;
+    refreshUpdateBridge();
+}
+
+function refreshUpdateBridge() {
+    var stateEl = el("__update_state");
+    var state = stateEl ? (stateEl.value || "idle") : "idle";
+    var version = el("__update_version") ? el("__update_version").value : "";
+    var message = el("__update_message") ? el("__update_message").value : "";
+    var progress = parseInt(el("__update_progress") ? el("__update_progress").value : "0", 10);
+    if (isNaN(progress)) progress = 0;
+
+    var button = el("btn-check-update");
+    var wrap = el("update-progress-wrap");
+    var fill = el("update-progress-fill");
+    var status = el("update-status");
+    if (!button) return;
+
+    button.disabled = state === "checking" || state === "downloading";
+    if (state === "available") {
+        button.innerHTML = updateText().available + (version ? " " + version : "");
+    } else if (state === "latest") {
+        button.innerHTML = updateText().latest;
+    } else if (state === "checking") {
+        button.innerHTML = updateText().checking;
+    } else if (state === "downloading") {
+        button.innerHTML = updateText().downloading;
+    } else {
+        button.innerHTML = updateText().check;
+    }
+
+    if (wrap) wrap.style.display = (state === "checking" || state === "available" || state === "downloading" || state === "error") ? "block" : "none";
+    if (fill) fill.style.width = Math.max(0, Math.min(100, progress)) + "%";
+    if (status) {
+        var U = updateText();
+        var text = message || (state === "available" ? U.ready : "");
+        if (state === "checking") text = U.checking;
+        else if (state === "available") text = U.ready;
+        else if (state === "downloading") text = U.downloading;
+        else if (state === "latest") text = U.title;
+        status.innerHTML = text;
+    }
+}
+
+function hideStartupScreen() {
+    var splash = el("startup-screen");
+    if (!splash) return;
+    var status = el("startup-status");
+    var notice = el("__update_notice") ? trim(el("__update_notice").value) : "";
+    if (status) status.innerHTML = notice ? updateText().done : updateText().boot;
+    var fill = el("startup-progress-fill");
+    if (fill) {
+        fill.style.width = "100%";
+        fill.style.marginLeft = "0";
+    }
+    setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, notice ? 680 : 430);
+}
+
+/* initApp is called by AHK after the saved state is injected. Wrapping it
+   keeps the legacy initialization intact while giving startup a graceful exit. */
+var __rvlInitApp = initApp;
+initApp = function () {
+    __rvlInitApp();
+    refreshUpdateLanguage();
+    hideStartupScreen();
+};
+
+/* Keep update labels in sync with the existing language switcher. */
+var __rvlApplyLanguage = applyLanguage;
+applyLanguage = function () {
+    __rvlApplyLanguage();
+    refreshUpdateLanguage();
+};
+
+window.addEventListener("load", function () {
+    var updateButton = el("btn-check-update");
+    if (updateButton) {
+        updateButton.onclick = function () {
+            sendCmd("CMD:check_update");
+            refreshUpdateBridge();
+        };
+    }
+    refreshUpdateLanguage();
+    setInterval(refreshUpdateBridge, 250);
+});

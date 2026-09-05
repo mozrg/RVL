@@ -1,5 +1,5 @@
 ; ============================================================
-;  RVL.ahk  v1.7
+;  RVL.ahk  v1.9
 ;  AHK v1.1+
 ; ============================================================
 #SingleInstance, Force
@@ -13,6 +13,10 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
+global APP_VERSION := "1.9"
+global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update.json"
+global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
+global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
 global WB
@@ -56,6 +60,19 @@ global g_mask_inputs  := 1
 global g_always_on_top := 0
 global g_prevShHotkey := ""
 global g_windowVisible := true
+global g_update_state := "idle"
+global g_update_url := ""
+global g_update_version := ""
+global g_update_notice := ""
+
+; A previous updater writes a one-shot result before restarting the app.
+if (FileExist(UPDATE_STATUS_FILE)) {
+    FileRead, updateNoticeRaw, %UPDATE_STATUS_FILE%
+    updateNoticeRaw := Trim(updateNoticeRaw)
+    if (SubStr(updateNoticeRaw, 1, 4) = "done")
+        g_update_notice := updateNoticeRaw
+    FileDelete, %UPDATE_STATUS_FILE%
+}
 
 ; ── Build combined HTML ─────────────────────────────────────
 ; ── Ensure data folder exists ────────────────────────────────
@@ -355,6 +372,8 @@ DispatchCommand:
         Gosub, OnExportStats
     } else if (cmd = "CMD:save_window_pos") {
         Gosub, OnSaveWindowPos
+    } else if (cmd = "CMD:check_update") {
+        Gosub, OnCheckUpdate
     }
 Return
 
@@ -430,6 +449,106 @@ OnSettingsSave:
     Gosub, ReadDom
     Gosub, SaveConfig
     Gosub, WriteThemePresets
+Return
+
+; ============================================================
+;  UPDATE CHECK / DOWNLOAD
+;  The manifest is public and contains only a version + HTTPS ZIP URL.
+;  No GitHub token is embedded in the application.
+; ============================================================
+OnCheckUpdate:
+    if (g_update_state = "available") {
+        Gosub, StartUpdateDownload
+        return
+    }
+
+    g_update_state := "checking"
+    SetUpdateBridge("checking", "", "Проверяю наличие новой версии...", 0)
+
+    manifest := HttpGet(UPDATE_MANIFEST)
+    remoteVersion := ""
+    downloadUrl := ""
+    if (manifest != "") {
+        RegExMatch(manifest, """version""\s*:\s*""([^""]+)""", mv)
+        RegExMatch(manifest, """download_url""\s*:\s*""([^""]+)""", mu)
+        remoteVersion := Trim(mv1)
+        downloadUrl := Trim(mu1)
+    }
+
+    ; Keep a release-based fallback for repositories that publish assets.
+    if (remoteVersion = "" || downloadUrl = "") {
+        release := HttpGet(UPDATE_RELEASES)
+        if (release != "") {
+            RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
+            RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
+            if (ru1 = "")
+                RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
+            remoteVersion := Trim(rv1)
+            downloadUrl := Trim(ru1)
+        }
+    }
+
+    downloadUrl := StrReplace(downloadUrl, "\/", "/")
+    if (remoteVersion = "" || downloadUrl = "") {
+        g_update_state := "error"
+        SetUpdateBridge("error", "", "Не удалось получить информацию об обновлении", 0)
+        return
+    }
+
+    if (VersionToNumber(remoteVersion) <= VersionToNumber(APP_VERSION)) {
+        g_update_state := "latest"
+        SetUpdateBridge("latest", APP_VERSION, "Установлена последняя версия", 100)
+        return
+    }
+
+    g_update_url := downloadUrl
+    g_update_version := remoteVersion
+    g_update_state := "available"
+    SetUpdateBridge("available", remoteVersion, "Доступна новая версия", 0)
+Return
+
+StartUpdateDownload:
+    if (g_update_url = "") {
+        g_update_state := "error"
+        SetUpdateBridge("error", "", "Ссылка на обновление недоступна", 0)
+        return
+    }
+
+    ; Save all user state before the current files are replaced.
+    Gosub, ReadDom
+    Gosub, SaveConfig
+    Gosub, WritePresets
+    Gosub, WriteThemePresets
+    Gosub, WritePresetGroups
+
+    FileDelete, %UPDATE_STATUS_FILE%
+    restartPath := A_ScriptFullPath
+    restartArgs := ""
+    if (!A_IsCompiled) {
+        restartPath := A_AhkPath
+        restartArgs := A_ScriptFullPath
+    }
+
+    helper := A_ScriptDir "\update-helper.ps1"
+    if (!FileExist(helper)) {
+        SetUpdateBridge("error", "", "Файл обновления не найден", 0)
+        return
+    }
+
+    cmdLine := "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
+    cmdLine .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
+    cmdLine .= " -Target " . UpdateQuote(A_ScriptDir)
+    cmdLine .= " -RestartPath " . UpdateQuote(restartPath)
+    if (restartArgs != "")
+        cmdLine .= " -RestartArgs " . UpdateQuote(restartArgs)
+    cmdLine .= " -StatusPath " . UpdateQuote(UPDATE_STATUS_FILE)
+
+    g_update_state := "downloading"
+    SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
+    Run, %cmdLine%,, Hide
+    Sleep, 350
+    FileDelete, %TMP_HTML%
+    ExitApp
 Return
 
 OnSetOpacity:
@@ -581,6 +700,7 @@ InjectConfig:
         WB.document.getElementById("__cfg_theme_grad_bg2").value   := thgrbg2
         WB.document.getElementById("__cfg_theme_grad_angle").value := thgrang
         WB.document.getElementById("__cfg_launch_delay").value     := ldel
+        WB.document.getElementById("__update_notice").value         := g_update_notice
         WB.document.parentWindow.execScript("initApp()")
     }
 
@@ -635,6 +755,47 @@ SaveConfig:
         IniWrite, %smVal%, %CFG%, Settings, SortMode
     }
 Return
+
+; ── Small helpers used by the updater ──────────────────────
+SetUpdateBridge(state, version, message, progress) {
+    global WB
+    try {
+        WB.document.getElementById("__update_state").value := state
+        WB.document.getElementById("__update_version").value := version
+        WB.document.getElementById("__update_message").value := message
+        WB.document.getElementById("__update_progress").value := progress
+    }
+}
+
+HttpGet(url) {
+    try {
+        req := ComObjCreate("WinHttp.WinHttpRequest.5.1")
+        req.Open("GET", url, false)
+        req.SetTimeouts(5000, 5000, 10000, 10000)
+        req.SetRequestHeader("User-Agent", "RVL-Updater")
+        req.SetRequestHeader("Accept", "application/vnd.github+json")
+        req.Send()
+        if (req.Status != 200)
+            return ""
+        return req.ResponseText
+    } catch e {
+        return ""
+    }
+}
+
+VersionToNumber(version) {
+    version := RegExReplace(version, "[^0-9.]", "")
+    parts := StrSplit(version, ".")
+    major := parts.MaxIndex() >= 1 ? (parts[1] + 0) : 0
+    minor := parts.MaxIndex() >= 2 ? (parts[2] + 0) : 0
+    patch := parts.MaxIndex() >= 3 ? (parts[3] + 0) : 0
+    return (major * 1000000) + (minor * 1000) + patch
+}
+
+UpdateQuote(value) {
+    quote := Chr(34)
+    return quote . StrReplace(value, quote, quote . quote) . quote
+}
 
 ; ============================================================
 ;  WINDOW RESIZE (called from JS via CMD:resize or hidden input)

@@ -12090,3 +12090,109 @@ body.compact-mode .pd-icon { width: 30px; height: 30px; }
 body.compact-mode .btn-go.btn-primary,
 body.compact-mode .btn-tool { height: 28px; }
 body.compact-mode .btn-tool { width: 28px; }
+
+/* ============================================================
+   §startup-splash · polished first-run / startup experience
+   Kept IE11-safe: no CSS variables, calc(), or backdrop-filter.
+   ============================================================ */
+.startup-screen {
+    position: fixed;
+    z-index: 1000;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    overflow: hidden;
+    background: #08090D;
+    color: #F7F8FC;
+    opacity: 1;
+    visibility: visible;
+    -ms-transition: opacity 0.42s ease, visibility 0.42s ease;
+    transition: opacity 0.42s ease, visibility 0.42s ease;
+}
+.startup-screen-out { opacity: 0; visibility: hidden; }
+.startup-grid {
+    position: absolute;
+    top: -50%; left: -25%; right: -25%; bottom: -50%;
+    opacity: 0.16;
+    background-image: linear-gradient(rgba(255,255,255,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.055) 1px, transparent 1px);
+    background-size: 32px 32px;
+    -ms-transform: perspective(360px) rotateX(58deg) translateY(90px);
+    transform: perspective(360px) rotateX(58deg) translateY(90px);
+}
+.startup-orbit {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(112, 137, 255, 0.22);
+    box-shadow: 0 0 50px rgba(90, 110, 255, 0.08), inset 0 0 50px rgba(90, 110, 255, 0.06);
+    -ms-transform: rotate(-18deg);
+    transform: rotate(-18deg);
+}
+.startup-orbit-one { width: 350px; height: 160px; top: 17%; left: 50%; margin-left: -175px; }
+.startup-orbit-two { width: 270px; height: 115px; top: 22%; left: 50%; margin-left: -135px; border-color: rgba(255,255,255,0.12); -ms-transform: rotate(24deg); transform: rotate(24deg); }
+.startup-orbit-one:after, .startup-orbit-two:after {
+    content: "";
+    position: absolute;
+    width: 5px; height: 5px;
+    top: 50%; left: -3px;
+    margin-top: -3px;
+    border-radius: 50%;
+    background: #9AA9FF;
+    box-shadow: 0 0 14px 4px rgba(130, 146, 255, 0.7);
+}
+.startup-orbit-two:after { left: auto; right: -3px; background: #FFFFFF; box-shadow: 0 0 14px 4px rgba(255,255,255,0.45); }
+.startup-content {
+    position: absolute;
+    top: 50%; left: 0; right: 0;
+    margin-top: -35px;
+    text-align: center;
+}
+.startup-mark {
+    height: 48px;
+    color: #FFFFFF;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    line-height: 48px;
+    text-shadow: 0 0 26px rgba(146, 158, 255, 0.34);
+}
+.startup-mark i {
+    display: inline-block;
+    width: 4px; height: 4px;
+    margin: 0 9px 7px 5px;
+    border-radius: 50%;
+    background: #9AA9FF;
+    box-shadow: 0 0 11px 2px rgba(154,169,255,0.9);
+}
+.startup-kicker { margin-top: 11px; color: #7D88A9; font-size: 7px; font-weight: 700; letter-spacing: 0.28em; }
+.startup-title { margin-top: 22px; color: #F5F6FA; font-size: 14px; font-weight: 600; letter-spacing: 0.015em; }
+.startup-status { margin-top: 10px; color: #8992AA; font-size: 9px; letter-spacing: 0.04em; }
+.startup-dots { display: inline-block; width: 18px; text-align: left; overflow: hidden; -ms-animation: startup-dots 1.2s steps(4, end) infinite; animation: startup-dots 1.2s steps(4, end) infinite; }
+.startup-progress { width: 180px; height: 3px; margin: 18px auto 0; overflow: hidden; border-radius: 3px; background: rgba(255,255,255,0.09); }
+.startup-progress-fill { width: 32%; height: 100%; border-radius: 3px; background: #A3B0FF; box-shadow: 0 0 14px rgba(163,176,255,0.8); -ms-animation: startup-progress 1.65s ease-in-out infinite; animation: startup-progress 1.65s ease-in-out infinite; }
+.startup-meta { margin-top: 17px; color: #4E566B; font-size: 7px; font-weight: 700; letter-spacing: 0.15em; }
+.startup-meta-dot { margin: 0 7px; color: #808CBB; }
+@-ms-keyframes startup-progress { 0% { margin-left: -35%; width: 28%; } 50% { margin-left: 38%; width: 48%; } 100% { margin-left: 110%; width: 28%; } }
+@keyframes startup-progress { 0% { margin-left: -35%; width: 28%; } 50% { margin-left: 38%; width: 48%; } 100% { margin-left: 110%; width: 28%; } }
+@-ms-keyframes startup-dots { 0% { width: 5px; } 33% { width: 10px; } 66% { width: 15px; } 100% { width: 18px; } }
+@keyframes startup-dots { 0% { width: 5px; } 33% { width: 10px; } 66% { width: 15px; } 100% { width: 18px; } }
+
+/* ── Update card inside settings ────────────────────────── */
+.update-card { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; padding: 10px; border: 1px solid #252630; border-radius: 9px; background: linear-gradient(135deg, rgba(130,145,255,0.08), rgba(255,255,255,0.025)); }
+.update-card-copy { -ms-flex: 1 1 0px; flex: 1 1 0px; min-width: 0; }
+.update-card-title { color: #E7E9F2; font-size: 10px; font-weight: 700; }
+.update-card-hint { margin-top: 4px; color: #777F95; font-size: 8px; line-height: 1.35; }
+.update-button { min-width: 92px; height: 28px; margin-left: 9px; padding: 0 9px; border: 1px solid #AAB5FF; border-radius: 7px; background: #AAB5FF; color: #0D1020; font-size: 8px; font-weight: 800; letter-spacing: 0.04em; cursor: pointer; }
+.update-button:hover { background: #C7CEFF; border-color: #C7CEFF; }
+.update-button:disabled { opacity: 0.5; cursor: default; }
+.update-progress { margin-top: 8px; }
+.update-progress-track { height: 3px; overflow: hidden; border-radius: 3px; background: #242632; }
+.update-progress-fill { width: 0; height: 100%; border-radius: 3px; background: #AAB5FF; -ms-transition: width 0.25s ease; transition: width 0.25s ease; }
+.update-status { display: block; margin-top: 5px; color: #8891A8; font-size: 8px; }
+body.theme-light .startup-screen { background: #F4F6FC; color: #17181C; }
+body.theme-light .startup-grid { opacity: 0.24; background-image: linear-gradient(rgba(23,24,28,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(23,24,28,0.06) 1px, transparent 1px); }
+body.theme-light .startup-title { color: #20232A; }
+body.theme-light .startup-mark { color: #17181C; text-shadow: none; }
+body.theme-light .update-card { border-color: #DADDE8; background: linear-gradient(135deg, #F1F3FF, #FFFFFF); }
+body.theme-light .update-card-title { color: #282C35; }
+body.theme-light .update-card-hint { color: #7E8492; }

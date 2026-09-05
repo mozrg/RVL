@@ -78,6 +78,11 @@
   <input type="hidden" id="__free_resize_req" value="">
   <input type="hidden" id="__magnetic_snap" value="1">
   <input type="hidden" id="__dash_export_req" value="">
+  <input type="hidden" id="__update_state" value="idle">
+  <input type="hidden" id="__update_version" value="">
+  <input type="hidden" id="__update_message" value="">
+  <input type="hidden" id="__update_progress" value="0">
+  <input type="hidden" id="__update_notice" value="">
 
   <!-- UNIVERSAL TOOLTIP -->
   <div class="app-tooltip" id="app-tooltip">
@@ -244,6 +249,20 @@
             </div>
           </div>
         </div>
+        <div class="settings-block update-block">
+          <div class="settings-label" id="lbl-update">ОБНОВЛЕНИЕ</div>
+          <div class="update-card">
+            <div class="update-card-copy">
+              <div class="update-card-title" id="update-card-title">RVL всегда актуален</div>
+              <div class="update-card-hint" id="update-card-hint">Проверка файлов приложения через GitHub</div>
+            </div>
+            <button class="update-button" id="btn-check-update">ПРОВЕРИТЬ</button>
+          </div>
+          <div class="update-progress" id="update-progress-wrap" style="display:none;">
+            <div class="update-progress-track"><div class="update-progress-fill" id="update-progress-fill"></div></div>
+            <span class="update-status" id="update-status">Проверка...</span>
+          </div>
+        </div>
         <div class="settings-block settings-block-danger">
           <div class="settings-label" id="lbl-factory-reset">СБРОС</div>
           <button class="btn-factory-reset" id="btn-factory-reset">Сбросить к заводским</button>
@@ -379,11 +398,26 @@
     </div>
   </div>
 
+  <!-- STARTUP SPLASH: stays above the UI until AHK injects the saved state. -->
+  <div class="startup-screen" id="startup-screen">
+    <div class="startup-orbit startup-orbit-one"></div>
+    <div class="startup-orbit startup-orbit-two"></div>
+    <div class="startup-grid"></div>
+    <div class="startup-content">
+      <div class="startup-mark"><span>R</span><i></i><span>V</span><span>L</span></div>
+      <div class="startup-kicker">PRIVATE SERVER LAUNCHER</div>
+      <div class="startup-title">Готовим рабочее пространство</div>
+      <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
+      <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
+      <div class="startup-meta"><span>RVL</span><span class="startup-meta-dot">•</span><span>v1.9</span></div>
+    </div>
+  </div>
+
   <div class="app-shell" id="app-shell">
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
     <span class="tb-logo hdr-logo">RVL</span>
-    <span class="tb-ver hdr-ver">v1.8</span>
+    <span class="tb-ver hdr-ver">v1.9</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
@@ -570,7 +604,7 @@
     <span class="status-bar-sep sep">&#183;</span>
     <span class="status-bar-item" id="status-last">Последний: никогда</span>
     <span class="status-bar-spacer"></span>
-    <span class="status-bar-item" id="status-version">v1.8</span>
+    <span class="status-bar-item" id="status-version">v1.9</span>
   </div>
   </div><!-- /.app-shell -->
 
