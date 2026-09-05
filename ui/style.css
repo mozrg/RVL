@@ -12271,3 +12271,371 @@ body.theme-light .update-ring-track { stroke: #D9DDE9; }
 @keyframes update-ring-spin { from { -ms-transform: rotate(-90deg); transform: rotate(-90deg); } to { -ms-transform: rotate(270deg); transform: rotate(270deg); } }
 @-ms-keyframes update-spinner-spin { from { -ms-transform: rotate(0deg); transform: rotate(0deg); } to { -ms-transform: rotate(360deg); transform: rotate(360deg); } }
 @keyframes update-spinner-spin { from { -ms-transform: rotate(0deg); transform: rotate(0deg); } to { -ms-transform: rotate(360deg); transform: rotate(360deg); } }
+
+/* ============================================================
+   §rvl-interface-polish · main window visual refresh
+   A restrained dark command-center treatment for the main RVL screen.
+   It intentionally only overrides presentation; all existing IDs and
+   event wiring stay intact. Kept compatible with the embedded IE11 view.
+   ============================================================ */
+.app-shell {
+    background: #0B0C0F;
+    color: #C7C9D1;
+}
+
+.hdr {
+    height: 38px !important;
+    padding: 0 9px 0 13px !important;
+    border-bottom-color: #1E2027;
+    background: #0D0E12;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.025);
+}
+.hdr:after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 1px;
+    background: -ms-linear-gradient(left, rgba(232,232,232,0), rgba(232,232,232,0.28), rgba(232,232,232,0));
+    background: linear-gradient(to right, rgba(232,232,232,0), rgba(232,232,232,0.28), rgba(232,232,232,0));
+    pointer-events: none;
+}
+.hdr-logo {
+    font-size: 14px;
+    letter-spacing: 0.10em;
+    color: #F0F1F5;
+}
+.hdr-ver {
+    color: #646977;
+    font-size: 8px;
+    letter-spacing: 0.04em;
+}
+.hdr-btn.tc-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    color: #737784;
+    -ms-transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+.hdr-btn.tc-btn:hover { background: #1A1C23; color: #F0F1F5; }
+.hdr-btn.tc-btn:active { -ms-transform: scale(0.92); transform: scale(0.92); }
+
+/* Always reserve a compact status capsule. updateRobloxStatus() keeps the
+   roblox-on class, while the pseudo-element supplies the visual indicator. */
+#roblox-status {
+    display: inline-block;
+    width: 26px;
+    height: 18px;
+    margin-right: 7px;
+    padding: 0;
+    border: 1px solid #282B33;
+    border-radius: 6px;
+    background: #15171D;
+    box-sizing: border-box;
+    vertical-align: middle;
+    -ms-transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+    transition: background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+#roblox-status:before {
+    content: "";
+    display: block;
+    width: 6px;
+    height: 6px;
+    margin: 5px auto 0;
+    border-radius: 50%;
+    background: #686D79;
+    -ms-transition: background 0.22s ease, box-shadow 0.22s ease;
+    transition: background 0.22s ease, box-shadow 0.22s ease;
+}
+#roblox-status.roblox-on {
+    border-color: rgba(91,214,136,0.34);
+    background: rgba(57,151,91,0.13);
+}
+#roblox-status.roblox-on:before {
+    background: #6BE69A;
+    box-shadow: 0 0 8px rgba(107,230,154,0.65);
+    -ms-animation: rvl-status-pulse 2s ease-in-out infinite;
+    animation: rvl-status-pulse 2s ease-in-out infinite;
+}
+@-ms-keyframes rvl-status-pulse { 0%,100% { opacity: 0.72; } 50% { opacity: 1; } }
+@keyframes rvl-status-pulse { 0%,100% { opacity: 0.72; } 50% { opacity: 1; } }
+
+.input-row {
+    padding: 8px 96px 8px 11px;
+    border-bottom-color: #1E2027;
+    background: #0D0E12;
+}
+.ir-tabs {
+    border-color: #292C34;
+    border-radius: 7px;
+    background: #111319 !important;
+}
+.ir-tab.method-tab { background: #111319; color: #737784; }
+.ir-tab.method-tab + .ir-tab.method-tab { border-left-color: #292C34; }
+.ir-tab.method-tab-active {
+    background: #E7E9F2 !important;
+    color: #101116 !important;
+}
+.ir-field.field-input,
+.ir-hk-key.key-box,
+.ir-hk-capture.btn-capture {
+    background: #12141A !important;
+    border-color: #292C34 !important;
+    -ms-transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+.ir-field.field-input:hover,
+.ir-hk-key.key-box:hover,
+.ir-hk-capture.btn-capture:hover { border-color: #474C58 !important; }
+.ir-field.field-input:focus {
+    border-color: #7E879B !important;
+    background: #151821 !important;
+    box-shadow: 0 0 0 2px rgba(126,135,155,0.11);
+}
+.ir-sep { background: #292C34; }
+.ir-hk-chk.chk-wrap {
+    background: #12141A;
+    border-color: #292C34;
+}
+
+.toolbar {
+    padding: 8px 11px;
+    border-bottom-color: #1E2027;
+    background: #0D0E12;
+}
+.tb-search.search-inp,
+.tb-sort.sort-toggle,
+.tb-btn {
+    background: #12141A;
+    border-color: #292C34;
+    -ms-transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+    transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+.tb-search.search-inp:focus {
+    border-color: #7E879B;
+    background: #151821;
+    box-shadow: 0 0 0 2px rgba(126,135,155,0.11);
+}
+.tb-btn:hover,
+.tb-sort.sort-toggle:hover { background: #1A1D25; border-color: #596170; color: #F0F1F5; }
+.tb-btn:active,
+.tb-sort.sort-toggle:active,
+.tb-add.btn-ghost:active { -ms-transform: scale(0.94); transform: scale(0.94); }
+.tb-btn.view-active {
+    background: rgba(232,233,242,0.12);
+    border-color: #858B9A;
+    color: #F0F1F5;
+}
+.tb-add.btn-ghost {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 7px;
+    background: #E7E9F2;
+    color: #101116;
+    box-shadow: 0 5px 16px rgba(0,0,0,0.24);
+    -ms-transition: background 0.16s ease, transform 0.16s ease;
+    transition: background 0.16s ease, transform 0.16s ease;
+}
+.tb-add.btn-ghost:hover { background: #FFFFFF; }
+
+.main2 {
+    -ms-flex-preferred-size: 270px;
+    flex-basis: 270px;
+    height: 270px;
+    background: #0B0C0F;
+}
+.plist.presets-scroll {
+    width: 250px !important;
+    padding: 2px 7px !important;
+    border-right: 1px solid #1E2027;
+    background: #0B0C0F;
+    box-sizing: border-box;
+}
+.preset-row.pl-row {
+    height: 34px;
+    margin: 2px 0;
+    padding: 7px 8px;
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    -ms-transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.preset-row.pl-row:hover {
+    background: #14161C;
+    border-color: #242832;
+    border-left-color: #4F5563;
+    -ms-transform: translateX(2px);
+    transform: translateX(2px);
+}
+.preset-row.pl-row.preset-row-active {
+    background: #181B23;
+    border-color: #303542;
+    border-left-color: #E7E9F2;
+    box-shadow: inset 0 0 18px rgba(232,233,242,0.035);
+}
+.pl-dot {
+    width: 24px;
+    height: 18px;
+    margin-right: 8px;
+    border-radius: 5px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
+}
+.pl-name { color: #C7C9D1; font-size: 11px; }
+.preset-row.pl-row.preset-row-active .pl-name { color: #F0F1F5; }
+.pl-hk {
+    padding: 2px 5px;
+    border: 1px solid #303440;
+    background: #1A1D25;
+    color: #AEB3C0;
+}
+.pl-cnt { color: #707683; }
+.pl-fav { color: #D9DCE5; }
+
+.pdetail {
+    padding: 15px;
+    border-left-color: #242730;
+    background: -ms-linear-gradient(145deg, #111319 0%, #0D0F14 100%);
+    background: linear-gradient(145deg, #111319 0%, #0D0F14 100%);
+}
+.pdetail:before {
+    content: "ПРЕСЕТ";
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    color: #4F5562;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+}
+.pd-empty { color: #454B58; }
+.pd-empty-icon {
+    width: 42px;
+    height: 42px;
+    margin-bottom: 11px;
+    border: 1px solid #2A2E38;
+    border-radius: 12px;
+    background: #151820;
+    color: #707684;
+    line-height: 42px;
+    opacity: 1;
+}
+.pd-content { position: relative; }
+.pd-hdr {
+    margin-bottom: 10px;
+    padding-bottom: 11px;
+    border-bottom: 1px solid #242832;
+}
+.pd-icon {
+    width: 42px;
+    height: 42px;
+    margin-right: 11px;
+    border-radius: 11px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 6px 16px rgba(0,0,0,0.18);
+}
+.pd-name { font-size: 16px; color: #F0F1F5; }
+.pd-tag { padding: 2px 6px; background: #1B1E27; color: #AEB3C0; }
+.pd-info { padding-right: 1px; }
+.pd-row {
+    padding: 8px 0;
+    border-bottom-color: #20232B;
+}
+.pd-label { width: 67px; color: #69707D; }
+.pd-val { color: #C7C9D1; }
+.pd-val-accent { color: #F0F1F5 !important; }
+.pd-btn {
+    background: #151820;
+    border-color: #2B303A;
+    -ms-transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.pd-btn:hover { background: #20242D; border-color: #666E7E; color: #F0F1F5; }
+.pd-ftr {
+    margin-top: 2px;
+    padding-top: 10px;
+    border-top: 1px solid #242832;
+}
+.btn-go.btn-primary {
+    height: 34px !important;
+    border-radius: 8px !important;
+    background: #E7E9F2;
+    color: #101116;
+    box-shadow: 0 7px 18px rgba(0,0,0,0.30);
+    -ms-transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+    transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+.btn-go.btn-primary:hover { background: #FFFFFF; box-shadow: 0 8px 20px rgba(0,0,0,0.38); }
+.btn-go.btn-primary:active { -ms-transform: scale(0.97); transform: scale(0.97); }
+.btn-tool {
+    width: 30px;
+    height: 30px;
+    border-color: #2B303A;
+    background: #151820;
+    -ms-transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.btn-tool:hover { background: #20242D; border-color: #666E7E; color: #F0F1F5; }
+.btn-tool:active { -ms-transform: scale(0.93); transform: scale(0.93); }
+
+.statusbar.status-bar {
+    height: 23px !important;
+    padding: 0 11px !important;
+    border-top-color: #1E2027;
+    background: #0D0E12;
+    color: #69707D;
+}
+.statusbar .green.status-bar-item { color: #C7C9D1; }
+.statusbar .status-bar-version,
+.statusbar #status-version { color: #555B68; letter-spacing: 0.06em; }
+
+/* Light theme counterpart for the same hierarchy. */
+body.theme-light .app-shell,
+body.theme-light .hdr,
+body.theme-light .input-row,
+body.theme-light .toolbar,
+body.theme-light .statusbar.status-bar { background: #F5F6F8; }
+body.theme-light .hdr { border-bottom-color: #DDE1E9; }
+body.theme-light .hdr:after { background: -ms-linear-gradient(left, rgba(23,24,28,0), rgba(23,24,28,0.16), rgba(23,24,28,0)); background: linear-gradient(to right, rgba(23,24,28,0), rgba(23,24,28,0.16), rgba(23,24,28,0)); }
+body.theme-light .hdr-logo { color: #17181C; }
+body.theme-light #roblox-status { border-color: #D9DDE5; background: #ECEEF2; }
+body.theme-light #roblox-status.roblox-on { border-color: #A5D8B7; background: #EAF8EE; }
+body.theme-light #roblox-status:before { background: #9399A5; }
+body.theme-light #roblox-status.roblox-on:before { background: #32A85B; box-shadow: 0 0 8px rgba(50,168,91,0.38); }
+body.theme-light .input-row,
+body.theme-light .toolbar { border-bottom-color: #DDE1E9; }
+body.theme-light .ir-tabs,
+body.theme-light .ir-field.field-input,
+body.theme-light .ir-hk-key.key-box,
+body.theme-light .ir-hk-capture.btn-capture,
+body.theme-light .tb-search.search-inp,
+body.theme-light .tb-sort.sort-toggle,
+body.theme-light .tb-btn { background: #FFFFFF !important; border-color: #D7DBE3 !important; }
+body.theme-light .main2 { background: #F5F6F8; }
+body.theme-light .plist.presets-scroll { background: #F5F6F8; border-right-color: #DDE1E9; }
+body.theme-light .preset-row.pl-row:hover { background: #ECEEF2; border-color: #D7DBE3; border-left-color: #8E96A6; }
+body.theme-light .preset-row.pl-row.preset-row-active { background: #E6E9EF; border-color: #D0D5DF; border-left-color: #17181C; box-shadow: none; }
+body.theme-light .pl-name { color: #424752; }
+body.theme-light .preset-row.pl-row.preset-row-active .pl-name { color: #17181C; }
+body.theme-light .pl-hk { border-color: #D4D8E0; background: #F0F1F4; color: #59606D; }
+body.theme-light .pdetail { border-left-color: #DDE1E9; background: #FFFFFF; }
+body.theme-light .pdetail:before { color: #A1A7B2; }
+body.theme-light .pd-empty { color: #A1A7B2; }
+body.theme-light .pd-empty-icon { border-color: #D7DBE3; background: #F2F3F6; color: #8D95A3; }
+body.theme-light .pd-hdr,
+body.theme-light .pd-ftr { border-color: #E1E4EA; }
+body.theme-light .pd-name { color: #17181C; }
+body.theme-light .pd-tag { background: #F0F1F4; color: #626A78; }
+body.theme-light .pd-row { border-bottom-color: #E7E9ED; }
+body.theme-light .pd-label { color: #969DAA; }
+body.theme-light .pd-val { color: #4B515C; }
+body.theme-light .pd-btn,
+body.theme-light .btn-tool { background: #FFFFFF; border-color: #D7DBE3; color: #68707C; }
+body.theme-light .pd-btn:hover,
+body.theme-light .btn-tool:hover { background: #F0F1F4; border-color: #A9AFBA; color: #17181C; }
+body.theme-light .btn-go.btn-primary { background: #17181C; color: #FFFFFF; box-shadow: none; }
+body.theme-light .btn-go.btn-primary:hover { background: #30343D; }
+body.theme-light .statusbar.status-bar { border-top-color: #DDE1E9; color: #8A919D; }
+body.theme-light .statusbar .green.status-bar-item { color: #4B515C; }
