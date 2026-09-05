@@ -15,7 +15,7 @@ function Set-UpdateStatus([string]$value) {
 }
 
 try {
-    if ($Url -notmatch '^https://(github\.com|codeload\.github\.com)/') {
+    if ($Url -notmatch '^https://(github\.com|codeload\.github\.com|api\.github\.com)/') {
         throw "Недопустимый источник обновления"
     }
 

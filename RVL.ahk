@@ -475,16 +475,19 @@ OnCheckUpdate:
         downloadUrl := Trim(mu1)
     }
 
-    ; Keep a release-based fallback for repositories that publish assets.
-    if (remoteVersion = "" || downloadUrl = "") {
-        release := HttpGet(UPDATE_RELEASES)
-        if (release != "") {
-            RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
-            RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
-            if (ru1 = "")
-                RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
-            remoteVersion := Trim(rv1)
-            downloadUrl := Trim(ru1)
+    ; Always inspect Releases too. The manifest may lag behind a newer tag
+    ; (for example update.json=1.9 while the latest release is 1.10).
+    release := HttpGet(UPDATE_RELEASES)
+    if (release != "") {
+        RegExMatch(release, """tag_name""\s*:\s*""([^""]+)""", rv)
+        RegExMatch(release, "s)""browser_download_url""\s*:\s*""([^""]+\.zip)""", ru)
+        if (ru1 = "")
+            RegExMatch(release, """zipball_url""\s*:\s*""([^""]+)""", ru)
+        releaseVersion := Trim(rv1)
+        releaseUrl := Trim(ru1)
+        if (VersionToNumber(releaseVersion) > VersionToNumber(remoteVersion)) {
+            remoteVersion := releaseVersion
+            downloadUrl := releaseUrl
         }
     }
 
