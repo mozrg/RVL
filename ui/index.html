@@ -44,6 +44,7 @@
   <input type="hidden" id="__cfg_always_on_top">
   <input type="hidden" id="__import_theme_data">
   <input type="hidden" id="__cfg_method">
+  <input type="hidden" id="__app_version">
   <input type="hidden" id="__last_loaded_preset_id">
   <input type="hidden" id="__hotkey_launch_ping">
   <input type="hidden" id="__cfg_preset_groups">
@@ -410,14 +411,14 @@
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span>v1.9</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.9</span></div>
     </div>
   </div>
 
   <!-- UPDATE PROMPT: shown after a real version check finds a newer release. -->
   <div class="update-prompt-overlay" id="update-prompt-overlay" style="display:none;">
     <div class="update-prompt-card">
-      <div class="update-prompt-icon update-prompt-logo" aria-label="RVL"></div>
+      <div class="update-prompt-icon update-prompt-logo" aria-label="RVL"><img class="update-prompt-logo-image" src="images/rvl.png" alt="RVL" onerror="this.style.display='none'; this.parentNode.innerHTML='RVL';"></div>
       <div class="update-prompt-copy">
         <div class="update-prompt-title" id="update-prompt-title">Доступно обновление</div>
         <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия <span class="rvl-logo rvl-inline-logo" aria-label="RVL"></span></div>
@@ -470,7 +471,7 @@
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
     <span class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
-    <span class="tb-ver hdr-ver">v1.9</span>
+    <span class="tb-ver hdr-ver" id="header-version">v1.9</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>

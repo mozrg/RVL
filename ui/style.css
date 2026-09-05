@@ -12497,9 +12497,17 @@ body.settings-popup .settings-modal { width: calc(100% - 36px); max-height: calc
     margin-right: 1px;
 }
 .update-prompt-logo {
+    position: relative;
+    overflow: hidden;
     background-color: #151515;
-    background-size: 150% auto;
     border-color: #303030;
+    color: #E8E8E8;
+    line-height: 34px;
+}
+.update-prompt-logo-image {
+    display: block;
+    width: 34px;
+    height: 34px;
 }
 .update-screen-brand-logo {
     width: 38px;

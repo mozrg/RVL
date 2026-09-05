@@ -8576,6 +8576,18 @@ var lastRenderedUpdateState = "";
 
 function updateText() { return UPDATE_TEXT[currentLang] || UPDATE_TEXT.ru; }
 
+function refreshLocalVersion() {
+    var version = el("__app_version") ? trim(el("__app_version").value) : "";
+    if (!version) return;
+    version = version.replace(/^v/i, "");
+    var display = "v" + version;
+    var ids = ["startup-version", "header-version", "status-version", "update-screen-version"];
+    for (var i = 0; i < ids.length; i++) {
+        var target = el(ids[i]);
+        if (target) target.innerHTML = display;
+    }
+}
+
 /* AHK calls this immediately after the native window becomes visible. The
    script itself is loaded before Gui, Show, so starting the timer at parse
    time can make the splash appear for only a fraction of a second. */
@@ -8584,6 +8596,7 @@ function markStartupVisible() {
 }
 
 function refreshUpdateLanguage() {
+    refreshLocalVersion();
     var U = updateText();
     var label = el("lbl-update");
     var title = el("update-card-title");

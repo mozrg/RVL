@@ -2,6 +2,7 @@
 ;  RVL.ahk  v1.9
 ;  AHK v1.1+
 ; ============================================================
+;@Ahk2Exe-SetIcon images\rvl.ico
 #SingleInstance, Force
 #NoEnv
 SetWorkingDir, %A_ScriptDir%
@@ -13,9 +14,11 @@ global THEME_PRESETS := A_ScriptDir "\data\theme_presets.json"
 global PRESET_GROUPS := A_ScriptDir "\data\preset_groups.json"
 global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
+global RVL_ICON := A_ScriptDir "\images\rvl.ico"
 global APP_VERSION := "1.9"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
+global UPDATE_MANIFEST := "https://raw.githubusercontent.com/mozrg/RVL/main/update/update.json"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -93,9 +96,8 @@ if (ErrorLevel) {
 }
 ; Fix image paths to absolute so they work from %TEMP%
 imgDir := "file:///" . StrReplace(A_ScriptDir "\images\", "\", "/")
-uiCSS := StrReplace(uiCSS, "images/icon_on.png",  imgDir . "icon_on.png")
-uiCSS := StrReplace(uiCSS, "images/icon_off.png", imgDir . "icon_off.png")
 uiCSS := StrReplace(uiCSS, "images/rvl.png",       imgDir . "rvl.png")
+uiHTML := StrReplace(uiHTML, "src=""images/rvl.png""", "src=""" . imgDir . "rvl.png""")
 
 styleTag  := "<style>`n" . uiCSS  . "`n</style>"
 scriptTag := "<script>`n" . uiJS . "`n</script>"
@@ -162,6 +164,8 @@ Sleep, 4000
 
 ; ── Tray ────────────────────────────────────────────────────
 Menu, Tray, NoStandard
+if FileExist(RVL_ICON)
+    Menu, Tray, Icon, %RVL_ICON%
 Menu, Tray, Add, Show Window,    ShowWindow
 Menu, Tray, Add, Launch Roblox,  RunFromTray
 Menu, Tray, Add
@@ -577,6 +581,23 @@ OnCheckUpdate:
         }
     }
 
+    ; GitHub can temporarily rate-limit both API endpoints. Use the public
+    ; repository manifest as a safe fallback so a valid network connection
+    ; does not become a false update-check error.
+    if (remoteVersion = "" || downloadUrl = "") {
+        manifest := HttpGet(UPDATE_MANIFEST)
+        if (manifest != "") {
+            RegExMatch(manifest, """version""\s*:\s*""([^""]+)""", mv)
+            RegExMatch(manifest, """download_url""\s*:\s*""([^""]+)""", mu)
+            manifestVersion := Trim(mv1)
+            manifestUrl := Trim(mu1)
+            if (manifestVersion != "" && manifestUrl != "") {
+                remoteVersion := manifestVersion
+                downloadUrl := manifestUrl
+            }
+        }
+    }
+
     downloadUrl := StrReplace(downloadUrl, "\/", "/")
     if (remoteVersion = "" || downloadUrl = "") {
         g_update_state := "error"
@@ -937,6 +958,7 @@ InjectConfig:
         WB.document.getElementById("__cfg_link").value    := lc
         WB.document.getElementById("__cfg_hotkey").value  := hk
         WB.document.getElementById("__cfg_enabled").value := hken
+        WB.document.getElementById("__app_version").value := APP_VERSION
         WB.document.getElementById("__cfg_presets").value := pjson
         WB.document.getElementById("__cfg_theme_mode").value    := thm
         WB.document.getElementById("__cfg_theme_bg").value      := thbg
@@ -1506,8 +1528,8 @@ UpdateHotkey(newKey, enabled) {
         TrayTip, RVL, Hotkey disabled, 2, 1
     }
 
-    iconFile := HotkeyActive ? A_ScriptDir "\images\icon_on.png" : A_ScriptDir "\images\icon_off.png"
-    Menu, Tray, Icon, %iconFile%
+    if FileExist(RVL_ICON)
+        Menu, Tray, Icon, %RVL_ICON%
 }
 
 ; ============================================================
