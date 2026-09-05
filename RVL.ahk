@@ -590,14 +590,6 @@ StartUpdateDownload:
         restartArgs := A_ScriptFullPath
     }
 
-    ; When running the source script, update it directly. This avoids relying
-    ; on a second PowerShell process just to replace files that Windows allows
-    ; the already-loaded .ahk script to overwrite.
-    if (!A_IsCompiled) {
-        Gosub, UpdateSourceFilesDirect
-        return
-    }
-
     helper := A_ScriptDir "\update-helper.ps1"
     if (!FileExist(helper)) {
         SetUpdateBridge("error", "", "Файл обновления не найден", 0)
@@ -607,7 +599,7 @@ StartUpdateDownload:
     psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
     if (!FileExist(psExe))
         psExe := "powershell.exe"
-    psArgs := "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "
+    psArgs := "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "
     psArgs .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
     psArgs .= " -Target " . UpdateQuote(A_ScriptDir)
     psArgs .= " -RestartPath " . UpdateQuote(restartPath)
