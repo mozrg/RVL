@@ -618,14 +618,17 @@ StartUpdateDownload:
     g_update_state := "downloading"
     g_update_started_at := A_TickCount
     SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
-    ; ShellExecute receives the executable and arguments separately, so paths
-    ; with spaces and Cyrillic characters cannot break the launch command.
+    ; Run starts PowerShell through the same reliable AHK path used by Mmacro.
+    ; ShellExecute can return without launching the script on some Windows
+    ; configurations, which previously produced a delayed false error.
     try {
-        shell := ComObjCreate("Shell.Application")
-        shell.ShellExecute(psExe, psArgs, A_ScriptDir, "open", 0)
+        runCommand := UpdateQuote(psExe) . " " . psArgs
+        Run, %runCommand%, %A_ScriptDir%, Hide, workerPid
+        if (ErrorLevel)
+            throw Exception("PowerShell не запустился")
     } catch e {
         g_update_state := "error"
-        SetUpdateBridge("error", "", "Не удалось запустить загрузчик обновления", 0)
+        SetUpdateBridge("error", "", "Не удалось запустить фоновый загрузчик", 0)
         return
     }
 

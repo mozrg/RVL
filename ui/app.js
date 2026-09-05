@@ -8266,6 +8266,13 @@ function hideUpdateScreen() {
     window.__rvlInstallScreenRequested = false;
 }
 
+function retryUpdateFromScreen() {
+    hideUpdateScreen();
+    var stateEl = el("__update_state");
+    if (stateEl) stateEl.value = "idle";
+    sendCmd("CMD:check_update");
+}
+
 function renderUpdateScreen(state, version, message, progress) {
     var overlay = el("update-screen-overlay");
     if (!overlay) return;
@@ -8302,7 +8309,10 @@ function renderUpdateScreen(state, version, message, progress) {
         if (footer) footer.innerHTML = "Файлы приложения не изменены";
         if (size) size.innerHTML = "Можно повторить обновление";
         if (speed) speed.innerHTML = "";
-        if (dismiss) dismiss.style.display = "block";
+        if (dismiss) {
+            dismiss.innerHTML = "ПОВТОРИТЬ";
+            dismiss.style.display = "block";
+        }
     } else if (state === "installing") {
         if (title) title.innerHTML = "Перезапускаем RVL";
         if (badge) badge.innerHTML = "ГОТОВО";
