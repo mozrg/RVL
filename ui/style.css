@@ -12791,3 +12791,47 @@ body:not(.theme-light):not(.theme-custom) .btn-tool:hover {
 }
 body:not(.theme-light):not(.theme-custom) .statusbar .green.status-bar-item { color: #E8E8E8; }
 body:not(.theme-light):not(.theme-custom) #status-version { color: #555555; }
+
+/* The detail panel has its own scroll container. Style it explicitly for
+   IE11 as well; otherwise Windows renders the native white scrollbar. */
+.pd-info {
+    scrollbar-face-color: #333333;
+    scrollbar-track-color: #111111;
+    scrollbar-arrow-color: #555555;
+    scrollbar-highlight-color: #111111;
+    scrollbar-3dlight-color: #111111;
+    scrollbar-darkshadow-color: #111111;
+    scrollbar-shadow-color: #333333;
+}
+.pd-info::-webkit-scrollbar { width: 4px; }
+.pd-info::-webkit-scrollbar-track {
+    background: #0F0F0F;
+    border-radius: 2px;
+}
+.pd-info::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 2px;
+}
+.pd-info::-webkit-scrollbar-thumb:hover { background: #555555; }
+.pd-info::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
+body.theme-light .pd-info {
+    scrollbar-face-color: #C8CCD3;
+    scrollbar-track-color: #F4F5F7;
+    scrollbar-arrow-color: #9099A8;
+    scrollbar-highlight-color: #F4F5F7;
+    scrollbar-3dlight-color: #F4F5F7;
+    scrollbar-darkshadow-color: #F4F5F7;
+    scrollbar-shadow-color: #C8CCD3;
+}
+body.theme-light .pd-info::-webkit-scrollbar-track { background: #F4F5F7; }
+body.theme-light .pd-info::-webkit-scrollbar-thumb { background: #C8CCD3; }
+body.theme-light .pd-info::-webkit-scrollbar-thumb:hover { background: #9099A8; }
+body.theme-custom .pd-info {
+    scrollbar-face-color: #555555;
+    scrollbar-track-color: #111111;
+    scrollbar-arrow-color: #777777;
+    scrollbar-highlight-color: #111111;
+    scrollbar-3dlight-color: #111111;
+    scrollbar-darkshadow-color: #111111;
+    scrollbar-shadow-color: #555555;
+}

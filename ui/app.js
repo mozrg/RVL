@@ -826,6 +826,9 @@ function initApp() {
     applyCompactMode();
     syncColorPickers();
     applyLanguage();
+    /* Initialization can touch input values and theme controls. The loaded
+       configuration is the clean baseline, not an unsaved edit. */
+    clearDirty();
     appInitialized = true;
     sendResize();
     /* Second resize after DOM settles — ensures compact-mode CSS has been
@@ -6571,6 +6574,11 @@ function updateEmptyState() {
 
 /* ── §D1 · Dirty state tracking ──────────────────────────── */
 function setDirty() {
+    /* The host injects the saved values after the page handlers are bound.
+       IE11 may report those programmatic value assignments as input events.
+       Ignore them until initApp() has completed; only real user edits should
+       produce the exit warning. */
+    if (!appInitialized) return;
     dirtyState = true;
     var d = el("__dirty_state");
     if (d) d.value = "1";
