@@ -1,7 +1,7 @@
-param(
-    [Parameter(Mandatory = $true)][string]$Url,
-    [Parameter(Mandatory = $true)][string]$Target,
-    [Parameter(Mandatory = $true)][string]$RestartPath,
+﻿param(
+    [string]$Url = "",
+    [string]$Target = "",
+    [string]$RestartPath = "",
     [string]$RestartArgs = "",
     [string]$StatusPath = "",
     [int]$WaitPid = 0,
@@ -123,7 +123,9 @@ try {
         Remove-Item -LiteralPath $ConfigPath -Force -ErrorAction SilentlyContinue
     }
     $selfPath = $MyInvocation.MyCommand.Path
-    if ($selfPath -and (Test-Path -LiteralPath $selfPath)) {
+    # Only temporary worker copies may delete themselves. Never remove the
+    # repository's update-worker.ps1 when the script is run directly.
+    if ($selfPath -and ([IO.Path]::GetFileName($selfPath) -like "RVL_update_worker_*.ps1") -and (Test-Path -LiteralPath $selfPath)) {
         Remove-Item -LiteralPath $selfPath -Force -ErrorAction SilentlyContinue
     }
 }
