@@ -1,5 +1,5 @@
 ﻿; ============================================================
-;  RVL.ahk  v1.10
+;  RVL.ahk  v1.11
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -16,7 +16,7 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.10"
+global APP_VERSION := "1.11"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
