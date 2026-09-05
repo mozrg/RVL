@@ -8285,7 +8285,7 @@ function renderUpdateScreen(state, version, message, progress) {
     }
     overlay.style.display = "-ms-flexbox";
     overlay.style.display = "flex";
-    overlay.className = "update-screen-overlay" + (state === "error" ? " update-screen-error" : "");
+    overlay.className = "update-screen-overlay" + (state === "error" ? " update-screen-error" : "") + (state === "installing" ? " update-screen-installing" : "");
 
     progress = Math.max(0, Math.min(100, parseInt(progress, 10) || 0));
     var ring = el("update-ring-fill");

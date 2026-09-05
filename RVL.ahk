@@ -606,15 +606,30 @@ StartUpdateDownload:
     psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
     if (!FileExist(psExe))
         psExe := "powershell.exe"
-    psArgs := "-NoProfile -NoLogo -NonInteractive -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "
-    psArgs .= UpdateQuote(helper) . " -Url " . UpdateQuote(g_update_url)
-    psArgs .= " -Target " . UpdateQuote(A_ScriptDir)
-    psArgs .= " -RestartPath " . UpdateQuote(restartPath)
+    ; Put all Unicode paths and arguments into a temporary PowerShell
+    ; launcher. The command line then contains only an ASCII temp path,
+    ; avoiding quoting/encoding failures from OneDrive\Документы.
+    launcher := A_Temp "\RVL_update_launcher_" . A_TickCount . ".ps1"
+    launcherScript := "$ErrorActionPreference = 'Stop'`r`n"
+    launcherScript .= "try {`r`n"
+    launcherScript .= "    & " . PowerShellQuote(helper) . " -Url " . PowerShellQuote(g_update_url)
+    launcherScript .= " -Target " . PowerShellQuote(A_ScriptDir)
+    launcherScript .= " -RestartPath " . PowerShellQuote(restartPath)
     if (restartArgs != "")
-        psArgs .= " -RestartArgs " . UpdateQuote(restartArgs)
-    psArgs .= " -StatusPath " . UpdateQuote(UPDATE_STATUS_FILE)
+        launcherScript .= " -RestartArgs " . PowerShellQuote(restartArgs)
     currentPid := DllCall("GetCurrentProcessId")
-    psArgs .= " -WaitPid " . currentPid
+    launcherScript .= " -StatusPath " . PowerShellQuote(UPDATE_STATUS_FILE)
+    launcherScript .= " -WaitPid " . currentPid . "`r`n"
+    launcherScript .= "} finally {`r`n"
+    launcherScript .= "    Start-Sleep -Milliseconds 100`r`n"
+    launcherScript .= "    Remove-Item -LiteralPath `$MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue`r`n"
+    launcherScript .= "}`r`n"
+    launcherFile := FileOpen(launcher, "w", "UTF-8")
+    if (!launcherFile)
+        throw Exception("Не удалось создать временный загрузчик")
+    launcherFile.Write(launcherScript)
+    launcherFile.Close()
+    psArgs := "-NoProfile -NoLogo -NonInteractive -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File " . UpdateQuote(launcher)
 
     g_update_state := "downloading"
     g_update_started_at := A_TickCount
@@ -623,8 +638,8 @@ StartUpdateDownload:
     ; ShellExecute can return without launching the script on some Windows
     ; configurations, which previously produced a delayed false error.
     try {
-        ; Keep the executable unquoted like the known-good Mmacro launcher.
-        ; Only the script and value arguments need quoting.
+        ; The launcher path is ASCII, so the process start is independent of
+        ; the user's project path and Windows code page.
         runCommand := "powershell.exe " . psArgs
         Run, %runCommand%, %A_ScriptDir%, Hide, workerPid
         g_update_worker_pid := workerPid
@@ -1042,6 +1057,10 @@ VersionToNumber(version) {
 UpdateQuote(value) {
     quote := Chr(34)
     return quote . StrReplace(value, quote, quote . quote) . quote
+}
+
+PowerShellQuote(value) {
+    return "'" . StrReplace(value, "'", "''") . "'"
 }
 
 ; ============================================================
