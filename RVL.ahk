@@ -606,40 +606,37 @@ StartUpdateDownload:
     psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
     if (!FileExist(psExe))
         psExe := "powershell.exe"
-    ; Put all Unicode paths and arguments into a temporary PowerShell
-    ; launcher. The command line then contains only an ASCII temp path,
-    ; avoiding quoting/encoding failures from OneDrive\Документы.
-    launcher := A_Temp "\RVL_update_launcher_" . A_TickCount . ".ps1"
-    launcherScript := "$ErrorActionPreference = 'Stop'`r`n"
-    launcherScript .= "try {`r`n"
-    launcherScript .= "    & " . PowerShellQuote(helper) . " -Url " . PowerShellQuote(g_update_url)
-    launcherScript .= " -Target " . PowerShellQuote(A_ScriptDir)
-    launcherScript .= " -RestartPath " . PowerShellQuote(restartPath)
-    if (restartArgs != "")
-        launcherScript .= " -RestartArgs " . PowerShellQuote(restartArgs)
-    currentPid := DllCall("GetCurrentProcessId")
-    launcherScript .= " -StatusPath " . PowerShellQuote(UPDATE_STATUS_FILE)
-    launcherScript .= " -WaitPid " . currentPid . "`r`n"
-    launcherScript .= "} finally {`r`n"
-    launcherScript .= "    Start-Sleep -Milliseconds 100`r`n"
-    launcherScript .= "    Remove-Item -LiteralPath `$MyInvocation.MyCommand.Path -Force -ErrorAction SilentlyContinue`r`n"
-    launcherScript .= "}`r`n"
-    launcherFile := FileOpen(launcher, "w", "UTF-8")
-    if (!launcherFile)
-        throw Exception("Не удалось создать временный загрузчик")
-    launcherFile.Write(launcherScript)
-    launcherFile.Close()
-    psArgs := "-NoProfile -NoLogo -NonInteractive -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File " . UpdateQuote(launcher)
+    ; Copy the worker and put all Unicode values into a UTF-8 config file.
+    ; The PowerShell command line contains only ASCII paths from %TEMP%, so
+    ; OneDrive\Документы and Cyrillic arguments cannot break process launch.
+    stamp := A_TickCount
+    workerTemp := A_Temp "\RVL_update_worker_" . stamp . ".ps1"
+    configTemp := A_Temp "\RVL_update_config_" . stamp . ".ini"
+    FileCopy, %helper%, %workerTemp%, 1
+    if (ErrorLevel || !FileExist(workerTemp))
+        throw Exception("Не удалось подготовить фоновый загрузчик")
+
+    configFile := FileOpen(configTemp, "w", "UTF-8")
+    if (!configFile)
+        throw Exception("Не удалось создать конфигурацию обновления")
+    configFile.Write("Url=" . g_update_url . "`r`n")
+    configFile.Write("Target=" . A_ScriptDir . "`r`n")
+    configFile.Write("RestartPath=" . restartPath . "`r`n")
+    configFile.Write("RestartArgs=" . restartArgs . "`r`n")
+    configFile.Write("StatusPath=" . UPDATE_STATUS_FILE . "`r`n")
+    configFile.Write("WaitPid=" . DllCall("GetCurrentProcessId") . "`r`n")
+    configFile.Close()
+    psArgs := "-NoProfile -NoLogo -NonInteractive -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File " . UpdateQuote(workerTemp)
+    psArgs .= " -ConfigPath " . UpdateQuote(configTemp)
 
     g_update_state := "downloading"
     g_update_started_at := A_TickCount
-    SetUpdateBridge("downloading", g_update_version, "Скачиваю файлы и перезапускаю RVL...", 35)
+    SetUpdateBridge("downloading", g_update_version, "Подключаюсь к GitHub...", 0)
     ; Run starts PowerShell through the same reliable AHK path used by Mmacro.
     ; ShellExecute can return without launching the script on some Windows
     ; configurations, which previously produced a delayed false error.
     try {
-        ; The launcher path is ASCII, so the process start is independent of
-        ; the user's project path and Windows code page.
+        ; Both command-line paths are ASCII temporary paths.
         runCommand := UpdateQuote(psExe) . " " . psArgs
         ; Use an ASCII temporary working directory. The project path may
         ; contain Cyrillic characters and is already passed inside the PS1.
@@ -1059,10 +1056,6 @@ VersionToNumber(version) {
 UpdateQuote(value) {
     quote := Chr(34)
     return quote . StrReplace(value, quote, quote . quote) . quote
-}
-
-PowerShellQuote(value) {
-    return "'" . StrReplace(value, "'", "''") . "'"
 }
 
 ; ============================================================

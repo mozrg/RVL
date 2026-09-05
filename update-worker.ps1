@@ -4,11 +4,25 @@ param(
     [Parameter(Mandatory = $true)][string]$RestartPath,
     [string]$RestartArgs = "",
     [string]$StatusPath = "",
-    [int]$WaitPid = 0
+    [int]$WaitPid = 0,
+    [string]$ConfigPath = ""
 )
 
 $ErrorActionPreference = "Stop"
 $work = $null
+
+if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath)) {
+    $config = @{}
+    Get-Content -LiteralPath $ConfigPath -Encoding UTF8 | ForEach-Object {
+        if ($_ -match '^([^=]+)=(.*)$') { $config[$matches[1]] = $matches[2] }
+    }
+    if ($config.ContainsKey("Url")) { $Url = $config["Url"] }
+    if ($config.ContainsKey("Target")) { $Target = $config["Target"] }
+    if ($config.ContainsKey("RestartPath")) { $RestartPath = $config["RestartPath"] }
+    if ($config.ContainsKey("RestartArgs")) { $RestartArgs = $config["RestartArgs"] }
+    if ($config.ContainsKey("StatusPath")) { $StatusPath = $config["StatusPath"] }
+    if ($config.ContainsKey("WaitPid")) { $WaitPid = [int]$config["WaitPid"] }
+}
 
 function Write-WorkerStatus([string]$state, [int]$progress, [string]$message) {
     if (-not $StatusPath) { return }
@@ -104,5 +118,12 @@ try {
 } finally {
     if ($work -and (Test-Path -LiteralPath $work)) {
         Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($ConfigPath -and (Test-Path -LiteralPath $ConfigPath)) {
+        Remove-Item -LiteralPath $ConfigPath -Force -ErrorAction SilentlyContinue
+    }
+    $selfPath = $MyInvocation.MyCommand.Path
+    if ($selfPath -and (Test-Path -LiteralPath $selfPath)) {
+        Remove-Item -LiteralPath $selfPath -Force -ErrorAction SilentlyContinue
     }
 }
