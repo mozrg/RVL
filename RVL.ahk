@@ -132,6 +132,13 @@ OnMessage(0x84, "WM_NCHITTEST")
 
 Gui, Show, w420 h610, RVL
 
+; Start the splash timer when the native window is actually visible. The
+; browser page can finish loading several seconds before Gui, Show, which
+; otherwise makes the startup screen disappear almost immediately.
+try {
+    WB.document.parentWindow.execScript("markStartupVisible()")
+}
+
 ; Enhancement: restore saved window position — read early before InjectConfig
 IniRead, savedWinX, %CFG%, Settings, WindowX, -1
 IniRead, savedWinY, %CFG%, Settings, WindowY, -1
@@ -147,6 +154,11 @@ if (savedWinX >= 0 && savedWinY >= 0) {
 global CORNER_RADIUS := 16
 hRgn := DllCall("CreateRoundRectRgn", "Int", 0, "Int", 0, "Int", 420, "Int", 610, "Int", CORNER_RADIUS, "Int", CORNER_RADIUS, "Ptr")
 DllCall("SetWindowRgn", "Ptr", hMainWnd, "Ptr", hRgn, "Int", 1)
+
+; Keep the native startup window visible long enough for the user to read it.
+; This host-level delay is intentional: JavaScript timers start while the
+; WebBrowser control is still painting and cannot guarantee visible time.
+Sleep, 4000
 
 ; ── Tray ────────────────────────────────────────────────────
 Menu, Tray, NoStandard

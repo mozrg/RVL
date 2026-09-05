@@ -96,8 +96,10 @@ var currentGuidePage = 1;   /* guide modal page 1 or 2 */
    same HTML/CSS and forwards only settings commands to the main AHK bridge. */
 var __rvlSettingsPopupMode = false;
 var __rvlSettingsPopup = null;
-var RVL_STARTUP_MIN_DURATION = 3000;
+var RVL_STARTUP_MIN_DURATION = 4000;
+var RVL_VERSION_CHECK_MIN_DURATION = 4000;
 var rvlStartupShownAt = new Date().getTime();
+var rvlStartupCheckShownAt = 0;
 try {
     __rvlSettingsPopupMode = window.location.hash === "#settings";
 } catch (e) {}
@@ -646,6 +648,8 @@ var sortMode          = "manual";  /* manual | name | date | launches | fav */
 var undoStack         = [];        /* [{type, data, prevIndex}] — 1-step undo for delete */
 var compactMode       = false;
 var dirtyState        = false;     /* unsaved changes flag for exit confirm */
+var dirtyBaseline     = null;      /* serialized state after the last clean save */
+var dirtyTrackingSuppressed = false; /* programmatic field updates are not edits */
 var toastQueue        = [];
 var toastContainer    = null;
 
@@ -840,6 +844,7 @@ function initApp() {
        configuration is the clean baseline, not an unsaved edit. */
     clearDirty();
     appInitialized = true;
+    captureDirtyBaseline();
     sendResize();
     /* Second resize after DOM settles — ensures compact-mode CSS has been
        applied so liveHeight() measures correct (smaller) element sizes. */
@@ -4043,20 +4048,30 @@ function confirmNewPreset() {
 function loadPreset(id) {
     var p = findPreset(id);
     if (!p) return;
-    lastLoadedPresetId = id;
-    if (el("__last_loaded_preset_id")) el("__last_loaded_preset_id").value = id;
-    var m = p.method || 1;
-    switchMethod(m);
-    if (m === 2) {
-        var scInp = el("inp-share-code");
-        if (scInp) scInp.value = p.linkCode || "";
-        el("inp-place").value = "";
-        el("inp-link").value  = p.linkCode || "";
-    } else {
-        el("inp-place").value = p.placeId  || "";
-        el("inp-link").value  = p.linkCode || "";
+
+    /* Loading a preset fills the inputs programmatically. Some embedded
+       browser versions emit input events for those assignments, but selecting
+       a preset is not itself an unsaved edit. */
+    var previousDirtySuppression = dirtyTrackingSuppressed;
+    dirtyTrackingSuppressed = true;
+    try {
+        lastLoadedPresetId = id;
+        if (el("__last_loaded_preset_id")) el("__last_loaded_preset_id").value = id;
+        var m = p.method || 1;
+        switchMethod(m);
+        if (m === 2) {
+            var scInp = el("inp-share-code");
+            if (scInp) scInp.value = p.linkCode || "";
+            el("inp-place").value = "";
+            el("inp-link").value  = p.linkCode || "";
+        } else {
+            el("inp-place").value = p.placeId  || "";
+            el("inp-link").value  = p.linkCode || "";
+        }
+        updateActiveRow();
+    } finally {
+        dirtyTrackingSuppressed = previousDirtySuppression;
     }
-    updateActiveRow();
 }
 
 /* Switch .preset-row-active on existing rows — no DOM rebuild at all */
@@ -6836,21 +6851,41 @@ function setDirty() {
        IE11 may report those programmatic value assignments as input events.
        Ignore them until initApp() has completed; only real user edits should
        produce the exit warning. */
-    if (!appInitialized) return;
+    if (!appInitialized || dirtyTrackingSuppressed) return;
     dirtyState = true;
     var d = el("__dirty_state");
     if (d) d.value = "1";
+}
+
+function getDirtySignature() {
+    var values = [
+        el("inp-place") ? el("inp-place").value : "",
+        el("inp-link") ? el("inp-link").value : "",
+        el("inp-share-code") ? el("inp-share-code").value : "",
+        el("inp-key") ? el("inp-key").value : "",
+        JSON.stringify(presets || []),
+        JSON.stringify(groups || [])
+    ];
+    return JSON.stringify(values);
+}
+
+function captureDirtyBaseline() {
+    dirtyBaseline = getDirtySignature();
 }
 
 function clearDirty() {
     dirtyState = false;
     var d = el("__dirty_state");
     if (d) d.value = "0";
+    if (appInitialized) captureDirtyBaseline();
 }
 
 /* ── §D2 · Exit confirmation ─────────────────────────────── */
 function requestExit() {
-    if (!dirtyState) {
+    /* A stale dirty flag must not block exit when the actual editable state
+       is identical to the last clean baseline. */
+    if (!dirtyState || (dirtyBaseline !== null && getDirtySignature() === dirtyBaseline)) {
+        clearDirty();
         sendCmd("CMD:close");
         return;
     }
@@ -8541,6 +8576,13 @@ var lastRenderedUpdateState = "";
 
 function updateText() { return UPDATE_TEXT[currentLang] || UPDATE_TEXT.ru; }
 
+/* AHK calls this immediately after the native window becomes visible. The
+   script itself is loaded before Gui, Show, so starting the timer at parse
+   time can make the splash appear for only a fraction of a second. */
+function markStartupVisible() {
+    rvlStartupShownAt = new Date().getTime();
+}
+
 function refreshUpdateLanguage() {
     var U = updateText();
     var label = el("lbl-update");
@@ -8710,9 +8752,12 @@ function hideStartupScreen(resultState) {
         fill.style.width = "100%";
         fill.style.marginLeft = "0";
     }
-    var elapsed = new Date().getTime() - rvlStartupShownAt;
+    var now = new Date().getTime();
+    var elapsed = now - rvlStartupShownAt;
+    var checkElapsed = rvlStartupCheckShownAt ? now - rvlStartupCheckShownAt : 0;
     var minimumDelay = Math.max(0, RVL_STARTUP_MIN_DURATION - elapsed);
-    var fadeDelay = Math.max(minimumDelay, notice ? 680 : 430);
+    var minimumCheckDelay = Math.max(0, RVL_VERSION_CHECK_MIN_DURATION - checkElapsed);
+    var fadeDelay = Math.max(minimumDelay, minimumCheckDelay, notice ? 680 : 430);
     setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, fadeDelay);
     if (resultState === "available" && !notice) {
         setTimeout(function () { openUpdatePrompt(); }, fadeDelay + 490);
@@ -8776,25 +8821,35 @@ function handleUpdateButton() {
 function startStartupVersionCheck() {
     if (window.__rvlStartupCheckStarted) return;
     window.__rvlStartupCheckStarted = true;
-    var status = el("startup-status");
-    if (status) status.innerHTML = updateText().startupChecking;
-    sendCmd("CMD:check_update");
+    var interfaceElapsed = new Date().getTime() - rvlStartupShownAt;
+    var interfaceDelay = Math.max(0, RVL_STARTUP_MIN_DURATION - interfaceElapsed);
 
-    var startedAt = new Date().getTime();
-    function waitForResult() {
-        var state = el("__update_state") ? (el("__update_state").value || "idle") : "idle";
-        if (state === "latest" || state === "available" || state === "error") {
-            hideStartupScreen(state);
-            return;
-        }
-        /* Do not leave the user behind a splash forever if GitHub is offline. */
-        if (new Date().getTime() - startedAt > 15000) {
-            hideStartupScreen("error");
-            return;
+    function beginVersionCheck() {
+        rvlStartupCheckShownAt = new Date().getTime();
+        var status = el("startup-status");
+        if (status) status.innerHTML = updateText().startupChecking;
+        sendCmd("CMD:check_update");
+
+        var startedAt = rvlStartupCheckShownAt;
+        function waitForResult() {
+            var state = el("__update_state") ? (el("__update_state").value || "idle") : "idle";
+            if (state === "latest" || state === "available" || state === "error") {
+                hideStartupScreen(state);
+                return;
+            }
+            /* Do not leave the user behind a splash forever if GitHub is offline. */
+            if (new Date().getTime() - startedAt > 15000) {
+                hideStartupScreen("error");
+                return;
+            }
+            setTimeout(waitForResult, 120);
         }
         setTimeout(waitForResult, 120);
     }
-    setTimeout(waitForResult, 120);
+
+    /* Keep the interface-loading state visible for the full stage before the
+       version-check state replaces it. */
+    setTimeout(beginVersionCheck, interfaceDelay);
 }
 
 /* initApp is called by AHK after the saved state is injected. Wrapping it
