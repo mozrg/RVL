@@ -1,5 +1,5 @@
 ﻿; ============================================================
-;  RVL.ahk  v1.11
+;  RVL.ahk  v1.12
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -16,9 +16,10 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.11"
+global APP_VERSION := "1.12"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
+global UPDATE_TAGS := "https://api.github.com/repos/mozrg/RVL/tags?per_page=10"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
 
 ; ── State ───────────────────────────────────────────────────
@@ -773,6 +774,28 @@ OnCheckUpdate:
             if (listVersion != "") {
                 remoteVersion := listVersion
                 downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . listVersion
+            }
+        }
+    }
+
+    ; Tags must be checked even when a Release exists: a newer tag pushed
+    ; without a published Release (or a stale Release pointing at an older
+    ; commit) would otherwise hide a real update forever. Whichever source
+    ; reports the newer version wins.
+    tagsJson := HttpGet(UPDATE_TAGS)
+    if (tagsJson != "") {
+        scanPos := 1
+        Loop {
+            scanPos := RegExMatch(tagsJson, """name""\s*:\s*""([^""]+)""", tagMatch, scanPos)
+            if (!scanPos)
+                break
+            tagName := Trim(tagMatch1)
+            scanPos += StrLen(tagMatch)
+            ; Only plain numeric tags (1.13, v1.13) may drive an update so a
+            ; random non-version tag can never trigger one.
+            if (tagName != "" && RegExMatch(tagName, "^v?[0-9]+(\.[0-9]+)*$") && VersionToNumber(tagName) > VersionToNumber(remoteVersion)) {
+                remoteVersion := tagName
+                downloadUrl := "https://codeload.github.com/mozrg/RVL/zip/refs/tags/" . tagName
             }
         }
     }

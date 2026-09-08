@@ -1066,6 +1066,7 @@ window.onload = function () {
             var chk = el("chk-gradient");
             if (chk) chk.checked = !chk.checked;
             customTheme.gradientEnabled = !!(chk && chk.checked);
+            syncThemeBridgeFields();
             syncGradientUI();
             if (themeMode === "custom") applyTheme();
             return false;
@@ -1080,6 +1081,7 @@ window.onload = function () {
                 customTheme.gradientAngle = ang;
                 var angInp = el("theme-grad-angle");
                 if (angInp) angInp.value = ang.toString();
+                syncThemeBridgeFields();
                 syncAngleButtons();
                 if (themeMode === "custom") applyTheme();
             };
@@ -1088,7 +1090,7 @@ window.onload = function () {
     var angInp = el("theme-grad-angle");
     if (angInp) angInp.onchange = function() {
         var v = parseInt(this.value, 10);
-        if (!isNaN(v)) { customTheme.gradientAngle = Math.max(0, Math.min(360, v)); syncAngleButtons(); if (themeMode === "custom") applyTheme(); }
+        if (!isNaN(v)) { customTheme.gradientAngle = Math.max(0, Math.min(360, v)); syncThemeBridgeFields(); syncAngleButtons(); if (themeMode === "custom") applyTheme(); }
     };
     bindColorInput("theme-grad-bg2");
     bindColorPicker("cp-grad-bg2", "theme-grad-bg2");
@@ -2575,6 +2577,7 @@ function syncThemeControls() {
     syncGradientUI();
     updateSwatches();
     syncColorPickers();
+    syncThemeBridgeFields();
 }
 
 function bindColorInput(id) {
@@ -2607,6 +2610,27 @@ function syncCustomFromInputs(forceNormalize) {
         el("theme-text").value = customTheme.text;
         el("theme-accent").value = customTheme.accent;
         if (el("theme-grad-bg2")) el("theme-grad-bg2").value = customTheme.gradientBg2;
+    }
+    syncThemeBridgeFields();
+}
+
+/* Keep the hidden AHK bridge in lockstep with the visible detached settings
+   controls. The native settings window is a separate WebBrowser document;
+   copying only the visible inputs left the bridge with the previous theme. */
+function syncThemeBridgeFields() {
+    var pairs = [
+        ["__cfg_theme_mode", themeMode],
+        ["__cfg_theme_bg", customTheme.bg],
+        ["__cfg_theme_surface", customTheme.surface],
+        ["__cfg_theme_text", customTheme.text],
+        ["__cfg_theme_accent", customTheme.accent],
+        ["__cfg_theme_grad_en", customTheme.gradientEnabled ? "1" : "0"],
+        ["__cfg_theme_grad_bg2", customTheme.gradientBg2 || customTheme.bg],
+        ["__cfg_theme_grad_angle", (customTheme.gradientAngle || 135).toString()]
+    ];
+    for (var i = 0; i < pairs.length; i++) {
+        var node = el(pairs[i][0]);
+        if (node) node.value = pairs[i][1];
     }
 }
 
@@ -3043,13 +3067,18 @@ function applyCustomThemeStyle() {
         var r = [];
 
         /* ---- Base ---- */
-        if (customTheme.gradientEnabled && customTheme.gradientBg2 && customTheme.gradientBg2 !== B) {
+        /* !important is required here: the static §maket-redesign block pins
+           html/body to #0A0A0A with !important, which would otherwise beat
+           these rules and hide the custom background / gradient. */
+        var gradOn  = customTheme.gradientEnabled && customTheme.gradientBg2 && customTheme.gradientBg2 !== B;
+        var gradCSS = "";
+        if (gradOn) {
             var ang = customTheme.gradientAngle || 135;
-            var gradCSS = "linear-gradient(" + ang + "deg," + B + " 0%," + customTheme.gradientBg2 + " 100%)";
-            r.push("html.theme-custom,body.theme-custom{background:" + gradCSS + ";color:" + T + "}");
-            r.push("html.theme-custom,body.theme-custom{background-attachment:fixed}");
+            gradCSS = "linear-gradient(" + ang + "deg," + B + " 0%," + customTheme.gradientBg2 + " 100%)";
+            r.push("html.theme-custom,body.theme-custom{background:" + gradCSS + " !important;color:" + T + "}");
+            r.push("html.theme-custom,body.theme-custom{background-attachment:fixed !important}");
         } else {
-            r.push("body.theme-custom{background:" + B + ";color:" + T + "}");
+            r.push("html.theme-custom,body.theme-custom{background:" + B + " !important;color:" + T + "}");
         }
 
         /* ---- Titlebar ---- */
@@ -3527,6 +3556,52 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .pd-fav-on.btn-tool{background:" + A + " !important;color:" + B + " !important;border-color:" + A + " !important}");
         r.push("body.theme-custom .statusbar .green.status-bar-item{color:" + A + " !important}");
         r.push("body.theme-custom .btn-go.btn-primary:hover{background:" + ra(A,0.88) + " !important}");
+
+        /* ---- §rvl-interface-polish overrides (final-layout fixes) ----
+           The static polish block pins several controls using ID selectors
+           (#roblox-status) and !important class rules (.ir-field.field-input,
+           .ir-tabs) that outrank the generic theme rules above — those
+           controls stayed dark in every custom theme. Re-state them here at
+           equal-or-higher precedence so custom themes reach them too.      */
+        /* Roblox running/not-running capsule: ID selectors need ID-level rules */
+        r.push("body.theme-custom #roblox-status{background:" + a10 + " !important;border-color:" + a27 + " !important}");
+        r.push("body.theme-custom #roblox-status:before{background:" + t53 + " !important;box-shadow:none !important}");
+        r.push("body.theme-custom #roblox-status.roblox-on{background:" + ra("#22C55E",0.12) + " !important;border-color:" + ra("#22C55E",0.34) + " !important}");
+        r.push("body.theme-custom #roblox-status.roblox-on:before{background:#22C55E !important;box-shadow:0 0 8px rgba(34,197,94,0.55) !important}");
+        /* Method input fields (PLACE ID / LINK CODE / SHARE CODE) */
+        r.push("body.theme-custom .ir-field.field-input{background:" + S + " !important;border-color:" + a27 + " !important;color:" + T + " !important}");
+        r.push("body.theme-custom .ir-field.field-input:hover{background:" + S + " !important;border-color:" + t40 + " !important}");
+        r.push("body.theme-custom .ir-field.field-input:focus{background:" + ra(S,0.95) + " !important;border-color:" + t53 + " !important;box-shadow:0 0 0 2px " + a10 + " !important}");
+        r.push("body.theme-custom .ir-field.field-input::-ms-input-placeholder,body.theme-custom .ir-field.field-input:-ms-input-placeholder,body.theme-custom .ir-field.field-input::placeholder{color:" + t40 + " !important}");
+        /* Method-tabs container (СП 1 / СП 2) — polish pins its background */
+        r.push("body.theme-custom .ir-tabs{background:" + ra(S,0.95) + " !important;border-color:" + a27 + " !important}");
+        r.push("body.theme-custom .ir-tab.method-tab + .ir-tab.method-tab{border-left-color:" + a27 + " !important}");
+        /* Presets list column — polish hardcodes its dark background */
+        r.push("body.theme-custom .plist.presets-scroll{background:" + B + " !important;border-right-color:" + a15 + " !important}");
+        r.push("body.theme-custom .pdetail:before{color:" + t33 + " !important}");
+        r.push("body.theme-custom .pd-empty-icon{background:" + a10 + " !important;border-color:" + t25 + " !important;color:" + t47 + " !important}");
+        r.push("body.theme-custom .pd-hdr{border-bottom-color:" + t15 + " !important}");
+        r.push("body.theme-custom .pd-ftr{border-top-color:" + t15 + " !important}");
+        /* Header underline glow — hardcoded white gradient in polish */
+        r.push("body.theme-custom .hdr:after{background:-ms-linear-gradient(left," + ra(B,0) + " 0%," + t33 + " 50%," + ra(B,0) + " 100%) !important;background:linear-gradient(to right," + ra(B,0) + " 0%," + t33 + " 50%," + ra(B,0) + " 100%) !important}");
+        /* Search field focus ring — polish hardcodes a gray glow */
+        r.push("body.theme-custom .tb-search.search-inp:focus{background:" + ra(S,0.95) + " !important;border-color:" + t53 + " !important;box-shadow:0 0 0 2px " + a10 + " !important}");
+
+        /* §gradient-fix — the flat-B chrome rules above (.app-shell, .hdr,
+           .input-row, .main2, .plist, ...) painted on top of html/body, so an
+           enabled gradient only leaked through the few rounding pixels at
+           the very bottom of the window. When the gradient is active the
+           chrome surfaces become transparent and .app-shell carries the
+           gradient itself. These rules are pushed LAST so they outrank the
+           flat-B rules at equal specificity + importance. */
+        if (gradOn) {
+            r.push("body.theme-custom .app-shell{background:" + gradCSS + " !important}");
+            r.push("body.theme-custom .hdr,body.theme-custom .input-row,body.theme-custom .toolbar,body.theme-custom .main2,body.theme-custom .statusbar.status-bar{background:transparent !important}");
+            r.push("body.theme-custom .sort-bar,body.theme-custom .sort-collapsed,body.theme-custom .plist.presets-scroll{background:transparent !important}");
+            /* Detached settings popup: the modal card fills the entire native
+               window there, so it must carry the gradient for a live preview. */
+            r.push("body.settings-popup.theme-custom #settings-modal{background:" + gradCSS + " !important}");
+        }
 
         css = r.join("");
     }
@@ -5172,10 +5247,15 @@ function initTooltips() {
         }
 
         /* getBoundingClientRect gives real screen position even inside
-           scrolled containers. Divide by uiScale to get body-local px. */
+           scrolled containers. Convert to body-local px using the REAL
+           body scale (layout size / rendered size). The detached settings
+           popup never transforms its body, while uiScale may still hold
+           the main window's saved scale (e.g. 1.3) — dividing by uiScale
+           there shifted every tooltip up and to the left. */
         var bodyRect = document.body.getBoundingClientRect();
         var elRect   = tipEl.getBoundingClientRect();
-        var sc       = 1 / (uiScale || 1);
+        var layW     = document.body.offsetWidth || 0;
+        var sc       = (layW > 0 && bodyRect.width > 0) ? layW / bodyRect.width : 1;
 
         var elL      = (elRect.left  - bodyRect.left) * sc;
         var elT      = (elRect.top   - bodyRect.top)  * sc;
@@ -5183,8 +5263,8 @@ function initTooltips() {
         var elH      = elRect.height * sc;
 
         var tipW     = tooltip.offsetWidth || 130;
-        var bodyW    = BASE_W;
-        var bodyH    = document.body.offsetHeight || bodyRect.height * sc;
+        var bodyW    = layW || BASE_W;
+        var bodyH    = document.body.offsetHeight || Math.round(bodyRect.height * sc);
         var elCenter = elL + elW / 2;
         var left     = elCenter - tipW / 2;
 
