@@ -1,5 +1,5 @@
 ﻿; ============================================================
-;  RVL.ahk  v1.12
+;  RVL.ahk  v1.13
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -16,11 +16,32 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.12"
+global APP_VERSION := "1.13"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_TAGS := "https://api.github.com/repos/mozrg/RVL/tags?per_page=10"
 global UPDATE_STATUS_FILE := A_Temp "\RVL_update_status.txt"
+
+; ── Assignable hotkey keys ─────────────────────────────────
+; Single list shared by every capture (main, per-preset, show/hide).
+; Parsed with Loop, Parse on "," — no entry may contain a comma.
+; Excluded on purpose: ";" (breaks the preset-hk map), "," (delimiter),
+; the AHK hotkey modifier symbols ! ^ + # $ * ~ < >, and the punctuation
+; keys [ ] ' \ ` — the Hotkey command DEADLOCKS on those names in
+; AHK v1.1.36 (verified; . / - = register cleanly and are kept).
+global HK_CAPTURE_KEYS := "Numpad0,Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9"
+     . ",NumpadDot,NumpadDiv,NumpadMult,NumpadAdd,NumpadSub,NumpadEnter"
+     . ",F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12,F13,F14,F15,F16,F17,F18,F19,F20,F21,F22,F23,F24"
+     . ",Left,Up,Right,Down,Insert,Delete,Home,End,PgUp,PgDn"
+     . ",Tab,Space,Enter,Backspace"
+     . ",AppsKey,PrintScreen,ScrollLock,Pause,CapsLock,NumLock"
+     . ",A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z"
+     . ",0,1,2,3,4,5,6,7,8,9"
+     . ",Volume_Mute,Volume_Down,Volume_Up"
+     . ",Media_Next,Media_Prev,Media_Play_Pause,Media_Stop"
+     . ",Browser_Back,Browser_Forward,Browser_Refresh,Browser_Search,Browser_Stop,Browser_Favorites"
+     . ",Launch_App1,Launch_App2,Launch_Mail,Launch_Media"
+     . ",.,/,-,="
 
 ; ── State ───────────────────────────────────────────────────
 global WB
@@ -62,8 +83,11 @@ global g_scale        := "1.0"
 global g_theme_grad_en    := 0
 global g_theme_grad_bg2   := "#0A0A0A"
 global g_theme_grad_angle := 135
+global g_theme_grad_op    := 100
 global g_launch_delay     := 0
 global g_tooltips     := 1
+global g_ui_hidden    := ""
+global g_ui_text      := ""
 global g_shKey        := ""
 global g_shEn         := 0
 global g_mask_inputs  := 1
@@ -497,6 +521,8 @@ DispatchCommand:
         Gosub, OnCapturePresetHK
     } else if (cmd = "CMD:update_preset_hk") {
         Gosub, UpdatePresetHotkeys
+    } else if (SubStr(cmd, 1, 14) = "CMD:thumb_req ") {
+        Gosub, OnThumbRequest
     } else if (cmd = "CMD:export_presets") {
         Gosub, OnExportPresets
     } else if (cmd = "CMD:import_presets") {
@@ -601,7 +627,7 @@ Return
 ; two identical HTML documents. Using one list keeps imports, theme presets,
 ; hotkey capture and future settings controls working in the child window.
 CopySettingsDom(sourceWB, targetWB) {
-    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version"
+    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_theme_grad_op|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version|__cfg_ui_hidden|__cfg_ui_text"
     Loop, Parse, valueIds, |
     {
         fieldId := A_LoopField
@@ -1087,6 +1113,7 @@ ReadDom:
         g_theme_grad_en    := WB.document.getElementById("__cfg_theme_grad_en") ? WB.document.getElementById("__cfg_theme_grad_en").value : "0"
         g_theme_grad_bg2   := WB.document.getElementById("__cfg_theme_grad_bg2") ? WB.document.getElementById("__cfg_theme_grad_bg2").value : g_theme_bg
         g_theme_grad_angle := WB.document.getElementById("__cfg_theme_grad_angle") ? WB.document.getElementById("__cfg_theme_grad_angle").value : "135"
+        g_theme_grad_op    := WB.document.getElementById("__cfg_theme_grad_op") ? WB.document.getElementById("__cfg_theme_grad_op").value : "100"
         g_launch_delay     := WB.document.getElementById("__cfg_launch_delay") ? WB.document.getElementById("__cfg_launch_delay").value : "0"
         g_tooltips      := WB.document.getElementById("__cfg_tooltips").value
         g_lang          := WB.document.getElementById("__cfg_lang").value
@@ -1096,6 +1123,8 @@ ReadDom:
         g_shEn          := WB.document.getElementById("__cfg_sh_en").value
         g_mask_inputs   := WB.document.getElementById("__cfg_mask_inputs") ? WB.document.getElementById("__cfg_mask_inputs").value : "1"
         g_always_on_top := WB.document.getElementById("__cfg_always_on_top") ? WB.document.getElementById("__cfg_always_on_top").value : "0"
+        g_ui_hidden := WB.document.getElementById("__cfg_ui_hidden") ? WB.document.getElementById("__cfg_ui_hidden").value : ""
+        g_ui_text   := WB.document.getElementById("__cfg_ui_text") ? WB.document.getElementById("__cfg_ui_text").value : ""
         g_theme_presets := WB.document.getElementById("__theme_presets_out").value
         g_preset_groups_json := WB.document.getElementById("__preset_groups_out") ? WB.document.getElementById("__preset_groups_out").value : g_preset_groups_json
     } catch e {
@@ -1121,6 +1150,7 @@ InjectConfig:
     IniRead, thgren, %CFG%, Settings, ThemeGradEn,    0
     IniRead, thgrbg2, %CFG%, Settings, ThemeGradBg2,  #0A0A0A
     IniRead, thgrang, %CFG%, Settings, ThemeGradAngle, 135
+    IniRead, thgrop,  %CFG%, Settings, ThemeGradOp,    100
     IniRead, ldel,   %CFG%, Settings, LaunchDelay,    0
     IniRead, tt,     %CFG%, Settings, TooltipsEnabled, 1
     IniRead, lang,       %CFG%, Settings, Lang,            ru
@@ -1134,6 +1164,8 @@ InjectConfig:
     IniRead, sortMode,   %CFG%, Settings, SortMode,        manual
     IniRead, winX,       %CFG%, Settings, WindowX,         -1
     IniRead, winY,       %CFG%, Settings, WindowY,         -1
+    IniRead, uiHidden,   %CFG%, Settings, UiHidden,
+    IniRead, uiText,     %CFG%, Settings, UiText,
 
     pjson := "[]"
     if (FileExist(PRESETS)) {
@@ -1183,11 +1215,14 @@ InjectConfig:
         WB.document.getElementById("__cfg_always_on_top").value   := aot
         WB.document.getElementById("__cfg_compact_mode").value     := compactMode
         WB.document.getElementById("__cfg_sort_mode").value        := sortMode
+        WB.document.getElementById("__cfg_ui_hidden").value        := uiHidden
+        WB.document.getElementById("__cfg_ui_text").value          := uiText
         WB.document.getElementById("__cfg_theme_presets").value  := tpjson
         WB.document.getElementById("__cfg_preset_groups").value  := pgjson
         WB.document.getElementById("__cfg_theme_grad_en").value    := thgren
         WB.document.getElementById("__cfg_theme_grad_bg2").value   := thgrbg2
         WB.document.getElementById("__cfg_theme_grad_angle").value := thgrang
+        WB.document.getElementById("__cfg_theme_grad_op").value    := thgrop
         WB.document.getElementById("__cfg_launch_delay").value     := ldel
         WB.document.getElementById("__update_notice").value         := g_update_notice
         WB.document.parentWindow.execScript("initApp()")
@@ -1225,6 +1260,7 @@ SaveConfig:
     IniWrite, %g_theme_grad_en%,    %CFG%, Settings, ThemeGradEn
     IniWrite, %g_theme_grad_bg2%,   %CFG%, Settings, ThemeGradBg2
     IniWrite, %g_theme_grad_angle%, %CFG%, Settings, ThemeGradAngle
+    IniWrite, %g_theme_grad_op%,    %CFG%, Settings, ThemeGradOp
     IniWrite, %g_launch_delay%,     %CFG%, Settings, LaunchDelay
     IniWrite, %g_tooltips%,        %CFG%, Settings, TooltipsEnabled
     IniWrite, %g_lang%,            %CFG%, Settings, Lang
@@ -1242,6 +1278,12 @@ SaveConfig:
     try {
         smVal := WB.document.getElementById("__cfg_sort_mode").value
         IniWrite, %smVal%, %CFG%, Settings, SortMode
+    }
+    try {
+        uiHVal := WB.document.getElementById("__cfg_ui_hidden") ? WB.document.getElementById("__cfg_ui_hidden").value : ""
+        IniWrite, %uiHVal%, %CFG%, Settings, UiHidden
+        uiTVal := WB.document.getElementById("__cfg_ui_text") ? WB.document.getElementById("__cfg_ui_text").value : ""
+        IniWrite, %uiTVal%, %CFG%, Settings, UiText
     }
 Return
 
@@ -1483,12 +1525,7 @@ OnCapturePresetHK:
     ; number row, and misses letter keys entirely. Polling catches all of them.
     keyName   := ""
     cancelled := false
-    phkKeyList := "Numpad0,Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9"
-              . ",NumpadDot,NumpadDiv,NumpadMult,NumpadAdd,NumpadSub,NumpadEnter"
-              . ",F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12"
-              . ",Left,Up,Right,Down,Insert,Delete,Home,End,PgUp,PgDn,Tab,Space,Enter,Backspace"
-              . ",A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z"
-              . ",0,1,2,3,4,5,6,7,8,9"
+    phkKeyList := HK_CAPTURE_KEYS
 
     phkElapsed := 0
     Loop {
@@ -1523,13 +1560,61 @@ OnCapturePresetHK:
             TrayTip, RVL, Conflicts with main hotkey!, 2, 2
             try WB.document.parentWindow.execScript("finishPresetHKCapture(null)")
         } else {
-            try WB.document.parentWindow.execScript("finishPresetHKCapture('" . keyName . "')")
+            ; Escape for the single-quoted JS string literal (keys may now
+            ; contain an apostrophe or a backslash).
+            jsKeyName := StrReplace(keyName, "\", "\\")
+            jsKeyName := StrReplace(jsKeyName, "'", "\'")
+            try WB.document.parentWindow.execScript("finishPresetHKCapture('" . jsKeyName . "')")
             Sleep, 150
             Gosub, UpdatePresetHotkeys
         }
     }
 
     SetTimer, ProcessCommands, On
+Return
+
+; ============================================================
+;  GAME ICON (place avatar) FOR THE DETAIL PANEL
+;  JS asks for "CMD:thumb_req <placeId>"; the icon URL is resolved
+;  through the public Roblox thumbnails API, downloaded once into
+;  %TEMP% (cached per placeId) and the local path is handed back
+;  via the __thumb_resp bridge input. JS falls back to the index
+;  number while the icon is missing or fails to load.
+; ============================================================
+OnThumbRequest:
+    thumbPid := RegExReplace(SubStr(cmd, 15), "\D")
+    if (thumbPid = "") {
+        try WB.document.getElementById("__thumb_resp").value := "|"
+        return
+    }
+    thumbPath := A_Temp "\RVL_icon_" . thumbPid . ".png"
+    if (!FileExist(thumbPath)) {
+        ; Two-step chain (verified against the live API):
+        ;   placeId -> universeId (apis.roblox.com)
+        ;   universeId -> game icon URL (thumbnails.roblox.com)
+        thumbUrl := ""
+        thumbUniverse := ""
+        thumbJson := HttpGet("https://apis.roblox.com/universes/v1/places/" . thumbPid . "/universe")
+        if (thumbJson != "") {
+            RegExMatch(thumbJson, """universeId""\s*:\s*([0-9]+)", thumbM)
+            thumbUniverse := thumbM1
+        }
+        if (thumbUniverse != "") {
+            thumbJson := HttpGet("https://thumbnails.roblox.com/v1/games/icons?universeIds=" . thumbUniverse . "&size=150x150&format=Png")
+            if (thumbJson != "") {
+                RegExMatch(thumbJson, """imageUrl""\s*:\s*""([^""]+)""", thumbM)
+                thumbUrl := thumbM1
+                StringReplace, thumbUrl, thumbUrl, \/, /, All
+            }
+        }
+        if (thumbUrl != "")
+            DownloadFile(thumbUrl, thumbPath)
+    }
+    if (FileExist(thumbPath)) {
+        try WB.document.getElementById("__thumb_resp").value := thumbPid . "|" . thumbPath
+    } else {
+        try WB.document.getElementById("__thumb_resp").value := thumbPid . "|"
+    }
 Return
 
 ; ============================================================
@@ -1654,12 +1739,7 @@ OnCaptureStart:
     ; and misses letter keys, so we poll instead.
     capKeyName   := ""
     capCancelled := false
-    capKeyList := "Numpad0,Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9"
-              . ",NumpadDot,NumpadDiv,NumpadMult,NumpadAdd,NumpadSub,NumpadEnter"
-              . ",F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12"
-              . ",Left,Up,Right,Down,Insert,Delete,Home,End,PgUp,PgDn,Tab,Space,Enter,Backspace"
-              . ",A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z"
-              . ",0,1,2,3,4,5,6,7,8,9"
+    capKeyList := HK_CAPTURE_KEYS
 
     capElapsed := 0
     Loop {
@@ -1704,8 +1784,10 @@ OnCaptureStart:
         Gosub, ReadDom
         Gosub, SaveConfig
         UpdateHotkey(keyName, 1)
+        jsKeyName := StrReplace(keyName, "\", "\\")
+        jsKeyName := StrReplace(jsKeyName, "'", "\'")
         try {
-            WB.document.parentWindow.execScript("stopCaptureExternal('" . keyName . "')")
+            WB.document.parentWindow.execScript("stopCaptureExternal('" . jsKeyName . "')")
         }
     }
 
@@ -1758,12 +1840,7 @@ OnSHCaptureStart:
     ; distinct hotkeys regardless of NumLock state.
     shKeyName   := ""
     shCancelled := false
-    shKeyList := "Numpad0,Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpad6,Numpad7,Numpad8,Numpad9"
-              . ",NumpadDot,NumpadDiv,NumpadMult,NumpadAdd,NumpadSub,NumpadEnter"
-              . ",F1,F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12"
-              . ",Left,Up,Right,Down,Insert,Delete,Home,End,PgUp,PgDn,Tab,Space"
-              . ",A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z"
-              . ",0,1,2,3,4,5,6,7,8,9"
+    shKeyList := HK_CAPTURE_KEYS
 
     shElapsed := 0
     Loop {
@@ -1798,7 +1875,9 @@ OnSHCaptureStart:
         try {
             WB.document.getElementById("__cfg_sh_key").value := shKeyName
             WB.document.getElementById("__cfg_sh_en").value  := "1"
-            WB.document.parentWindow.execScript("stopShowHideCaptureExternal('" . shKeyName . "')")
+            jsKeyName := StrReplace(shKeyName, "\", "\\")
+            jsKeyName := StrReplace(jsKeyName, "'", "\'")
+            WB.document.parentWindow.execScript("stopShowHideCaptureExternal('" . jsKeyName . "')")
         }
     } else {
         try {

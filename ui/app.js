@@ -233,7 +233,68 @@ var STRINGS = {
         showHideEnable:  "Включить",
         showHideCapture: "&#9673;&nbsp;ЗАХВАТ",
         showHideCapturing:"&#9679;&nbsp;НАЖМИТЕ...",
-        gradientLabel:"ГРАДИЕНТ ФОНА",gradientColor2:"Цвет 2",gradientAngle:"УГОЛ",
+        gradientLabel:"ГРАДИЕНТ ФОНА",gradientColor2:"Цвет 2",gradientAngle:"УГОЛ",gradientOpacityLabel:"ПРОЗРАЧНОСТЬ",
+        /* Interface customization */
+        uiCustomLabel:"ЭЛЕМЕНТЫ ИНТЕРФЕЙСА", uiResetBtn:"СБРОСИТЬ",
+        uiHiddenWord:"скрыто", uiAllVisible:"все элементы видны", uiTextPh:"свой текст",
+        uiGroups:{header:"ЗАГОЛОВОК",input:"СТРОКА ВВОДА",toolbar:"ПАНЕЛЬ ИНСТРУМЕНТОВ",list:"СПИСОК И ДЕТАЛИ",status:"СТАТУС-БАР"},
+        uiNames:{
+            "hdr-logo":"Логотип",
+            "header-version":"Версия в шапке",
+            "roblox-status":"Статус Roblox",
+            "btn-settings":"Кнопка: настройки",
+            "btn-min":"Кнопка: свернуть",
+            "btn-close":"Кнопка: закрыть",
+            "method-tabs":"Переключатель СП 1 / СП 2",
+            "method-tab-1":"Вкладка: Способ 1",
+            "method-tab-2":"Вкладка: Способ 2",
+            "inp-place":"Поле: PLACE ID",
+            "inp-link":"Поле: LINK CODE",
+            "inp-share-code":"Поле: SHARE CODE",
+            "inp-key":"Поле клавиши хоткея",
+            "btn-capture":"Кнопка захвата клавиши",
+            "chk-txt-hotkey":"Подпись HK",
+            "toggle-track":"Включатель хоткея",
+            "search-wrap":"Поиск (панель)",
+            "search-inp":"Поле поиска",
+            "sort-show":"Кнопка СОРТ",
+            "btn-groups":"Кнопка: группы",
+            "btn-history":"Кнопка: история",
+            "btn-dashboard":"Кнопка: статистика",
+            "btn-backup":"Кнопка: бэкап",
+            "btn-bulk-edit":"Кнопка: массовое изменение",
+            "btn-export":"Кнопка: экспорт",
+            "btn-import":"Кнопка: импорт",
+            "btn-guide":"Кнопка: ?",
+            "view-toggle-inline":"Переключатель вида",
+            "btn-add-preset":"Кнопка: + Новый",
+            "lbl-sort":"Надпись СОРТИРОВКА",
+            "sort-manual":"Сортировка: Вручную",
+            "sort-name":"Сортировка: По имени",
+            "sort-date":"Сортировка: По дате",
+            "sort-launches":"Сортировка: По запускам",
+            "sort-fav":"Сортировка: Избранное",
+            "presets-list":"Список пресетов",
+            "pdetail":"Панель деталей",
+            "empty-state-title":"Пустой список: заголовок",
+            "empty-state-hint":"Пустой список: подсказка",
+            "empty-state-hint2":"Пустой список: подсказка 2",
+            "pd-empty-text":"Панель: текст без выбора",
+            "pd-lbl-place":"Метка: PLACE ID",
+            "pd-lbl-link":"Метка: LINK CODE",
+            "pd-lbl-launches":"Метка: ЗАПУСКОВ",
+            "pd-lbl-last":"Метка: ПОСЛЕДНИЙ",
+            "pd-lbl-hk":"Метка: ХОТКЕЙ",
+            "btn-launch":"Кнопка: ЗАПУСТИТЬ",
+            "pd-edit":"Кнопка: редактировать",
+            "pd-fav":"Кнопка: избранное",
+            "pd-del":"Кнопка: удалить",
+            "btn-save":"Кнопка: сохранить",
+            "status-bar":"Статус-бар",
+            "status-count":"Статус: счётчик пресетов",
+            "status-last":"Статус: последний запуск",
+            "status-version":"Статус: версия"
+        },
         launchDelayLabel:"Задержка запуска",launchDelayUnit:"с",
         launchCountdown:function(n){return "&#9654;&nbsp;ЗАПУСК "+n+"с...";},
         dupTip:"Дублировать пресет",
@@ -461,7 +522,68 @@ var STRINGS = {
         showHideEnable:  "Enable",
         showHideCapture: "&#9673;&nbsp;CAPTURE",
         showHideCapturing:"&#9679;&nbsp;PRESS KEY...",
-        gradientLabel:"BACKGROUND GRADIENT",gradientColor2:"Color 2",gradientAngle:"ANGLE",
+        gradientLabel:"BACKGROUND GRADIENT",gradientColor2:"Color 2",gradientAngle:"ANGLE",gradientOpacityLabel:"OPACITY",
+        /* Interface customization */
+        uiCustomLabel:"INTERFACE ELEMENTS", uiResetBtn:"RESET",
+        uiHiddenWord:"hidden", uiAllVisible:"all elements visible", uiTextPh:"custom text",
+        uiGroups:{header:"HEADER",input:"INPUT ROW",toolbar:"TOOLBAR",list:"LIST & DETAILS",status:"STATUS BAR"},
+        uiNames:{
+            "hdr-logo":"Logo",
+            "header-version":"Header version",
+            "roblox-status":"Roblox status",
+            "btn-settings":"Button: settings",
+            "btn-min":"Button: minimize",
+            "btn-close":"Button: close",
+            "method-tabs":"Method switcher",
+            "method-tab-1":"Tab: Method 1",
+            "method-tab-2":"Tab: Method 2",
+            "inp-place":"Field: PLACE ID",
+            "inp-link":"Field: LINK CODE",
+            "inp-share-code":"Field: SHARE CODE",
+            "inp-key":"Hotkey key field",
+            "btn-capture":"Capture button",
+            "chk-txt-hotkey":"HK label",
+            "toggle-track":"Hotkey toggle",
+            "search-wrap":"Search (panel)",
+            "search-inp":"Search field",
+            "sort-show":"SORT button",
+            "btn-groups":"Button: groups",
+            "btn-history":"Button: history",
+            "btn-dashboard":"Button: stats",
+            "btn-backup":"Button: backup",
+            "btn-bulk-edit":"Button: bulk edit",
+            "btn-export":"Button: export",
+            "btn-import":"Button: import",
+            "btn-guide":"Button: ?",
+            "view-toggle-inline":"View switcher",
+            "btn-add-preset":"Button: + New",
+            "lbl-sort":"SORTING label",
+            "sort-manual":"Sort: Manual",
+            "sort-name":"Sort: Name",
+            "sort-date":"Sort: Date",
+            "sort-launches":"Sort: Launches",
+            "sort-fav":"Sort: Favorites",
+            "presets-list":"Presets list",
+            "pdetail":"Details panel",
+            "empty-state-title":"Empty list: title",
+            "empty-state-hint":"Empty list: hint",
+            "empty-state-hint2":"Empty list: hint 2",
+            "pd-empty-text":"Panel: no-selection text",
+            "pd-lbl-place":"Label: PLACE ID",
+            "pd-lbl-link":"Label: LINK CODE",
+            "pd-lbl-launches":"Label: LAUNCHES",
+            "pd-lbl-last":"Label: LAST",
+            "pd-lbl-hk":"Label: HOTKEY",
+            "btn-launch":"Button: LAUNCH",
+            "pd-edit":"Button: edit",
+            "pd-fav":"Button: favorite",
+            "pd-del":"Button: delete",
+            "btn-save":"Button: save",
+            "status-bar":"Status bar",
+            "status-count":"Status: counter",
+            "status-last":"Status: last launch",
+            "status-version":"Status: version"
+        },
         launchDelayLabel:"Launch delay",launchDelayUnit:"s",
         launchCountdown:function(n){return "&#9654;&nbsp;LAUNCH "+n+"s...";},
         dupTip:"Duplicate preset",
@@ -622,7 +744,8 @@ var customTheme   = {
     accent:  "#FFFFFF",
     gradientEnabled: false,
     gradientBg2: "#0A0A0A",
-    gradientAngle: 135
+    gradientAngle: 135,
+    gradientOpacity: 100
 };
 
 /* ── Theme Presets Manager state ─────────────────────────── */
@@ -704,6 +827,12 @@ function initApp(skipStartupPreset) {
     customTheme.gradientEnabled = el("__cfg_theme_grad_en") ? el("__cfg_theme_grad_en").value === "1" : false;
     customTheme.gradientBg2 = el("__cfg_theme_grad_bg2") ? (el("__cfg_theme_grad_bg2").value || customTheme.bg) : customTheme.bg;
     customTheme.gradientAngle = el("__cfg_theme_grad_angle") ? (parseInt(el("__cfg_theme_grad_angle").value, 10) || 135) : 135;
+    var gopInit = parseInt(el("__cfg_theme_grad_op") ? el("__cfg_theme_grad_op").value : "100", 10);
+    customTheme.gradientOpacity = (isNaN(gopInit) || gopInit < 0 || gopInit > 100) ? 100 : gopInit;
+
+    /* §ui-custom: interface customization state from config */
+    parseUiHidden(el("__cfg_ui_hidden") ? el("__cfg_ui_hidden").value : "");
+    parseUiText(el("__cfg_ui_text") ? el("__cfg_ui_text").value : "");
 
     /* ── Language ── */
     var langVal = trim(el("__cfg_lang") ? el("__cfg_lang").value : "");
@@ -713,6 +842,8 @@ function initApp(skipStartupPreset) {
     uiScale = (sv >= 0.8 && sv <= 2.0) ? sv : 1.0;
     applySavedScale();
     syncScaleButtons();
+    applyInterfaceSettings();
+    uiCustomRenderList();
 
     var ov = parseInt(el("__cfg_opacity") ? el("__cfg_opacity").value : "255", 10);
     uiOpacity = (ov >= 26 && ov <= 255) ? ov : 255;
@@ -1096,6 +1227,20 @@ window.onload = function () {
     bindColorPicker("cp-grad-bg2", "theme-grad-bg2");
     setTip("swatch-grad-bg2", (STRINGS[currentLang]||STRINGS.ru).tipColorPick);
 
+    /* §gradient: opacity slider — blend the gradient into the base color */
+    var gopSlider = el("grad-opacity-slider");
+    if (gopSlider) {
+        gopSlider.oninput = function () {
+            var v = parseInt(this.value, 10);
+            customTheme.gradientOpacity = (isNaN(v) || v < 0 || v > 100) ? 100 : v;
+            var disp = el("grad-opacity-display");
+            if (disp) disp.innerHTML = customTheme.gradientOpacity + "%";
+            syncThemeBridgeFields();
+            if (themeMode === "custom") applyTheme();
+        };
+        gopSlider.onchange = gopSlider.oninput;
+    }
+
     /* Bulk edit */
     var bulkOpenBtn = el("btn-bulk-edit");
     if (bulkOpenBtn) bulkOpenBtn.onclick = openBulkEdit;
@@ -1111,6 +1256,10 @@ window.onload = function () {
     /* Factory reset */
     var frBtn = el("btn-factory-reset");
     if (frBtn) frBtn.onclick = onFactoryResetClick;
+
+    /* §ui-custom: reset all element overrides */
+    var uiResetBtn = el("btn-ui-custom-reset");
+    if (uiResetBtn) uiResetBtn.onclick = uiCustomResetAll;
 
     el("search-inp").oninput = function () {
         applyFilterEnhanced(this.value);
@@ -1595,7 +1744,8 @@ function confirmTPCreate() {
         accent: customTheme.accent,
         gradientEnabled: !!customTheme.gradientEnabled,
         gradientBg2: customTheme.gradientBg2 || customTheme.bg,
-        gradientAngle: customTheme.gradientAngle || 135
+        gradientAngle: customTheme.gradientAngle || 135,
+        gradientOpacity: (typeof customTheme.gradientOpacity === "number" ? customTheme.gradientOpacity : 100)
     };
     userThemePresets.push(p);
     cancelTPCreate();
@@ -2543,6 +2693,8 @@ function saveSettings() {
     /* Enhancement: save compact mode and sort mode */
     if (el("__cfg_compact_mode")) el("__cfg_compact_mode").value = compactMode ? "1" : "0";
     if (el("__cfg_sort_mode"))    el("__cfg_sort_mode").value    = sortMode;
+    /* §ui-custom: keep the bridge fields in lockstep with the live state */
+    syncUiBridgeFields();
     if (__rvlSettingsPopupMode) {
         /* The AHK host reads the owner's DOM. Copy the complete settings
            state and apply it there before sending the normal save command. */
@@ -2626,7 +2778,8 @@ function syncThemeBridgeFields() {
         ["__cfg_theme_accent", customTheme.accent],
         ["__cfg_theme_grad_en", customTheme.gradientEnabled ? "1" : "0"],
         ["__cfg_theme_grad_bg2", customTheme.gradientBg2 || customTheme.bg],
-        ["__cfg_theme_grad_angle", (customTheme.gradientAngle || 135).toString()]
+        ["__cfg_theme_grad_angle", (customTheme.gradientAngle || 135).toString()],
+        ["__cfg_theme_grad_op", (typeof customTheme.gradientOpacity === "number" ? customTheme.gradientOpacity : 100).toString()]
     ];
     for (var i = 0; i < pairs.length; i++) {
         var node = el(pairs[i][0]);
@@ -2768,9 +2921,14 @@ function applyLanguage() {
     /* Show/hide hotkey block */
     setLabel("lbl-showhide",          S.showHideLabel);
     setText("chk-txt-showhide",       S.showHideEnable);
+    setLabel("lbl-ui-custom", (S.uiCustomLabel || "ЭЛЕМЕНТЫ ИНТЕРФЕЙСА"));
+    var uiRst = el("btn-ui-custom-reset");
+    if (uiRst) uiRst.innerHTML = "&#8634; " + htmlEscape(S.uiResetBtn || "СБРОСИТЬ");
+    setText("chk-txt-showhide",       S.showHideEnable);
     setLabel("lbl-gradient",   S.gradientLabel  || "ГРАДИЕНТ ФОНА");
     setLabel("lbl-grad-color2", S.gradientColor2 || "Цвет 2");
     setLabel("lbl-grad-angle", S.gradientAngle  || "УГОЛ");
+    setLabel("lbl-grad-opacity", S.gradientOpacityLabel || "ПРОЗРАЧНОСТЬ");
     setText("lbl-launch-delay", S.launchDelayLabel || "Задержка запуска");
     syncDelayDisplay();
     setText("btn-factory-reset", S.factoryResetBtn || "Сбросить к заводским");
@@ -3074,7 +3232,15 @@ function applyCustomThemeStyle() {
         var gradCSS = "";
         if (gradOn) {
             var ang = customTheme.gradientAngle || 135;
-            gradCSS = "linear-gradient(" + ang + "deg," + B + " 0%," + customTheme.gradientBg2 + " 100%)";
+            /* Opacity 0-100%: below 100 the gradient stops get alpha and float
+               over a solid B layer, blending the gradient into the base color. */
+            var gop = parseInt(customTheme.gradientOpacity, 10);
+            if (isNaN(gop) || gop < 0 || gop > 100) gop = 100;
+            var gfa = gop / 100;
+            var gStop1 = (gfa >= 1) ? B : ra(B, gfa);
+            var gStop2 = (gfa >= 1) ? customTheme.gradientBg2 : ra(customTheme.gradientBg2, gfa);
+            gradCSS = "linear-gradient(" + ang + "deg," + gStop1 + " 0%," + gStop2 + " 100%)";
+            gradCSS = gradCSS + "," + B;
             r.push("html.theme-custom,body.theme-custom{background:" + gradCSS + " !important;color:" + T + "}");
             r.push("html.theme-custom,body.theme-custom{background-attachment:fixed !important}");
         } else {
@@ -3231,17 +3397,32 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .tooltip-arrow{background:" + S + ";border-left-color:" + t25 + ";border-top-color:" + t25 + "}");
 
         /* ---- Scrollbars webkit ---- */
+        /* IE scrollbar-* properties ignore alpha in rgba() and render the RAW
+           accent color — that was the garish blue scrollbar. Blend the accent
+           into the surface color and ship a SOLID value for IE properties. */
+        function blendHex(top, base, alpha) {
+            var tr = parseInt(top.substr(1, 2), 16), tg = parseInt(top.substr(3, 2), 16), tb = parseInt(top.substr(5, 2), 16);
+            var br = parseInt(base.substr(1, 2), 16), bgc = parseInt(base.substr(3, 2), 16), bb = parseInt(base.substr(5, 2), 16);
+            function mx(a, b) { return Math.round(b + (a - b) * alpha); }
+            function hx(v) { var s = v.toString(16); return s.length < 2 ? "0" + s : s; }
+            return "#" + hx(mx(tr, br)) + hx(mx(tg, bgc)) + hx(mx(tb, bb));
+        }
+        var scFace  = blendHex(A, S, 0.45);
+        var scArrow = blendHex(A, S, 0.65);
         r.push("body.theme-custom .settings-body::-webkit-scrollbar-thumb{background:" + a40 + "}");
         r.push("body.theme-custom .settings-body::-webkit-scrollbar-track{background:" + S + "}");
         r.push("body.theme-custom .presets-scroll::-webkit-scrollbar-thumb{background:" + a40 + "}");
         r.push("body.theme-custom .presets-scroll::-webkit-scrollbar-track{background:" + S + "}");
         r.push("body.theme-custom .tp-body::-webkit-scrollbar-thumb{background:" + a40 + "}");
         r.push("body.theme-custom .tp-body::-webkit-scrollbar-track{background:" + S + "}");
+        r.push("body.theme-custom .pd-info::-webkit-scrollbar-thumb{background:" + a40 + "}");
+        r.push("body.theme-custom .pd-info::-webkit-scrollbar-track{background:" + S + "}");
 
         /* ---- Scrollbars IE ---- */
-        r.push("body.theme-custom .settings-body{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + a50 + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + a40 + "}");
-        r.push("body.theme-custom .presets-scroll{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + a50 + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + a40 + "}");
-        r.push("body.theme-custom .tp-body{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + a50 + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + a40 + "}");
+        r.push("body.theme-custom .settings-body{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
+        r.push("body.theme-custom .presets-scroll{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
+        r.push("body.theme-custom .tp-body{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
+        r.push("body.theme-custom .pd-info{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
 
         /* ---- Theme chips ---- */
         r.push("body.theme-custom .tp-chip{border-color:" + a27 + ";color:" + T + "}");
@@ -3285,7 +3466,7 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .grp-title{color:" + T + "}");
         r.push("body.theme-custom .grp-close{color:" + t33 + "}");
         r.push("body.theme-custom .grp-close:hover{background:#1E0A0A;color:#FF7777}");
-        r.push("body.theme-custom .grp-list{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + a50 + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + a40 + "}");
+        r.push("body.theme-custom .grp-list{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
         r.push("body.theme-custom .grp-row:hover{background:" + a10 + "}");
         r.push("body.theme-custom .grp-row-name{color:" + T + "}");
         r.push("body.theme-custom .grp-row-count{color:" + t33 + "}");
@@ -3302,7 +3483,7 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .export-select-all{color:" + t67 + "}");
         r.push("body.theme-custom .export-select-all:hover{color:" + T + "}");
         r.push("body.theme-custom .export-selected-count{color:" + t25 + "}");
-        r.push("body.theme-custom .export-preset-list{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + a50 + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + a40 + "}");
+        r.push("body.theme-custom .export-preset-list{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
         r.push("body.theme-custom .export-preset-row:hover{background:" + a10 + "}");
         r.push("body.theme-custom .export-checkbox{background:" + B + ";border-color:" + t25 + "}");
         r.push("body.theme-custom .export-checkbox-on{background:" + A + ";border-color:" + A + "}");
@@ -3418,7 +3599,7 @@ function applyCustomThemeStyle() {
         /* Export modal */
         r.push("body.theme-custom .export-select-row{border-bottom-color:" + a15 + " !important}");
         r.push("body.theme-custom .export-preset-row:hover{border-color:" + t25 + " !important}");
-        r.push("body.theme-custom .export-preset-list{scrollbar-face-color:" + a40 + ";scrollbar-track-color:" + S + " !important}");
+        r.push("body.theme-custom .export-preset-list{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + " !important}");
 
         /* Bulk edit modal */
         r.push("body.theme-custom .bulk-table-wrap{border-color:" + a15 + " !important}");
@@ -3484,7 +3665,7 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .history-header::before,body.theme-custom .dashboard-header::before,body.theme-custom .backup-header::before,body.theme-custom .export-header::before,body.theme-custom .bulk-header::before,body.theme-custom .grp-header::before{background:" + A + " !important;opacity:0.8 !important}");
 
         /* Enhancement: scrollbar colors in custom theme */
-        r.push("body.theme-custom .history-body,body.theme-custom .dashboard-body,body.theme-custom .backup-body,body.theme-custom .export-preset-list,body.theme-custom .bulk-table-wrap,body.theme-custom .grp-list{scrollbar-face-color:" + a40 + " !important;scrollbar-track-color:" + S + " !important;scrollbar-arrow-color:" + a50 + " !important;scrollbar-highlight-color:" + S + " !important;scrollbar-3dlight-color:" + S + " !important;scrollbar-darkshadow-color:" + S + " !important;scrollbar-shadow-color:" + a40 + " !important}");
+        r.push("body.theme-custom .history-body,body.theme-custom .dashboard-body,body.theme-custom .backup-body,body.theme-custom .export-preset-list,body.theme-custom .bulk-table-wrap,body.theme-custom .grp-list{scrollbar-face-color:" + scFace + " !important;scrollbar-track-color:" + S + " !important;scrollbar-arrow-color:" + scArrow + " !important;scrollbar-highlight-color:" + S + " !important;scrollbar-3dlight-color:" + S + " !important;scrollbar-darkshadow-color:" + S + " !important;scrollbar-shadow-color:" + scFace + " !important}");
         r.push("body.theme-custom .history-body::-webkit-scrollbar-thumb,body.theme-custom .dashboard-body::-webkit-scrollbar-thumb,body.theme-custom .export-preset-list::-webkit-scrollbar-thumb,body.theme-custom .bulk-table-wrap::-webkit-scrollbar-thumb,body.theme-custom .grp-list::-webkit-scrollbar-thumb{background:" + a40 + " !important}");
         r.push("body.theme-custom .history-body::-webkit-scrollbar-thumb:hover,body.theme-custom .dashboard-body::-webkit-scrollbar-thumb:hover,body.theme-custom .export-preset-list::-webkit-scrollbar-thumb:hover,body.theme-custom .bulk-table-wrap::-webkit-scrollbar-thumb:hover,body.theme-custom .grp-list::-webkit-scrollbar-thumb:hover{background:" + a50 + " !important}");
 
@@ -3587,6 +3768,19 @@ function applyCustomThemeStyle() {
         /* Search field focus ring — polish hardcodes a gray glow */
         r.push("body.theme-custom .tb-search.search-inp:focus{background:" + ra(S,0.95) + " !important;border-color:" + t53 + " !important;box-shadow:0 0 0 2px " + a10 + " !important}");
 
+        /* ---- §ui-custom settings block follows the custom theme ---- */
+        r.push("body.theme-custom .ui-custom-list{background:" + ra(S, 0.45) + ";border-color:" + t15 + " !important}");
+        r.push("body.theme-custom .ui-custom-list::-webkit-scrollbar-track{background:" + S + "}");
+        r.push("body.theme-custom .ui-custom-list::-webkit-scrollbar-thumb{background:" + a40 + "}");
+        r.push("body.theme-custom .ui-group-label{color:" + t40 + "}");
+        r.push("body.theme-custom .ui-row:hover{background:" + a10 + " !important}");
+        r.push("body.theme-custom .ui-row-name{color:" + t73 + "}");
+        r.push("body.theme-custom .ui-row-text{background:" + S + ";border-color:" + a27 + ";color:" + T + "}");
+        r.push("body.theme-custom .ui-row-text:focus{border-color:" + t53 + "}");
+        r.push("body.theme-custom .ui-custom-count{color:" + t47 + "}");
+        r.push("body.theme-custom .ui-custom-reset{background:" + S + ";border-color:" + a27 + ";color:" + t67 + "}");
+        r.push("body.theme-custom .ui-custom-reset:hover{background:" + ra(S, 0.95) + ";border-color:" + t53 + ";color:" + T + "}");
+
         /* §gradient-fix — the flat-B chrome rules above (.app-shell, .hdr,
            .input-row, .main2, .plist, ...) painted on top of html/body, so an
            enabled gradient only leaked through the few rounding pixels at
@@ -3630,6 +3824,7 @@ function applyThemePreset(p) {
     customTheme.gradientEnabled = !!(p.gradientEnabled);
     customTheme.gradientBg2     = p.gradientBg2 ? normalizeHex(p.gradientBg2, p.bg) : p.bg;
     customTheme.gradientAngle   = p.gradientAngle || 135;
+    customTheme.gradientOpacity = (typeof p.gradientOpacity === "number" && p.gradientOpacity >= 0 && p.gradientOpacity <= 100) ? p.gradientOpacity : 100;
     themeMode = "custom";
     syncThemeControls();
     applyTheme();
@@ -3660,6 +3855,11 @@ function syncGradientUI() {
     if (angInp) angInp.value = (customTheme.gradientAngle || 135).toString();
     var sw2 = el("swatch-grad-bg2");
     if (sw2) sw2.style.backgroundColor = customTheme.gradientBg2 || customTheme.bg;
+    var gopVal = (typeof customTheme.gradientOpacity === "number" && customTheme.gradientOpacity >= 0 && customTheme.gradientOpacity <= 100) ? customTheme.gradientOpacity : 100;
+    var gopSlider = el("grad-opacity-slider");
+    if (gopSlider) gopSlider.value = String(gopVal);
+    var gopDisp = el("grad-opacity-display");
+    if (gopDisp) gopDisp.innerHTML = gopVal + "%";
     syncAngleButtons();
 }
 
@@ -3670,6 +3870,261 @@ function syncAngleButtons() {
         var btn = el("angle-opt-" + angles[i]);
         if (btn) btn.className = (Math.abs(angles[i] - cur) < 1) ? "theme-option active" : "theme-option";
     }
+}
+
+/* ============================================================
+   §ui-custom · INTERFACE ELEMENT CUSTOMIZATION
+   Every major element of the main window can be hidden or show a
+   custom text. State lives in uiHiddenState / uiTextState and
+   round-trips through __cfg_ui_hidden / __cfg_ui_text.
+   t: 1 = label override,  p: 1 = placeholder override.
+   ============================================================ */
+var UI_ELEMENTS = [
+    {id:"hdr-logo",        g:"header"},
+    {id:"header-version",  g:"header", t:1},
+    {id:"roblox-status",   g:"header"},
+    {id:"btn-settings",    g:"header", t:1},
+    {id:"btn-min",         g:"header", t:1},
+    {id:"btn-close",       g:"header", t:1},
+    {id:"method-tabs",     g:"input"},
+    {id:"method-tab-1",    g:"input", t:1},
+    {id:"method-tab-2",    g:"input", t:1},
+    {id:"inp-place",       g:"input", p:1},
+    {id:"inp-link",        g:"input", p:1},
+    {id:"inp-share-code",  g:"input", p:1},
+    {id:"inp-key",         g:"input"},
+    {id:"btn-capture",     g:"input"},
+    {id:"chk-txt-hotkey",  g:"input", t:1},
+    {id:"toggle-track",    g:"input"},
+    {id:"search-wrap",     g:"toolbar"},
+    {id:"search-inp",      g:"toolbar", p:1},
+    {id:"sort-show",       g:"toolbar", t:1},
+    {id:"btn-groups",      g:"toolbar", t:1},
+    {id:"btn-history",     g:"toolbar", t:1},
+    {id:"btn-dashboard",   g:"toolbar", t:1},
+    {id:"btn-backup",      g:"toolbar", t:1},
+    {id:"btn-bulk-edit",   g:"toolbar", t:1},
+    {id:"btn-export",      g:"toolbar", t:1},
+    {id:"btn-import",      g:"toolbar", t:1},
+    {id:"btn-guide",       g:"toolbar", t:1},
+    {id:"view-toggle-inline", g:"toolbar"},
+    {id:"btn-add-preset",  g:"toolbar", t:1},
+    {id:"lbl-sort",        g:"list", t:1},
+    {id:"sort-manual",     g:"list", t:1},
+    {id:"sort-name",       g:"list", t:1},
+    {id:"sort-date",       g:"list", t:1},
+    {id:"sort-launches",   g:"list", t:1},
+    {id:"sort-fav",        g:"list", t:1},
+    {id:"presets-list",    g:"list"},
+    {id:"pdetail",         g:"list"},
+    {id:"empty-state-title", g:"list", t:1},
+    {id:"empty-state-hint",  g:"list", t:1},
+    {id:"empty-state-hint2", g:"list", t:1},
+    {id:"pd-empty-text",   g:"list", t:1},
+    {id:"pd-lbl-place",    g:"list", t:1},
+    {id:"pd-lbl-link",     g:"list", t:1},
+    {id:"pd-lbl-launches", g:"list", t:1},
+    {id:"pd-lbl-last",     g:"list", t:1},
+    {id:"pd-lbl-hk",       g:"list", t:1},
+    {id:"btn-launch",      g:"list", t:1},
+    {id:"pd-edit",         g:"list", t:1},
+    {id:"pd-fav",          g:"list", t:1},
+    {id:"pd-del",          g:"list", t:1},
+    {id:"btn-save",        g:"list", t:1},
+    {id:"status-bar",      g:"status"},
+    {id:"status-count",    g:"status"},
+    {id:"status-last",     g:"status"},
+    {id:"status-version",  g:"status", t:1}
+];
+var UI_GROUPS = ["header", "input", "toolbar", "list", "status"];
+var uiHiddenState = {};
+var uiTextState = {};
+
+/* encodeURIComponent leaves ! ' ( ) * ~ untouched — escape those too so the
+   "~" pair separator and "|" id separator can never appear inside a value. */
+function encodeUiText(s) {
+    return encodeURIComponent(String(s)).replace(/[!'()*~]/g, function (c) {
+        return "%" + c.charCodeAt(0).toString(16).toUpperCase();
+    });
+}
+
+function parseUiHidden(raw) {
+    uiHiddenState = {};
+    var parts = String(raw || "").split(",");
+    for (var i = 0; i < parts.length; i++) {
+        if (parts[i]) uiHiddenState[parts[i]] = true;
+    }
+}
+
+function parseUiText(raw) {
+    uiTextState = {};
+    var parts = String(raw || "").split("~");
+    for (var i = 0; i < parts.length; i++) {
+        var sep = parts[i].indexOf("|");
+        if (sep <= 0) continue;
+        var id = parts[i].substring(0, sep);
+        var enc = parts[i].substring(sep + 1);
+        if (!id || !enc) continue;
+        try { uiTextState[id] = decodeURIComponent(enc); } catch (e) {}
+    }
+}
+
+function serializeUiHidden() {
+    var out = [];
+    for (var id in uiHiddenState) {
+        if (uiHiddenState.hasOwnProperty(id) && uiHiddenState[id]) out.push(id);
+    }
+    return out.join(",");
+}
+
+function serializeUiText() {
+    var out = [];
+    for (var id in uiTextState) {
+        if (uiTextState.hasOwnProperty(id) && uiTextState[id] !== "") {
+            out.push(id + "|" + encodeUiText(uiTextState[id]));
+        }
+    }
+    return out.join("~");
+}
+
+function syncUiBridgeFields() {
+    if (el("__cfg_ui_hidden")) el("__cfg_ui_hidden").value = serializeUiHidden();
+    if (el("__cfg_ui_text"))   el("__cfg_ui_text").value   = serializeUiText();
+}
+
+/* Apply label/placeholder overrides. Originals are snapshotted on first
+   override so an emptied input restores the language default exactly. */
+function applyInterfaceTexts() {
+    for (var i = 0; i < UI_ELEMENTS.length; i++) {
+        var e = UI_ELEMENTS[i];
+        if (!e.t && !e.p) continue;
+        var node = el(e.id);
+        if (!node) continue;
+        var ovr = uiTextState[e.id] || "";
+        if (ovr !== "") {
+            if (node.getAttribute("data-ui-orig") === null) {
+                node.setAttribute("data-ui-orig", e.p ? (node.getAttribute("placeholder") || "") : node.innerHTML);
+            }
+            node.setAttribute("data-ui-ovr", "1");
+            if (e.p) node.setAttribute("placeholder", ovr);
+            else     node.innerHTML = htmlEscape(ovr);
+        } else if (node.getAttribute("data-ui-ovr") === "1") {
+            var orig = node.getAttribute("data-ui-orig");
+            if (e.p) node.setAttribute("placeholder", orig || "");
+            else     node.innerHTML = orig || "";
+            node.removeAttribute("data-ui-ovr");
+            node.removeAttribute("data-ui-orig");
+        }
+    }
+}
+
+/* Hide/show pass. Inline display values are snapshotted so unhiding restores
+   exactly what the app logic had, never fighting app-managed visibility. */
+function applyInterfaceSettings() {
+    for (var i = 0; i < UI_ELEMENTS.length; i++) {
+        var node = el(UI_ELEMENTS[i].id);
+        if (!node) continue;
+        if (uiHiddenState[UI_ELEMENTS[i].id]) {
+            if (node.getAttribute("data-ui-orig-display") === null) {
+                node.setAttribute("data-ui-orig-display", node.style.display || "");
+            }
+            node.style.display = "none";
+            node.setAttribute("data-ui-hidden", "1");
+        } else if (node.getAttribute("data-ui-hidden") === "1") {
+            node.style.display = node.getAttribute("data-ui-orig-display") || "";
+            node.removeAttribute("data-ui-hidden");
+            node.removeAttribute("data-ui-orig-display");
+        }
+    }
+    applyInterfaceTexts();
+}
+
+function uiCustomSyncRow(id) {
+    var tgl = el("ui-tgl-" + id);
+    if (tgl) tgl.className = "toggle-track ui-mini-toggle" + (uiHiddenState[id] ? "" : " on");
+}
+
+function updateUiCustomCount() {
+    var c = el("ui-custom-count");
+    if (!c) return;
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    var n = 0;
+    for (var id in uiHiddenState) {
+        if (uiHiddenState.hasOwnProperty(id) && uiHiddenState[id]) n++;
+    }
+    c.innerHTML = n > 0 ? (n + " " + (S.uiHiddenWord || "hidden")) : (S.uiAllVisible || "");
+}
+
+function uiCustomRenderList(force) {
+    var host = el("ui-custom-list");
+    if (!host) return;
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    /* Rebuild only when the language or the serialized state actually
+       changed — this function is called from the 180ms live-sync path. */
+    var ser = serializeUiHidden() + "#" + serializeUiText();
+    if (!force && host.getAttribute("data-lang") === currentLang && host.getAttribute("data-ser") === ser) {
+        updateUiCustomCount();
+        return;
+    }
+    var html = "";
+    for (var gi = 0; gi < UI_GROUPS.length; gi++) {
+        var g = UI_GROUPS[gi];
+        var gName = (S.uiGroups && S.uiGroups[g]) || g;
+        html += '<div class="ui-group-label">' + htmlEscape(gName) + '</div>';
+        for (var i = 0; i < UI_ELEMENTS.length; i++) {
+            var e = UI_ELEMENTS[i];
+            if (e.g !== g) continue;
+            var name = (S.uiNames && S.uiNames[e.id]) || e.id;
+            var on = !uiHiddenState[e.id];
+            html += '<div class="ui-row">'
+                 +  '<span class="toggle-track ui-mini-toggle' + (on ? ' on' : '') + '" id="ui-tgl-' + e.id + '"><span class="toggle-thumb"></span></span>'
+                 +  '<span class="ui-row-name">' + htmlEscape(name) + '</span>'
+                 +  (e.t || e.p
+                    ? '<input class="ui-row-text" id="ui-txt-' + e.id + '" type="text" maxlength="48" spellcheck="false" autocomplete="off" placeholder="' + htmlEscape(S.uiTextPh || "") + '">'
+                    : '')
+                 +  '</div>';
+        }
+    }
+    host.innerHTML = html;
+    host.setAttribute("data-lang", currentLang);
+    host.setAttribute("data-ser", serializeUiHidden() + "#" + serializeUiText());
+    for (var k = 0; k < UI_ELEMENTS.length; k++) {
+        var e2 = UI_ELEMENTS[k];
+        (function (eid) {
+            var tgl = el("ui-tgl-" + eid);
+            if (tgl) {
+                tgl.onclick = function () {
+                    if (uiHiddenState[eid]) delete uiHiddenState[eid];
+                    else uiHiddenState[eid] = true;
+                    uiCustomSyncRow(eid);
+                    applyInterfaceSettings();
+                    syncUiBridgeFields();
+                    updateUiCustomCount();
+                    return false;
+                };
+            }
+            var inp = el("ui-txt-" + eid);
+            if (inp) {
+                inp.value = uiTextState[eid] || "";
+                inp.onkeyup = function () {
+                    if (inp.value !== "") uiTextState[eid] = inp.value;
+                    else delete uiTextState[eid];
+                    applyInterfaceTexts();
+                    syncUiBridgeFields();
+                };
+                inp.onchange = inp.onkeyup;
+            }
+        })(e2.id);
+    }
+    updateUiCustomCount();
+}
+
+function uiCustomResetAll() {
+    uiHiddenState = {};
+    uiTextState = {};
+    applyInterfaceSettings();
+    syncUiBridgeFields();
+    uiCustomRenderList();
 }
 
 function setCP(id, hex) {
@@ -5573,24 +6028,25 @@ function syncSettingsFromNativeBridge() {
         customTheme.gradientEnabled = el("__cfg_theme_grad_en").value === "1";
         customTheme.gradientBg2 = normalizeHex(el("__cfg_theme_grad_bg2").value, customTheme.bg);
         customTheme.gradientAngle = parseInt(el("__cfg_theme_grad_angle").value, 10) || 135;
+        var gopBridge = parseInt(el("__cfg_theme_grad_op") ? el("__cfg_theme_grad_op").value : "100", 10);
+        customTheme.gradientOpacity = (isNaN(gopBridge) || gopBridge < 0 || gopBridge > 100) ? 100 : gopBridge;
+
+        /* §ui-custom: live interface customization from the native popup */
+        parseUiHidden(el("__cfg_ui_hidden") ? el("__cfg_ui_hidden").value : "");
+        parseUiText(el("__cfg_ui_text") ? el("__cfg_ui_text").value : "");
 
         try {
             var nativeThemePresets = JSON.parse(el("__cfg_theme_presets").value || "[]");
             if (isArray(nativeThemePresets)) userThemePresets = nativeThemePresets;
         } catch (ignoreThemePresets) {}
 
-        syncAutoMinToggle();
-        syncTooltipToggle();
-        syncMaskToggle();
-        syncAOTToggle(true);
-        syncOpacityButtons();
-        syncShowHideUI();
-        syncDelayDisplay();
         syncThemeControls();
         syncLangButtons();
         applyTheme();
         applyCompactMode();
         applyLanguage();
+        /* §ui-custom: rebuild the element list so it reflects popup edits */
+        uiCustomRenderList();
     } catch (e) {}
 }
 
@@ -8588,9 +9044,21 @@ function renderDetailPanel(id) {
     if (emptyEl) emptyEl.style.display = "none";
     if (contentEl) contentEl.style.display = "";
 
-    el("pd-icon").innerHTML = p.icon ? p.icon : String((p._dispIdx || 0) + 1);
+    var pdIconEl = el("pd-icon");
     var pdDotColor = p.color || DOT_COLORS[(p._dispIdx || 0) % DOT_COLORS.length];
-    el("pd-icon").style.background = pdDotColor + "33";
+    var pdThumbSrc = (!p.icon && p.placeId) ? placeThumbSrc(p.placeId) : "";
+    if (p.icon) {
+        /* User-set icon wins over the game avatar */
+        pdIconEl.innerHTML = p.icon;
+        pdIconEl.style.background = pdDotColor + "33";
+    } else if (pdThumbSrc) {
+        pdIconEl.innerHTML = '<img class="pd-icon-img" src="file:///' + pdThumbSrc.split("\\").join("/") + '">';
+        pdIconEl.style.background = "transparent";
+    } else {
+        pdIconEl.innerHTML = String((p._dispIdx || 0) + 1);
+        pdIconEl.style.background = pdDotColor + "33";
+        if (p.placeId) requestPlaceThumb(p.placeId);
+    }
 
     var nameEl = el("pd-name");
     nameEl.innerHTML = "";
@@ -8659,6 +9127,25 @@ function renderDetailPanel(id) {
         detailPresetId = null;
         renderDetailPanel(null);
     };
+
+    /* §ui-custom: re-apply label overrides the render may have overwritten */
+    applyInterfaceTexts();
+}
+
+/* ── §game-icon: real place avatar in the detail panel ─────
+   The index number is a fallback while the avatar loads or when
+   the place id is unavailable. Icons are fetched by the AHK host
+   (CMD:thumb_req <placeId>) and returned as a local file path via
+   __thumb_resp — JS never touches the network directly (IE). */
+var __thumbCache = {};
+function placeThumbSrc(placeId) {
+    var t = placeId ? __thumbCache[placeId] : null;
+    return (t && t.state === "ok" && t.src) ? t.src : "";
+}
+function requestPlaceThumb(placeId) {
+    if (!placeId || __thumbCache[placeId]) return;
+    __thumbCache[placeId] = { state: "pending" };
+    sendCmd("CMD:thumb_req " + placeId);
 }
 
 /* Re-apply compact icon-only labels after legacy applyLanguage() writes
@@ -8671,6 +9158,14 @@ applyLanguage = function () {
     var sb = el("btn-save");   if (sb) sb.innerHTML = "&#128190;";
     var cb = el("btn-capture"); if (cb && !capturingKey) cb.innerHTML = '<span class="ir-hk-capture-ring"></span>';
     var ht = el("chk-txt-hotkey"); if (ht) ht.innerHTML = "HK";
+    /* §ui-custom: re-apply overrides the language pass just overwrote */
+    if (appInitialized) {
+        applyInterfaceSettings();
+        if (el("ui-custom-list") && el("ui-custom-list").getAttribute("data-lang") !== currentLang) {
+            uiCustomRenderList();
+        }
+        updateUiCustomCount();
+    }
 };
 
 /* The original updateFavButtons() patches an old .preset-fav <button>
@@ -8693,6 +9188,8 @@ var __origSwitchMethod = switchMethod;
 switchMethod = function (n) {
     __origSwitchMethod(n);
     layoutInputRow();
+    /* §ui-custom: method tab labels were just rewritten by switchMethod */
+    applyInterfaceTexts();
 };
 
 /* Wire up once the document + legacy init has run */
@@ -8708,6 +9205,27 @@ window.addEventListener("load", function () {
             if (pid && findPreset(pid)) creditPresetLaunch(pid);
         }
     }, 250);
+
+    /* §game-icon: consume thumbnail responses pushed back by the AHK host */
+    setInterval(function () {
+        var r = el("__thumb_resp");
+        if (!r) return;
+        var v = r.value;
+        if (!v) return;
+        var sep = v.indexOf("|");
+        if (sep < 0) return;
+        var pid = v.substring(0, sep), src = v.substring(sep + 1);
+        if (!pid) return;
+        var respKey = pid + "|" + (src ? "ok" : "fail");
+        if (__thumbCache.__resp === respKey) return;
+        __thumbCache.__resp = respKey;
+        if (src) __thumbCache[pid] = { state: "ok", src: src };
+        else __thumbCache[pid] = { state: "fail" };
+        if (detailPresetId) {
+            var pp = findPreset(detailPresetId);
+            if (pp && !pp.icon && pp.placeId === pid) renderDetailPanel(detailPresetId);
+        }
+    }, 350);
 
     layoutInputRow();
     enforceHotkeyToggleVisibility();

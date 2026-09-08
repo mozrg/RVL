@@ -1865,8 +1865,8 @@ body.theme-light .guide-nav-indicator { color: #BBBBBB; }
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.12);
-    transform: scale(1.12);
+    -ms-transform: scale(1.13);
+    transform: scale(1.13);
 }
 .color-input {
     width: 72px;
@@ -4085,8 +4085,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.12);
-    transform: scale(1.12);
+    -ms-transform: scale(1.13);
+    transform: scale(1.13);
 }
 .color-input {
     width: 72px;
@@ -6633,8 +6633,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.12);
-    transform: scale(1.12);
+    -ms-transform: scale(1.13);
+    transform: scale(1.13);
 }
 .color-input {
     width: 72px;
@@ -13051,4 +13051,144 @@ body.theme-custom .pd-info {
     scrollbar-3dlight-color: #111111;
     scrollbar-darkshadow-color: #111111;
     scrollbar-shadow-color: #555555;
+}
+
+/* ============================================================
+   §ui-custom · INTERFACE ELEMENT CUSTOMIZATION (settings block)
+   Appended block — style for the element list in the settings
+   modal: mini visibility toggles, per-element text overrides.
+   ============================================================ */
+.ui-custom-tools {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+    margin: 2px 0 6px;
+}
+.ui-custom-count {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #666666;
+    text-transform: uppercase;
+}
+.ui-custom-reset {
+    height: 22px;
+    padding: 0 10px;
+    border-radius: 6px;
+    background: #111111;
+    border: 1px solid #242424;
+    color: #888888;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    -ms-transition: background 0.16s, color 0.16s, border-color 0.16s;
+    transition: background 0.16s, color 0.16s, border-color 0.16s;
+}
+.ui-custom-reset:hover { border-color: #555555; color: #DDDDDD; background: #161616; }
+.ui-custom-list {
+    max-height: 190px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #1E1E1E;
+    border-radius: 8px;
+    background: #0D0D0D;
+    padding: 3px 0;
+    scrollbar-face-color: #333333;
+    scrollbar-track-color: #111111;
+    scrollbar-arrow-color: #444444;
+    scrollbar-highlight-color: #111111;
+    scrollbar-3dlight-color: #111111;
+    scrollbar-darkshadow-color: #111111;
+    scrollbar-shadow-color: #333333;
+}
+.ui-custom-list::-webkit-scrollbar { width: 4px; }
+.ui-custom-list::-webkit-scrollbar-track { background: #0F0F0F; border-radius: 2px; }
+.ui-custom-list::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 2px; }
+.ui-group-label {
+    padding: 7px 10px 3px;
+    font-size: 7.5px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #555555;
+    text-transform: uppercase;
+}
+.ui-row {
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: center;
+    align-items: center;
+    padding: 2px 10px;
+    min-height: 25px;
+    -ms-transition: background 0.12s;
+    transition: background 0.12s;
+}
+.ui-row:hover { background: #141414; }
+.ui-mini-toggle {
+    width: 26px;
+    height: 14px;
+    border-radius: 8px;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    margin-right: 9px;
+    position: relative;
+    cursor: pointer;
+}
+.ui-mini-toggle .toggle-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    -ms-transition: left 0.15s;
+    transition: left 0.15s;
+}
+.ui-mini-toggle.on .toggle-thumb { left: 13px; }
+.ui-row-name {
+    -ms-flex: 1 1 auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 9px;
+    color: #AAAAAA;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ui-row-text {
+    width: 108px;
+    height: 20px;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+    margin-left: 8px;
+    padding: 0 6px;
+    background: #111111;
+    border: 1px solid #222222;
+    border-radius: 5px;
+    color: #DDDDDD;
+    font-size: 9px;
+    font-family: inherit;
+}
+.ui-row-text:focus { border-color: #555555; outline: none; }
+body.theme-light .ui-custom-list { background: #F7F8FA; border-color: #E2E5EB; }
+body.theme-light .ui-custom-list::-webkit-scrollbar-track { background: #EEF0F4; }
+body.theme-light .ui-custom-list::-webkit-scrollbar-thumb { background: #C6CBD4; }
+body.theme-light .ui-row:hover { background: #EFF1F5; }
+body.theme-light .ui-group-label { color: #8A92A0; }
+body.theme-light .ui-row-name { color: #3A3F4A; }
+body.theme-light .ui-row-text { background: #FFFFFF; border-color: #D8DCE4; color: #22252C; }
+body.theme-light .ui-custom-count { color: #8A92A0; }
+body.theme-light .ui-custom-reset { background: #FFFFFF; border-color: #D8DCE4; color: #6A7280; }
+body.theme-light .ui-custom-reset:hover { background: #F0F2F6; color: #2A2F3A; border-color: #B9BFCA; }
+/* ── §game-icon · place avatar in the detail panel ────────── */
+.pd-icon-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    -ms-interpolation-mode: bicubic;
 }

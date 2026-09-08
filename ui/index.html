@@ -42,6 +42,8 @@
   <input type="hidden" id="__cfg_theme_grad_en">
   <input type="hidden" id="__cfg_theme_grad_bg2">
   <input type="hidden" id="__cfg_theme_grad_angle">
+  <input type="hidden" id="__cfg_theme_grad_op">
+  <input type="hidden" id="__thumb_resp">
   <input type="hidden" id="__resize_req">
   <input type="hidden" id="__cfg_theme_presets">
   <input type="hidden" id="__theme_presets_out">
@@ -101,6 +103,8 @@
   <input type="hidden" id="__update_progress" value="0">
   <input type="hidden" id="__update_notice" value="">
   <input type="hidden" id="__update_install_req" value="0">
+  <input type="hidden" id="__cfg_ui_hidden">
+  <input type="hidden" id="__cfg_ui_text">
 
   <!-- UNIVERSAL TOOLTIP -->
   <div class="app-tooltip" id="app-tooltip">
@@ -193,6 +197,11 @@
                 </div>
                 <input class="angle-input" id="theme-grad-angle" type="number" min="0" max="360" value="135">
               </div>
+              <div class="opacity-slider-row" style="margin-top:7px;">
+                <span class="angle-label" id="lbl-grad-opacity" style="margin-right:8px;">ПРОЗРАЧНОСТЬ</span>
+                <input class="opacity-slider" id="grad-opacity-slider" type="range" min="0" max="100" value="100" step="1">
+                <span class="opacity-display" id="grad-opacity-display">100%</span>
+              </div>
             </div>
           </div>
         </div>
@@ -266,6 +275,14 @@
               <button class="delay-btn" id="delay-plus">&#43;</button>
             </div>
           </div>
+        </div>
+        <div class="settings-block" id="ui-custom-block">
+          <div class="settings-label" id="lbl-ui-custom">ЭЛЕМЕНТЫ ИНТЕРФЕЙСА</div>
+          <div class="ui-custom-tools">
+            <span class="ui-custom-count" id="ui-custom-count"></span>
+            <button class="ui-custom-reset" id="btn-ui-custom-reset" type="button">&#8634; СБРОСИТЬ</button>
+          </div>
+          <div class="ui-custom-list" id="ui-custom-list"></div>
         </div>
         <div class="settings-block update-block">
           <div class="settings-label" id="lbl-update">ОБНОВЛЕНИЕ</div>
@@ -427,7 +444,7 @@
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.12</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.13</span></div>
     </div>
   </div>
 
@@ -452,7 +469,7 @@
     <div class="update-screen-glow update-screen-glow-two"></div>
     <div class="update-screen-card">
       <div class="update-screen-header">
-        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.12</span></div>
+        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.13</span></div>
         <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
       </div>
       <div class="update-screen-main">
@@ -486,8 +503,8 @@
   <div class="app-shell" id="app-shell">
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
-    <span class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
-    <span class="tb-ver hdr-ver" id="header-version">v1.12</span>
+    <span id="hdr-logo" class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
+    <span class="tb-ver hdr-ver" id="header-version">v1.13</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
@@ -674,7 +691,7 @@
     <span class="status-bar-sep sep">&#183;</span>
     <span class="status-bar-item" id="status-last">Последний: никогда</span>
     <span class="status-bar-spacer"></span>
-    <span class="status-bar-item" id="status-version">v1.12</span>
+    <span class="status-bar-item" id="status-version">v1.13</span>
   </div>
   </div><!-- /.app-shell -->
 
