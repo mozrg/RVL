@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    app.js  ·  RVL v1.5.1
    IE 11 / Shell.Explorer compatible
    AHK bridge: document.title for commands, hidden inputs for data
@@ -189,6 +189,7 @@ var STRINGS = {
         showTooltips:       "Показывать подсказки",
         maskInputsLabel:    "Скрывать вводимые данные",
         alwaysOnTopLabel:   "Поверх всех окон",
+        autostartLabel:     "Автозапуск при запуске системы",
         showFieldTip:       "Показать",
         hideFieldTip:       "Скрыть",
         settingsSaveBtn:    "СОХРАНИТЬ",
@@ -478,6 +479,7 @@ var STRINGS = {
         showTooltips:       "Show tooltips",
         maskInputsLabel:    "Mask input fields",
         alwaysOnTopLabel:   "Always on top",
+        autostartLabel:     "Launch at system startup",
         showFieldTip:       "Show",
         hideFieldTip:       "Hide",
         settingsSaveBtn:    "SAVE",
@@ -700,6 +702,7 @@ var showHideEn    = false;
 var tooltipsEnabled = true;
 var maskInputsEnabled = true;
 var alwaysOnTop   = false;
+var autostartOn   = false;
 
 /* ── Layout constants for dynamic height calculation ─────── */
 var FIXED_H        = 412;  /* Slightly increased to prevent status-bar clipping */
@@ -810,6 +813,13 @@ function initApp(skipStartupPreset) {
     var aot = el("__cfg_always_on_top") ? el("__cfg_always_on_top").value : "0";
     alwaysOnTop = (aot === "1");
     syncAOTToggle(true);
+
+    /* Autostart at system boot — mirror of the AOT toggle. The host applies
+       the registry change on the CMD:set_autostart command, so initial load
+       uses skipCmd=true to avoid rewriting the Run value needlessly. */
+    var as = el("__cfg_autostart") ? el("__cfg_autostart").value : "0";
+    autostartOn = (as === "1");
+    syncAutostartToggle(true);
 
     /* Enhancement: Compact mode — read from config and apply */
     var cm = el("__cfg_compact_mode") ? el("__cfg_compact_mode").value : "0";
@@ -1335,6 +1345,16 @@ window.onload = function () {
         chk.checked = !chk.checked;
         alwaysOnTop = chk.checked;
         syncAOTToggle(false);
+        return false;
+    };
+
+    el("autostart-track").onclick = function (e) {
+        e = e || window.event;
+        cancelEv(e);
+        var chk = el("chk-autostart");
+        chk.checked = !chk.checked;
+        autostartOn = chk.checked;
+        syncAutostartToggle(false);
         return false;
     };
 
@@ -2569,6 +2589,20 @@ function syncAOTToggle(skipCmd) {
     if (!skipCmd) sendCmd("CMD:set_always_on_top");
 }
 
+/* Mirrors syncAOTToggle for the "launch at system startup" setting. The
+   AHK host maintains the HKCU Run entry — see OnSetAutostart. */
+function syncAutostartToggle(skipCmd) {
+    var track = el("autostart-track");
+    if (!track) return;
+    track.className = autostartOn ? "toggle-track on" : "toggle-track";
+    var chk = el("chk-autostart");
+    if (chk) chk.checked = autostartOn;
+    if (el("__cfg_autostart")) el("__cfg_autostart").value = autostartOn ? "1" : "0";
+    var wrap = track.parentNode;
+    if (wrap) wrap.className = autostartOn ? "chk-wrap chk-on" : "chk-wrap";
+    if (!skipCmd) sendCmd("CMD:set_autostart");
+}
+
 function onSaveClose() {
     flushPresetsOut();
     clearDirty();
@@ -2916,6 +2950,7 @@ function applyLanguage() {
     setText("chk-txt-tooltips",       S.showTooltips);
     setText("chk-txt-mask",           S.maskInputsLabel);
     setText("chk-txt-aot",            S.alwaysOnTopLabel);
+    setText("chk-txt-autostart",      S.autostartLabel || "Автозапуск при запуске системы");
     applyMaskInputs();
 
     /* Show/hide hotkey block */
@@ -3423,6 +3458,7 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .presets-scroll{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
         r.push("body.theme-custom .tp-body{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
         r.push("body.theme-custom .pd-info{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
+        r.push("body.theme-custom .ui-custom-list{scrollbar-face-color:" + scFace + ";scrollbar-track-color:" + S + ";scrollbar-arrow-color:" + scArrow + ";scrollbar-highlight-color:" + S + ";scrollbar-3dlight-color:" + S + ";scrollbar-darkshadow-color:" + S + ";scrollbar-shadow-color:" + scFace + "}");
 
         /* ---- Theme chips ---- */
         r.push("body.theme-custom .tp-chip{border-color:" + a27 + ";color:" + T + "}");
@@ -5862,7 +5898,7 @@ var SETTINGS_BRIDGE_IDS = [
     "__cfg_launch_delay", "__cfg_theme_grad_en", "__cfg_theme_grad_bg2",
     "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset", "__last_loaded_preset_id",
     "__cfg_opacity", "__cfg_sh_key", "__cfg_sh_en", "__cfg_mask_inputs",
-    "__cfg_always_on_top", "__cfg_compact_mode", "__cfg_sort_mode",
+    "__cfg_always_on_top", "__cfg_autostart", "__cfg_compact_mode", "__cfg_sort_mode",
     "__cfg_theme_presets", "__cfg_preset_groups"
 ];
 var SETTINGS_VISIBLE_IDS = [
@@ -5872,7 +5908,7 @@ var SETTINGS_VISIBLE_IDS = [
 ];
 var SETTINGS_CHECK_IDS = [
     "chk-enabled", "chk-gradient", "chk-auto-minimize", "chk-tooltips",
-    "chk-mask-inputs", "chk-always-on-top", "chk-compact-mode", "sh-chk-enabled"
+    "chk-mask-inputs", "chk-always-on-top", "chk-autostart", "chk-compact-mode", "sh-chk-enabled"
 ];
 
 function settingsOpener() {
@@ -9046,7 +9082,13 @@ function renderDetailPanel(id) {
 
     var pdIconEl = el("pd-icon");
     var pdDotColor = p.color || DOT_COLORS[(p._dispIdx || 0) % DOT_COLORS.length];
-    var pdThumbSrc = (!p.icon && p.placeId) ? placeThumbSrc(p.placeId) : "";
+    /* Avatar key: place id for method 1, share code for method 2 */
+    var pdThumbKey = "";
+    if (!p.icon) {
+        if (p.placeId) pdThumbKey = p.placeId;
+        else if (p.linkCode) pdThumbKey = "sc:" + p.linkCode;
+    }
+    var pdThumbSrc = pdThumbKey ? placeThumbSrc(pdThumbKey) : "";
     if (p.icon) {
         /* User-set icon wins over the game avatar */
         pdIconEl.innerHTML = p.icon;
@@ -9057,7 +9099,7 @@ function renderDetailPanel(id) {
     } else {
         pdIconEl.innerHTML = String((p._dispIdx || 0) + 1);
         pdIconEl.style.background = pdDotColor + "33";
-        if (p.placeId) requestPlaceThumb(p.placeId);
+        if (pdThumbKey) requestPlaceThumb(pdThumbKey);
     }
 
     var nameEl = el("pd-name");
@@ -9142,10 +9184,19 @@ function placeThumbSrc(placeId) {
     var t = placeId ? __thumbCache[placeId] : null;
     return (t && t.state === "ok" && t.src) ? t.src : "";
 }
-function requestPlaceThumb(placeId) {
-    if (!placeId || __thumbCache[placeId]) return;
-    __thumbCache[placeId] = { state: "pending" };
-    sendCmd("CMD:thumb_req " + placeId);
+/* Failed attempts retry after 90s, stalled "pending" after 20s — so one
+   offline moment never freezes the avatar for the whole session. */
+function requestPlaceThumb(key) {
+    if (!key) return;
+    var t = __thumbCache[key];
+    var now = (new Date()).getTime();
+    if (t) {
+        if (t.state === "ok") return;
+        if (t.state === "pending" && now - (t.ts || 0) < 20000) return;
+        if (t.state === "fail" && now - (t.ts || 0) < 90000) return;
+    }
+    __thumbCache[key] = { state: "pending", ts: now };
+    sendCmd("CMD:thumb_req " + key);
 }
 
 /* Re-apply compact icon-only labels after legacy applyLanguage() writes
@@ -9182,6 +9233,14 @@ var __origRenderPresets = renderPresets;
 renderPresets = function () {
     __origRenderPresets();
     if (detailPresetId) renderDetailPanel(detailPresetId);
+    /* §game-icon: prefetch avatars so they load without clicking each preset.
+       requestPlaceThumb dedupes by key, so this stays cheap on every render. */
+    for (var __pi = 0; __pi < presets.length; __pi++) {
+        var __pp = presets[__pi];
+        if (__pp.icon) continue;
+        if (__pp.placeId) requestPlaceThumb(__pp.placeId);
+        else if (__pp.linkCode) requestPlaceThumb("sc:" + __pp.linkCode);
+    }
 };
 
 var __origSwitchMethod = switchMethod;
@@ -9206,24 +9265,42 @@ window.addEventListener("load", function () {
         }
     }, 250);
 
-    /* §game-icon: consume thumbnail responses pushed back by the AHK host */
+    /* §game-icon: consume thumbnail responses pushed back by the AHK host.
+       The bridge is a newline queue ("key|path\n...") drained and cleared
+       in one pass — a single overwritten value lost all answers but the
+       last when every preset resolved within one 350ms poll. */
     setInterval(function () {
         var r = el("__thumb_resp");
         if (!r) return;
         var v = r.value;
         if (!v) return;
-        var sep = v.indexOf("|");
-        if (sep < 0) return;
-        var pid = v.substring(0, sep), src = v.substring(sep + 1);
-        if (!pid) return;
-        var respKey = pid + "|" + (src ? "ok" : "fail");
-        if (__thumbCache.__resp === respKey) return;
-        __thumbCache.__resp = respKey;
-        if (src) __thumbCache[pid] = { state: "ok", src: src };
-        else __thumbCache[pid] = { state: "fail" };
+        r.value = "";
+        var lines = v.split("\n");
+        for (var li = 0; li < lines.length; li++) {
+            var line = lines[li];
+            if (!line) continue;
+            var sep = line.indexOf("|");
+            if (sep < 0) continue;
+            var key = line.substring(0, sep), src = line.substring(sep + 1);
+            if (!key) continue;
+            if (src) __thumbCache[key] = { state: "ok", src: src };
+            else if (!__thumbCache[key] || __thumbCache[key].state !== "ok") {
+                __thumbCache[key] = { state: "fail", ts: (new Date()).getTime() };
+            }
+        }
+        /* Re-render only when any response belongs to the PRESET that is
+           currently shown. The key is a place id (method 1) or "sc:<code>"
+           (method 2) — compare with the same key renderDetailPanel uses. */
         if (detailPresetId) {
             var pp = findPreset(detailPresetId);
-            if (pp && !pp.icon && pp.placeId === pid) renderDetailPanel(detailPresetId);
+            var ppKey = "";
+            if (pp && !pp.icon) {
+                if (pp.placeId) ppKey = pp.placeId;
+                else if (pp.linkCode) ppKey = "sc:" + pp.linkCode;
+            }
+            if (pp && ppKey && __thumbCache[ppKey] && __thumbCache[ppKey].state === "ok") {
+                renderDetailPanel(detailPresetId);
+            }
         }
     }, 350);
 
@@ -9480,7 +9557,7 @@ function hideStartupScreen(resultState) {
         if (notice) status.innerHTML = U.done;
         else if (resultState === "available") status.innerHTML = U.startupAvailable + (version ? " · " + version : "");
         else if (resultState === "latest") status.innerHTML = message || U.startupLatest;
-        else if (resultState === "error") status.innerHTML = U.startupError;
+        else if (resultState === "error") status.innerHTML = message || U.startupError;
         else status.innerHTML = U.boot;
     }
     var fill = el("startup-progress-fill");
@@ -9573,8 +9650,11 @@ function startStartupVersionCheck() {
                 hideStartupScreen(state);
                 return;
             }
-            /* Do not leave the user behind a splash forever if GitHub is offline. */
-            if (new Date().getTime() - startedAt > 15000) {
+            /* Do not leave the user behind a splash forever if GitHub is
+               offline. The native check uses short WinHTTP timeouts and
+               reports its own error state; 45s only covers the pathological
+               case where every endpoint stalls silently. */
+            if (new Date().getTime() - startedAt > 45000) {
                 hideStartupScreen("error");
                 return;
             }

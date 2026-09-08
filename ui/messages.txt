@@ -1,0 +1,27 @@
+# RVL UI messages. UTF-8. Read by RVL.ahk with FileRead *P65001, so this
+# file's encoding is independent of how the script itself is saved — never
+# inline these strings as literals in RVL.ahk.
+checking=Проверяю наличие новой версии...
+unreachable=Не удалось связаться с GitHub — проверьте интернет
+latest=Установлена последняя версия
+available=Доступна новая версия
+no_url=Ссылка на обновление недоступна
+no_helper=Файл обновления не найден
+prepare_fail=Не удалось подготовить фоновый загрузчик
+config_fail=Не удалось создать конфигурацию обновления
+connecting=Подключаюсь к GitHub...
+ps_fail=PowerShell не запустился
+start_fail=Не удалось запустить фоновый загрузчик
+worker_no_response=Фоновый загрузчик запущен, но не отвечает
+worker_not_running=PowerShell не запустил фоновый загрузчик
+downloading_default=Скачиваю обновление...
+ready=Файлы готовы. Перезапускаем RVL...
+dl_fail=Не удалось скачать обновление
+zip_dl=Скачиваю архив обновления...
+zip_dl_fail=Не удалось скачать архив обновления
+extracting=Распаковываю файлы обновления...
+zip_open_fail=Не удалось открыть архив
+extract_fail=Не удалось распаковать обновление
+bad_zip=Архив обновления имеет неверный формат
+installed=Обновление установлено
+settings_title=RVL — Настройки

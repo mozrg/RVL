@@ -55,6 +55,7 @@
   <input type="hidden" id="__cfg_sh_en">
   <input type="hidden" id="__cfg_mask_inputs">
   <input type="hidden" id="__cfg_always_on_top">
+  <input type="hidden" id="__cfg_autostart">
   <input type="hidden" id="__import_theme_data">
   <input type="hidden" id="__cfg_method">
   <input type="hidden" id="__app_version">
@@ -267,6 +268,13 @@
             <input type="checkbox" id="chk-compact-mode" class="chk-hidden">
             <span class="chk-txt" id="chk-txt-compact">Компактный режим</span>
           </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="autostart-track">
+              <span class="toggle-thumb" id="autostart-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-autostart" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-autostart">Автозапуск при запуске системы</span>
+          </div>
           <div class="launch-delay-row" style="margin-top:8px;">
             <span class="color-name" id="lbl-launch-delay">Задержка запуска</span>
             <div class="delay-stepper">
@@ -444,7 +452,7 @@
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.13</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.14</span></div>
     </div>
   </div>
 
@@ -469,7 +477,7 @@
     <div class="update-screen-glow update-screen-glow-two"></div>
     <div class="update-screen-card">
       <div class="update-screen-header">
-        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.13</span></div>
+        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.14</span></div>
         <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
       </div>
       <div class="update-screen-main">
@@ -504,7 +512,7 @@
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
     <span id="hdr-logo" class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
-    <span class="tb-ver hdr-ver" id="header-version">v1.13</span>
+    <span class="tb-ver hdr-ver" id="header-version">v1.14</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
@@ -691,7 +699,7 @@
     <span class="status-bar-sep sep">&#183;</span>
     <span class="status-bar-item" id="status-last">Последний: никогда</span>
     <span class="status-bar-spacer"></span>
-    <span class="status-bar-item" id="status-version">v1.13</span>
+    <span class="status-bar-item" id="status-version">v1.14</span>
   </div>
   </div><!-- /.app-shell -->
 

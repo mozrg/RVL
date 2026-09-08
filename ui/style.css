@@ -1865,8 +1865,8 @@ body.theme-light .guide-nav-indicator { color: #BBBBBB; }
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.13);
-    transform: scale(1.13);
+    -ms-transform: scale(1.14);
+    transform: scale(1.14);
 }
 .color-input {
     width: 72px;
@@ -4085,8 +4085,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.13);
-    transform: scale(1.13);
+    -ms-transform: scale(1.14);
+    transform: scale(1.14);
 }
 .color-input {
     width: 72px;
@@ -6633,8 +6633,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.13);
-    transform: scale(1.13);
+    -ms-transform: scale(1.14);
+    transform: scale(1.14);
 }
 .color-input {
     width: 72px;
@@ -13191,4 +13191,12 @@ body.theme-light .ui-custom-reset:hover { background: #F0F2F6; color: #2A2F3A; b
     display: block;
     border-radius: inherit;
     -ms-interpolation-mode: bicubic;
+}body.theme-light .ui-custom-list {
+    scrollbar-face-color: #C8CCD3;
+    scrollbar-track-color: #F4F5F7;
+    scrollbar-arrow-color: #9099A8;
+    scrollbar-highlight-color: #F4F5F7;
+    scrollbar-3dlight-color: #F4F5F7;
+    scrollbar-darkshadow-color: #F4F5F7;
+    scrollbar-shadow-color: #C8CCD3;
 }

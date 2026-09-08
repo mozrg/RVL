@@ -1,5 +1,5 @@
-﻿; ============================================================
-;  RVL.ahk  v1.13
+; ============================================================
+;  RVL.ahk  v1.14
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -16,7 +16,7 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.13"
+global APP_VERSION := "1.14"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_TAGS := "https://api.github.com/repos/mozrg/RVL/tags?per_page=10"
@@ -66,6 +66,15 @@ global g_tray_fav_data := {}    ; Enhancement D1: tray fav preset data
 global g_preset_hotkeys := []
 global g_preset_hk_data := {}
 
+; ── Game icon fetch (worker) state ──────────────────────────
+global g_thumb_key := ""
+global g_thumb_path := ""
+global g_thumb_doc := 0
+global g_thumb_step := 0
+global g_thumb_ticks := 0
+global g_thumb_pending_key := ""
+global g_thumb_launch_key := ""
+
 ; ── DOM bridge ──────────────────────────────────────────────
 global g_place        := ""
 global g_link         := ""
@@ -92,6 +101,7 @@ global g_shKey        := ""
 global g_shEn         := 0
 global g_mask_inputs  := 1
 global g_always_on_top := 0
+global g_autostart := "0"
 global g_prevShHotkey := ""
 global g_windowVisible := true
 global g_update_state := "idle"
@@ -108,7 +118,7 @@ if (FileExist(UPDATE_STATUS_FILE)) {
     updateNoticeRaw := Trim(updateNoticeRaw)
     if (SubStr(updateNoticeRaw, 1, 4) = "done")
         g_update_notice := updateNoticeRaw
-    FileDelete, %UPDATE_STATUS_FILE%
+    try FileDelete, %UPDATE_STATUS_FILE%
 }
 
 ; ── Build combined HTML ─────────────────────────────────────
@@ -117,9 +127,9 @@ IfNotExist, %A_ScriptDir%\data
     FileCreateDir, %A_ScriptDir%\data
 
 ; ── Build combined HTML ──────────────────────────────────────
-FileRead, uiCSS,  %A_ScriptDir%\ui\style.css
-FileRead, uiJS,   %A_ScriptDir%\ui\app.js
-FileRead, uiHTML, %A_ScriptDir%\ui\index.html
+FileRead, uiCSS,  *P65001 %A_ScriptDir%\ui\style.css
+FileRead, uiJS,   *P65001 %A_ScriptDir%\ui\app.js
+FileRead, uiHTML, *P65001 %A_ScriptDir%\ui\index.html
 
 if (ErrorLevel) {
     MsgBox, 16, RVL, UI files missing!`nFolder 'ui' must contain style.css, app.js and index.html
@@ -138,8 +148,34 @@ uiHTML := StrReplace(uiHTML, "<script src=""app.js""></script>", scriptTag)
 
 FileDelete, %TMP_HTML%
 FileAppend, %uiHTML%, %TMP_HTML%, UTF-8
-FileDelete, %TMP_SETTINGS_HTML%
+try FileDelete, %TMP_SETTINGS_HTML%
 FileAppend, %uiHTML%, %TMP_SETTINGS_HTML%, UTF-8
+
+; ── UI messages (ui\messages.txt, UTF-8) ────────────────────
+; The script file may be saved in any encoding (editors and tools tend to
+; strip the UTF-8 BOM, which makes AHK v1 misparse Cyrillic literals as
+; cp1251 mojibake). Every user-facing string therefore lives in a UTF-8
+; data file that is read with the same *P65001 rule as the ui\ sources.
+; NEVER inline Russian literals in this script.
+g_msgs := {}
+msgsFile := A_ScriptDir "\ui\messages.txt"
+if (FileExist(msgsFile)) {
+    FileRead, msgsRaw, *P65001 %msgsFile%
+    Loop, Parse, msgsRaw, `n, `r
+    {
+        eqPos := InStr(A_LoopField, "=")
+        if (eqPos > 1)
+            g_msgs[SubStr(A_LoopField, 1, eqPos - 1)] := SubStr(A_LoopField, eqPos + 1)
+    }
+}
+
+; UiMsg("key", "ASCII fallback") — the fallback keeps the app readable even
+; if ui\messages.txt is missing or damaged.
+UiMsg(key, fallback) {
+    global g_msgs
+    v := g_msgs[key]
+    return (v != "") ? v : fallback
+}
 
 ; ── GUI ─────────────────────────────────────────────────────
 Gui, +LastFound +ToolWindow -Caption -Border +HWNDhMainWnd
@@ -375,7 +411,16 @@ ProcessCommands:
                 cmd := Trim(A_LoopField)
                 if (cmd = "")
                     continue
-                Gosub, DispatchCommand
+                ; Isolate every command: a failure in one handler (e.g. a
+                ; file command throwing) must never abort the tick and
+                ; silently drop the remaining queued commands, which once
+                ; lost the startup CMD:check_update and broke the whole
+                ; icon pipeline behind it.
+                try {
+                    Gosub, DispatchCommand
+                } catch e {
+                    ThumbLog("cmd EXC [" . cmd . "] " . e.What . ": " . e.Message . " @line " . e.Line)
+                }
             }
         }
 
@@ -429,7 +474,11 @@ ProcessSettingsCommands:
         WB := mainWB
         Gosub, SyncSettingsPopupToMain
         WB := SettingsWB
-        Gosub, DispatchCommand
+        try {
+            Gosub, DispatchCommand
+        } catch e {
+            ThumbLog("cmd EXC [" . cmd . "] " . e.What . ": " . e.Message . " @line " . e.Line)
+        }
 
         ; settings_save closes the native child. Do not touch its COM object
         ; again while draining a queue that may contain another line.
@@ -511,6 +560,8 @@ DispatchCommand:
         Gosub, OnSetOpacity
     } else if (cmd = "CMD:set_always_on_top") {
         Gosub, OnSetAlwaysOnTop
+    } else if (cmd = "CMD:set_autostart") {
+        Gosub, OnSetAutostart
     } else if (cmd = "CMD:sh_capture_start") {
         Gosub, OnSHCaptureStart
     } else if (cmd = "CMD:sh_hotkey_update") {
@@ -585,7 +636,7 @@ OpenSettingsWindow:
     SysGet, settingsArea, MonitorWorkArea, 1
     settingsX := settingsAreaLeft + ((settingsAreaRight - settingsAreaLeft - SETTINGS_W) // 2)
     settingsY := settingsAreaTop + ((settingsAreaBottom - settingsAreaTop - SETTINGS_H) // 2)
-    Gui, Settings:Show, Hide x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, RVL — Настройки
+    Gui, Settings:Show, Hide x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, % UiMsg("settings_title", "RVL Settings")
 
     ; Match the rounded surface used by the existing HTML design.
     settingsRgn := DllCall("CreateRoundRectRgn", "Int", 0, "Int", 0, "Int", SETTINGS_W, "Int", SETTINGS_H, "Int", CORNER_RADIUS, "Int", CORNER_RADIUS, "Ptr")
@@ -609,7 +660,7 @@ InitSettingsWindow:
     try SettingsWB.document.parentWindow.execScript("initNativeSettingsPopup()")
     Gosub, SyncUpdateToSettingsPopup
     g_settings_ready := true
-    Gui, Settings:Show, x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, RVL — Настройки
+    Gui, Settings:Show, x%settingsX% y%settingsY% w%SETTINGS_W% h%SETTINGS_H%, % UiMsg("settings_title", "RVL Settings")
     WinActivate, ahk_id %hSettingsWnd%
 Return
 
@@ -627,7 +678,7 @@ Return
 ; two identical HTML documents. Using one list keeps imports, theme presets,
 ; hotkey capture and future settings controls working in the child window.
 CopySettingsDom(sourceWB, targetWB) {
-    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_theme_grad_op|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version|__cfg_ui_hidden|__cfg_ui_text"
+    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_theme_grad_op|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_autostart|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version|__cfg_ui_hidden|__cfg_ui_text"
     Loop, Parse, valueIds, |
     {
         fieldId := A_LoopField
@@ -641,7 +692,7 @@ CopySettingsDom(sourceWB, targetWB) {
         try targetWB.document.getElementById(fieldId).value := sourceWB.document.getElementById(fieldId).value
     }
 
-    checkedIds := "chk-enabled|chk-gradient|chk-auto-minimize|chk-tooltips|chk-mask-inputs|chk-always-on-top|chk-compact-mode|sh-chk-enabled"
+    checkedIds := "chk-enabled|chk-gradient|chk-auto-minimize|chk-tooltips|chk-mask-inputs|chk-always-on-top|chk-autostart|chk-compact-mode|sh-chk-enabled"
     Loop, Parse, checkedIds, |
     {
         fieldId := A_LoopField
@@ -704,8 +755,8 @@ OnSaveClose:
     Gosub, WritePresets
     Gosub, WriteThemePresets
     Gosub, WritePresetGroups
-    FileDelete, %TMP_HTML%
-    FileDelete, %TMP_SETTINGS_HTML%
+    try FileDelete, %TMP_HTML%
+    try FileDelete, %TMP_SETTINGS_HTML%
     ExitApp
 Return
 
@@ -764,7 +815,9 @@ OnCheckUpdate:
     }
 
     g_update_state := "checking"
-    SetUpdateBridge("checking", "", "Проверяю наличие новой версии...", 0)
+    ThumbLog("check_update begin")
+    SetUpdateBridge("checking", "", UiMsg("checking", "Checking for updates..."), 0)
+    ThumbLog("msg=[" . UiMsg("checking", "") . "]")
 
     remoteVersion := ""
     downloadUrl := ""
@@ -817,7 +870,7 @@ OnCheckUpdate:
                 break
             tagName := Trim(tagMatch1)
             scanPos += StrLen(tagMatch)
-            ; Only plain numeric tags (1.13, v1.13) may drive an update so a
+            ; Only plain numeric tags (1.14, v1.14) may drive an update so a
             ; random non-version tag can never trigger one.
             if (tagName != "" && RegExMatch(tagName, "^v?[0-9]+(\.[0-9]+)*$") && VersionToNumber(tagName) > VersionToNumber(remoteVersion)) {
                 remoteVersion := tagName
@@ -828,27 +881,34 @@ OnCheckUpdate:
 
     downloadUrl := StrReplace(downloadUrl, "\/", "/")
     if (remoteVersion = "" || downloadUrl = "") {
-        g_update_state := "latest"
-        SetUpdateBridge("latest", APP_VERSION, "На GitHub нет опубликованных релизов", 100)
+        ; All three GitHub endpoints failed — report a real error so the
+        ; splash can exit promptly with an honest message and the user can
+        ; retry. Pretending "latest" here used to mask real network
+        ; failures (including the GitHub rate limit) as "up to date".
+        g_update_state := "error"
+        SetUpdateBridge("error", "", UiMsg("unreachable", "Cannot reach GitHub - check your connection"), 0)
+        ThumbLog("check_update unreachable")
         return
     }
 
     if (VersionToNumber(remoteVersion) <= VersionToNumber(APP_VERSION)) {
         g_update_state := "latest"
-        SetUpdateBridge("latest", APP_VERSION, "Установлена последняя версия", 100)
+        SetUpdateBridge("latest", APP_VERSION, UiMsg("latest", "You have the latest version"), 100)
+    ThumbLog("check_update latest msg=[" . UiMsg("latest", "") . "]")
         return
     }
 
     g_update_url := downloadUrl
     g_update_version := remoteVersion
     g_update_state := "available"
-    SetUpdateBridge("available", remoteVersion, "Доступна новая версия", 0)
+    SetUpdateBridge("available", remoteVersion, UiMsg("available", "Update available"), 0)
+    ThumbLog("check_update available " . remoteVersion)
 Return
 
 StartUpdateDownload:
     if (g_update_url = "") {
         g_update_state := "error"
-        SetUpdateBridge("error", "", "Ссылка на обновление недоступна", 0)
+        SetUpdateBridge("error", "", UiMsg("no_url", "Update URL unavailable"), 0)
         return
     }
 
@@ -859,7 +919,7 @@ StartUpdateDownload:
     Gosub, WriteThemePresets
     Gosub, WritePresetGroups
 
-    FileDelete, %UPDATE_STATUS_FILE%
+    try FileDelete, %UPDATE_STATUS_FILE%
     restartPath := A_ScriptFullPath
     restartArgs := ""
     if (!A_IsCompiled) {
@@ -871,7 +931,7 @@ StartUpdateDownload:
     ; only downloads/extracts/replaces files in the background.
     helper := A_ScriptDir "\update\update-worker.ps1"
     if (!FileExist(helper)) {
-        SetUpdateBridge("error", "", "Файл обновления не найден", 0)
+        SetUpdateBridge("error", "", UiMsg("no_helper", "Update helper not found"), 0)
         return
     }
 
@@ -884,13 +944,16 @@ StartUpdateDownload:
     stamp := A_TickCount
     workerTemp := A_Temp "\RVL_update_worker_" . stamp . ".ps1"
     configTemp := A_Temp "\RVL_update_config_" . stamp . ".ini"
-    FileCopy, %helper%, %workerTemp%, 1
-    if (ErrorLevel || !FileExist(workerTemp))
-        throw Exception("Не удалось подготовить фоновый загрузчик")
+    try FileCopy, %helper%, %workerTemp%, 1
+    if (ErrorLevel || !FileExist(workerTemp)) {
+        g_update_state := "error"
+        SetUpdateBridge("error", "", UiMsg("prepare_fail", "Failed to prepare the updater"), 0)
+        return
+    }
 
     configFile := FileOpen(configTemp, "w", "UTF-8")
     if (!configFile)
-        throw Exception("Не удалось создать конфигурацию обновления")
+        throw Exception(UiMsg("config_fail", "Failed to create the update config"))
     configFile.Write("Url=" . g_update_url . "`r`n")
     configFile.Write("Target=" . A_ScriptDir . "`r`n")
     configFile.Write("RestartPath=" . restartPath . "`r`n")
@@ -903,7 +966,7 @@ StartUpdateDownload:
 
     g_update_state := "downloading"
     g_update_started_at := A_TickCount
-    SetUpdateBridge("downloading", g_update_version, "Подключаюсь к GitHub...", 0)
+    SetUpdateBridge("downloading", g_update_version, UiMsg("connecting", "Connecting to GitHub..."), 0)
     ; Run starts PowerShell through the same reliable AHK path used by Mmacro.
     ; ShellExecute can return without launching the script on some Windows
     ; configurations, which previously produced a delayed false error.
@@ -915,10 +978,10 @@ StartUpdateDownload:
         Run, %runCommand%, %A_Temp%, Hide, workerPid
         g_update_worker_pid := workerPid
         if (ErrorLevel)
-            throw Exception("PowerShell не запустился")
+            throw Exception(UiMsg("ps_fail", "PowerShell failed to start"))
     } catch e {
         g_update_state := "error"
-        SetUpdateBridge("error", "", "Не удалось запустить фоновый загрузчик", 0)
+        SetUpdateBridge("error", "", UiMsg("start_fail", "Failed to start the updater"), 0)
         return
     }
 
@@ -937,9 +1000,9 @@ PollUpdateStatus:
             g_update_state := "error"
             Process, Exist, %g_update_worker_pid%
             if (ErrorLevel)
-                updateStartError := "Фоновый загрузчик запущен, но не отвечает"
+                updateStartError := UiMsg("worker_no_response", "The updater is running but not responding")
             else
-                updateStartError := "PowerShell не запустил фоновый загрузчик"
+                updateStartError := UiMsg("worker_not_running", "PowerShell did not start the updater")
             SetUpdateBridge("error", g_update_version, updateStartError, 0)
         }
         return
@@ -954,18 +1017,18 @@ PollUpdateStatus:
     workerState := parts[1]
     if (workerState = "starting" || workerState = "downloading" || workerState = "installing") {
         workerProgress := parts.MaxIndex() >= 2 ? parts[2] + 0 : 0
-        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Скачиваю обновление..."
+        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : UiMsg("downloading_default", "Downloading update...")
         g_update_state := "downloading"
         SetUpdateBridge("downloading", g_update_version, workerMessage, workerProgress)
     } else if (workerState = "ready") {
         if (!g_update_exit_pending) {
             g_update_exit_pending := true
             g_update_state := "installing"
-            SetUpdateBridge("installing", g_update_version, "Файлы готовы. Перезапускаем RVL...", 100)
+            SetUpdateBridge("installing", g_update_version, UiMsg("ready", "Files are ready. Restarting RVL..."), 100)
             SetTimer, FinishUpdateRestart, -700
         }
     } else if (workerState = "error") {
-        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : "Не удалось скачать обновление"
+        workerMessage := parts.MaxIndex() >= 3 ? parts[3] : UiMsg("dl_fail", "Failed to download the update")
         g_update_state := "error"
         SetUpdateBridge("error", g_update_version, workerMessage, 0)
     }
@@ -974,8 +1037,8 @@ Return
 FinishUpdateRestart:
     if (g_update_exit_pending) {
         Gosub, CloseSettingsWindow
-        FileDelete, %TMP_HTML%
-        FileDelete, %TMP_SETTINGS_HTML%
+        try FileDelete, %TMP_HTML%
+        try FileDelete, %TMP_SETTINGS_HTML%
         ExitApp
     }
 Return
@@ -986,29 +1049,29 @@ Return
 UpdateSourceFilesDirect:
     zipPath := A_Temp "\RVL_update.zip"
     extractDir := A_Temp "\RVL_update_extract"
-    FileDelete, %zipPath%
-    FileRemoveDir, %extractDir%, 1
+    try FileDelete, %zipPath%
+    try FileRemoveDir, %extractDir%, 1
     FileCreateDir, %extractDir%
 
-    SetUpdateBridge("downloading", g_update_version, "Скачиваю архив обновления...", 35)
+    SetUpdateBridge("downloading", g_update_version, UiMsg("zip_dl", "Downloading the update archive..."), 35)
     if (!DownloadFile(g_update_url, zipPath) || !FileExist(zipPath)) {
-        SetUpdateBridge("error", g_update_version, "Не удалось скачать архив обновления", 0)
+        SetUpdateBridge("error", g_update_version, UiMsg("zip_dl_fail", "Failed to download the update archive"), 0)
         return
     }
-    SetUpdateBridge("downloading", g_update_version, "Распаковываю файлы обновления...", 70)
+    SetUpdateBridge("downloading", g_update_version, UiMsg("extracting", "Extracting the update..."), 70)
 
     try {
         zipShell := ComObjCreate("Shell.Application")
         zipNs := zipShell.NameSpace(zipPath)
         destNs := zipShell.NameSpace(extractDir)
         if (!zipNs || !destNs)
-            throw Exception("Не удалось открыть архив")
+            throw Exception(UiMsg("zip_open_fail", "Failed to open the archive"))
         ; 4 = no progress UI, 16 = no confirmation UI.
         destNs.CopyHere(zipNs.Items, 20)
     } catch e {
-        FileDelete, %zipPath%
-        FileRemoveDir, %extractDir%, 1
-        SetUpdateBridge("error", g_update_version, "Не удалось распаковать обновление", 0)
+        try FileDelete, %zipPath%
+        try FileRemoveDir, %extractDir%, 1
+        SetUpdateBridge("error", g_update_version, UiMsg("extract_fail", "Failed to extract the update"), 0)
         return
     }
 
@@ -1035,9 +1098,9 @@ UpdateSourceFilesDirect:
     }
 
     if (sourceRoot = "" || !FileExist(sourceRoot "\RVL.ahk")) {
-        FileDelete, %zipPath%
-        FileRemoveDir, %extractDir%, 1
-        SetUpdateBridge("error", g_update_version, "Архив обновления имеет неверный формат", 0)
+        try FileDelete, %zipPath%
+        try FileRemoveDir, %extractDir%, 1
+        SetUpdateBridge("error", g_update_version, UiMsg("bad_zip", "The update archive has an unexpected format"), 0)
         return
     }
 
@@ -1055,13 +1118,13 @@ UpdateSourceFilesDirect:
             FileCopy, %A_LoopFileFullPath%, %targetPath%, 1
     }
 
-    FileDelete, %zipPath%
-    FileRemoveDir, %extractDir%, 1
-    SetUpdateBridge("latest", g_update_version, "Обновление установлено", 100)
+    try FileDelete, %zipPath%
+    try FileRemoveDir, %extractDir%, 1
+    SetUpdateBridge("latest", g_update_version, UiMsg("installed", "Update installed"), 100)
     Sleep, 350
     Gosub, CloseSettingsWindow
-    FileDelete, %TMP_HTML%
-    FileDelete, %TMP_SETTINGS_HTML%
+    try FileDelete, %TMP_HTML%
+    try FileDelete, %TMP_SETTINGS_HTML%
     Reload
 Return
 
@@ -1095,6 +1158,41 @@ OnSetAlwaysOnTop:
 Return
 
 ; ============================================================
+;  AUTOSTART AT SYSTEM STARTUP (HKCU Run key)
+;  JS publishes the desired state into __cfg_autostart and sends
+;  CMD:set_autostart; we create or delete "HKCU\...\Run\RVL".
+;  Non-compiled runs point at the interpreter + this script (quoted
+;  paths survive the OneDrive folder with Cyrillic); compiled builds
+;  point at the exe itself. The value is intentionally NOT enforced
+;  at startup: if the user removes the entry via Task Manager, RVL
+;  must not silently re-add it until they toggle the switch again.
+; ============================================================
+OnSetAutostart:
+    try {
+        autostartVal := WB.document.getElementById("__cfg_autostart").value
+        g_autostart := autostartVal
+        AutostartApply(autostartVal)
+        IniWrite, %autostartVal%, %CFG%, Settings, Autostart
+    }
+Return
+
+AutostartApply(state) {
+    runKey := "Software\Microsoft\Windows\CurrentVersion\Run"
+    if (state = "1") {
+        if (A_IsCompiled)
+            autostartCmd := UpdateQuote(A_ScriptFullPath)
+        else
+            autostartCmd := UpdateQuote(A_AhkPath) . " " . UpdateQuote(A_ScriptFullPath)
+        RegWrite, REG_SZ, HKCU, %runKey%, RVL, %autostartCmd%
+        ThumbLog("autostart enable err=" . ErrorLevel)
+        return ErrorLevel = 0
+    }
+    try RegDelete, HKCU, %runKey%, RVL
+    ThumbLog("autostart disable err=" . ErrorLevel)
+    return ErrorLevel = 0
+}
+
+; ============================================================
 ReadDom:
     try {
         g_place        := WB.document.getElementById("inp-place").value
@@ -1123,6 +1221,7 @@ ReadDom:
         g_shEn          := WB.document.getElementById("__cfg_sh_en").value
         g_mask_inputs   := WB.document.getElementById("__cfg_mask_inputs") ? WB.document.getElementById("__cfg_mask_inputs").value : "1"
         g_always_on_top := WB.document.getElementById("__cfg_always_on_top") ? WB.document.getElementById("__cfg_always_on_top").value : "0"
+        g_autostart := WB.document.getElementById("__cfg_autostart") ? WB.document.getElementById("__cfg_autostart").value : "0"
         g_ui_hidden := WB.document.getElementById("__cfg_ui_hidden") ? WB.document.getElementById("__cfg_ui_hidden").value : ""
         g_ui_text   := WB.document.getElementById("__cfg_ui_text") ? WB.document.getElementById("__cfg_ui_text").value : ""
         g_theme_presets := WB.document.getElementById("__theme_presets_out").value
@@ -1160,6 +1259,7 @@ InjectConfig:
     IniRead, g_shEn,     %CFG%, Settings, ShowHideEnabled, 0
     IniRead, maskIn,     %CFG%, Settings, MaskInputs,      1
     IniRead, aot,        %CFG%, Settings, AlwaysOnTop,     0
+    IniRead, autostart,  %CFG%, Settings, Autostart,       0
     IniRead, compactMode, %CFG%, Settings, CompactMode,    0
     IniRead, sortMode,   %CFG%, Settings, SortMode,        manual
     IniRead, winX,       %CFG%, Settings, WindowX,         -1
@@ -1213,6 +1313,7 @@ InjectConfig:
         WB.document.getElementById("__cfg_sh_en").value           := g_shEn
         WB.document.getElementById("__cfg_mask_inputs").value     := maskIn
         WB.document.getElementById("__cfg_always_on_top").value   := aot
+        WB.document.getElementById("__cfg_autostart").value        := autostart
         WB.document.getElementById("__cfg_compact_mode").value     := compactMode
         WB.document.getElementById("__cfg_sort_mode").value        := sortMode
         WB.document.getElementById("__cfg_ui_hidden").value        := uiHidden
@@ -1270,6 +1371,7 @@ SaveConfig:
     IniWrite, %g_shEn%,            %CFG%, Settings, ShowHideEnabled
     IniWrite, %g_mask_inputs%,     %CFG%, Settings, MaskInputs
     IniWrite, %g_always_on_top%,   %CFG%, Settings, AlwaysOnTop
+    IniWrite, %g_autostart%,       %CFG%, Settings, Autostart
     ; Enhancement: save compact mode and sort mode
     try {
         cmVal := WB.document.getElementById("__cfg_compact_mode").value
@@ -1307,7 +1409,7 @@ HttpGet(url) {
         ; protocol on some Windows installations and fails before receiving
         ; any response, which looked like a generic update-check error.
         try req.Option(9) := 2048 ; WinHttpRequestOption_SecureProtocols / TLS 1.2
-        req.SetTimeouts(5000, 5000, 10000, 10000)
+        req.SetTimeouts(2500, 2500, 5000, 5000)
         req.SetRequestHeader("User-Agent", "RVL-Updater")
         req.SetRequestHeader("Accept", "application/vnd.github+json, application/atom+xml, application/json")
         req.SetRequestHeader("Cache-Control", "no-cache")
@@ -1575,45 +1677,131 @@ Return
 
 ; ============================================================
 ;  GAME ICON (place avatar) FOR THE DETAIL PANEL
-;  JS asks for "CMD:thumb_req <placeId>"; the icon URL is resolved
-;  through the public Roblox thumbnails API, downloaded once into
-;  %TEMP% (cached per placeId) and the local path is handed back
-;  via the __thumb_resp bridge input. JS falls back to the index
-;  number while the icon is missing or fails to load.
+;  JS asks for "CMD:thumb_req <key>" where <key> is either a place
+;  id (method 1) or "sc:<shareCode>" (method 2). The whole chain
+;  (share page meta / placeId -> universeId -> icon URL -> PNG)
+;  runs in a hidden PowerShell worker (update\fetch-icon.ps1), so
+;  the AHK UI thread never blocks on the network. The worker writes
+;  <png>.done when finished; a timer polls for it and pushes the
+;  local path back through __thumb_resp. JS falls back to the index
+;  number and retries later on failure.
 ; ============================================================
 OnThumbRequest:
-    thumbPid := RegExReplace(SubStr(cmd, 15), "\D")
-    if (thumbPid = "") {
-        try WB.document.getElementById("__thumb_resp").value := "|"
+    thumbKey := SubStr(cmd, 15)
+    if (thumbKey = "") {
         return
     }
-    thumbPath := A_Temp "\RVL_icon_" . thumbPid . ".png"
-    if (!FileExist(thumbPath)) {
-        ; Two-step chain (verified against the live API):
-        ;   placeId -> universeId (apis.roblox.com)
-        ;   universeId -> game icon URL (thumbnails.roblox.com)
-        thumbUrl := ""
-        thumbUniverse := ""
-        thumbJson := HttpGet("https://apis.roblox.com/universes/v1/places/" . thumbPid . "/universe")
-        if (thumbJson != "") {
-            RegExMatch(thumbJson, """universeId""\s*:\s*([0-9]+)", thumbM)
-            thumbUniverse := thumbM1
-        }
-        if (thumbUniverse != "") {
-            thumbJson := HttpGet("https://thumbnails.roblox.com/v1/games/icons?universeIds=" . thumbUniverse . "&size=150x150&format=Png")
-            if (thumbJson != "") {
-                RegExMatch(thumbJson, """imageUrl""\s*:\s*""([^""]+)""", thumbM)
-                thumbUrl := thumbM1
-                StringReplace, thumbUrl, thumbUrl, \/, /, All
-            }
-        }
-        if (thumbUrl != "")
-            DownloadFile(thumbUrl, thumbPath)
-    }
+    thumbFileKey := RegExReplace(thumbKey, "\W")
+    thumbPath := A_Temp "\RVL_icon_" . thumbFileKey . ".png"
     if (FileExist(thumbPath)) {
-        try WB.document.getElementById("__thumb_resp").value := thumbPid . "|" . thumbPath
-    } else {
-        try WB.document.getElementById("__thumb_resp").value := thumbPid . "|"
+        ; Disk cache hit - answer immediately.
+        ThumbLog("hit " . thumbKey)
+        ThumbRespond(WB.document, thumbKey, thumbPath)
+        return
+    }
+    g_thumb_doc := WB.document
+    ThumbLog("req " . thumbKey . " step=" . g_thumb_step)
+    if (g_thumb_step) {
+        ; A worker is already running - remember the next key in line.
+        g_thumb_pending_key := thumbKey
+        return
+    }
+    g_thumb_launch_key := thumbKey
+    Gosub, ThumbStartLaunch
+Return
+
+; Append a response line "key|path" to the __thumb_resp queue. JS drains the
+; whole queue and clears it, mirroring the __cmd_queue direction. A single
+; overwritten value lost all but the last answer when every preset hit the
+; disk cache within one 350ms JS poll.
+ThumbRespond(doc, key, path) {
+    try {
+        cur := doc.getElementById("__thumb_resp").value
+        if (cur != "")
+            cur .= "`n"
+        doc.getElementById("__thumb_resp").value := cur . key . "|" . path . "`n"
+    }
+}
+
+ThumbLog(msg) {
+    FileAppend, %A_Hour%:%A_Min%:%A_Sec% %msg%`r`n, %A_Temp%\RVL_thumb_debug.txt, UTF-8
+}
+
+ThumbStartLaunch:
+    thumbKey := g_thumb_launch_key
+    thumbFileKey := RegExReplace(thumbKey, "\W")
+    thumbPath := A_Temp "\RVL_icon_" . thumbFileKey . ".png"
+    thumbDone := thumbPath . ".done"
+    g_thumb_key := thumbKey
+    g_thumb_path := thumbPath
+    g_thumb_step := 1
+    g_thumb_ticks := 0
+    ; FileDelete and FileCopy THROW inside try-wrapped callers when the
+    ; target is missing/unusable. An unguarded FileDelete here used to
+    ; abort the launch with g_thumb_step stuck at 1 — every later icon
+    ; request then queued forever and the rest of the command queue
+    ; (including CMD:check_update) was dropped. Guard every fs command.
+    try FileDelete, %thumbDone%
+    psSrc := A_ScriptDir "\update\fetch-icon.ps1"
+    if (!FileExist(psSrc)) {
+        ThumbLog("FAIL psSrc missing: " . psSrc)
+        ThumbRespond(g_thumb_doc, thumbKey, "")
+        g_thumb_step := 0
+        return
+    }
+    stamp := A_TickCount
+    psTemp := A_Temp "\RVL_fetch_icon_" . stamp . ".ps1"
+    try FileCopy, %psSrc%, %psTemp%, 1
+    if (ErrorLevel || !FileExist(psTemp)) {
+        ThumbLog("FAIL copy " . thumbKey)
+        ThumbRespond(g_thumb_doc, thumbKey, "")
+        g_thumb_step := 0
+        return
+    }
+    psExe := A_WinDir "\System32\WindowsPowerShell\v1.0\powershell.exe"
+    if (!FileExist(psExe))
+        psExe := "powershell.exe"
+    runCmd := UpdateQuote(psExe) . " -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File " . UpdateQuote(psTemp) . " -Key " . UpdateQuote(thumbKey) . " -OutPath " . UpdateQuote(thumbPath) . " -DonePath " . UpdateQuote(thumbDone)
+    try {
+        Run, %runCmd%,, Hide
+        SetTimer, ThumbDoneCheck, 300
+    } catch e {
+        ThumbLog("FAIL run " . thumbKey . " " . e.Message)
+        ThumbRespond(g_thumb_doc, thumbKey, "")
+        g_thumb_step := 0
+        return
+    }
+    ThumbLog("launched " . thumbKey)
+Return
+
+ThumbDoneCheck:
+    g_thumb_ticks += 1
+    if (FileExist(g_thumb_path)) {
+        ; The worker downloaded the icon.
+        SetTimer, ThumbDoneCheck, Off
+        thumbDone := g_thumb_path . ".done"
+        try FileDelete, %thumbDone%
+        ThumbRespond(g_thumb_doc, g_thumb_key, g_thumb_path)
+        g_thumb_step := 0
+        Gosub, ThumbStartPending
+        return
+    }
+    thumbDone := g_thumb_path . ".done"
+    if (g_thumb_ticks > 90 || FileExist(thumbDone)) {
+        SetTimer, ThumbDoneCheck, Off
+        try FileDelete, %thumbDone%
+        ThumbRespond(g_thumb_doc, g_thumb_key, "")
+        g_thumb_step := 0
+        Gosub, ThumbStartPending
+        return
+    }
+Return
+
+ThumbStartPending:
+    if (g_thumb_pending_key != "") {
+        g_thumb_launch_key := g_thumb_pending_key
+        g_thumb_pending_key := ""
+        Gosub, ThumbStartLaunch
     }
 Return
 
@@ -2229,11 +2417,13 @@ Return
 ;  FACTORY RESET
 ; ============================================================
 OnFactoryReset:
-    FileDelete, %CFG%
-    FileDelete, %PRESETS%
-    FileDelete, %THEME_PRESETS%
-    FileDelete, %PRESET_GROUPS%
-    FileDelete, %LOG%
+    try FileDelete, %CFG%
+    try FileDelete, %PRESETS%
+    try FileDelete, %THEME_PRESETS%
+    try FileDelete, %PRESET_GROUPS%
+    try FileDelete, %LOG%
+    ; Factory reset also removes the boot autostart entry.
+    AutostartApply("0")
     Reload
 Return
 
@@ -2337,7 +2527,7 @@ ArrJoin(arr, sep) {
 ; ============================================================
 OnClearHistory:
     try {
-        FileDelete, %LOG%
+        try FileDelete, %LOG%
         WB.document.getElementById("__history_data").value := "[]"
     }
 Return
