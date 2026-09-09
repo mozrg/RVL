@@ -106,6 +106,10 @@
   <input type="hidden" id="__update_install_req" value="0">
   <input type="hidden" id="__cfg_ui_hidden">
   <input type="hidden" id="__cfg_ui_text">
+  <input type="hidden" id="__cfg_ui_nobg">
+  <input type="hidden" id="__cfg_avatars" value="1">
+  <input type="hidden" id="__avatars_cleared" value="">
+  <input type="hidden" id="__drag_req" value="0">
 
   <!-- UNIVERSAL TOOLTIP -->
   <div class="app-tooltip" id="app-tooltip">
@@ -275,6 +279,14 @@
             <input type="checkbox" id="chk-autostart" class="chk-hidden">
             <span class="chk-txt" id="chk-txt-autostart">Автозапуск при запуске системы</span>
           </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="avatars-track">
+              <span class="toggle-thumb" id="avatars-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-avatars" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-avatars">Загружать аватарки игр</span>
+          </div>
+          <button class="btn-factory-reset" id="btn-clear-avatars" type="button" style="margin-top:8px;">Удалить все аватарки</button>
           <div class="launch-delay-row" style="margin-top:8px;">
             <span class="color-name" id="lbl-launch-delay">Задержка запуска</span>
             <div class="delay-stepper">
@@ -288,7 +300,14 @@
           <div class="settings-label" id="lbl-ui-custom">ЭЛЕМЕНТЫ ИНТЕРФЕЙСА</div>
           <div class="ui-custom-tools">
             <span class="ui-custom-count" id="ui-custom-count"></span>
-            <button class="ui-custom-reset" id="btn-ui-custom-reset" type="button">&#8634; СБРОСИТЬ</button>
+            <span class="ui-custom-tools-btns">
+              <button class="ui-custom-sub" id="btn-ui-hide-all" type="button">Скрыть всё</button>
+              <button class="ui-custom-sub" id="btn-ui-show-all" type="button">Показать всё</button>
+              <button class="ui-custom-reset" id="btn-ui-custom-reset" type="button">&#8634; СБРОСИТЬ</button>
+            </span>
+          </div>
+          <div class="ui-custom-search-wrap">
+            <input class="ui-custom-search" id="ui-custom-search" type="text" maxlength="40" spellcheck="false" autocomplete="off" placeholder="Поиск элемента...">
           </div>
           <div class="ui-custom-list" id="ui-custom-list"></div>
         </div>
@@ -452,7 +471,7 @@
       <div class="startup-title">Готовим рабочее пространство</div>
       <div class="startup-status" id="startup-status">Загрузка интерфейса<span class="startup-dots">...</span></div>
       <div class="startup-progress"><div class="startup-progress-fill" id="startup-progress-fill"></div></div>
-      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.14</span></div>
+      <div class="startup-meta"><span class="rvl-logo startup-meta-logo" aria-label="RVL"></span><span class="startup-meta-dot">•</span><span id="startup-version">v1.15</span></div>
     </div>
   </div>
 
@@ -477,7 +496,7 @@
     <div class="update-screen-glow update-screen-glow-two"></div>
     <div class="update-screen-card">
       <div class="update-screen-header">
-        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.14</span></div>
+        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.15</span></div>
         <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
       </div>
       <div class="update-screen-main">
@@ -512,7 +531,7 @@
   <!-- HEADER (maket .hdr) -->
   <div id="titlebar" class="titlebar hdr" unselectable="on">
     <span id="hdr-logo" class="tb-logo hdr-logo rvl-logo" aria-label="RVL"></span>
-    <span class="tb-ver hdr-ver" id="header-version">v1.14</span>
+    <span class="tb-ver hdr-ver" id="header-version">v1.15</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
     <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
@@ -529,13 +548,13 @@
 
     <!-- METHOD 1: Place ID + Link Code -->
     <div id="method-panel-1" class="ir-panel">
-      <div class="field-input-wrap ir-field-wrap">
+      <div class="field-input-wrap ir-field-wrap" id="fw-place">
         <input class="field-input ir-field" id="inp-place" type="password"
                spellcheck="false" autocomplete="off" placeholder="PLACE ID">
         <button type="button" class="field-eye ir-eye" id="eye-place" tabindex="-1" data-tooltip="Показать">&#128065;</button>
         <button type="button" class="field-clear" id="clr-place" tabindex="-1" data-tooltip="Очистить">&#215;</button>
       </div>
-      <div class="field-input-wrap ir-field-wrap">
+      <div class="field-input-wrap ir-field-wrap" id="fw-link">
         <input class="field-input ir-field" id="inp-link" type="password"
                spellcheck="false" autocomplete="off" placeholder="LINK CODE">
         <button type="button" class="field-eye ir-eye" id="eye-link" tabindex="-1" data-tooltip="Показать">&#128065;</button>
@@ -545,7 +564,7 @@
 
     <!-- METHOD 2: Share Link Code -->
     <div id="method-panel-2" class="ir-panel" style="display:none;">
-      <div class="field-input-wrap ir-field-wrap ir-field-wrap-wide">
+      <div class="field-input-wrap ir-field-wrap ir-field-wrap-wide" id="fw-share">
         <input class="field-input ir-field" id="inp-share-code" type="password"
                spellcheck="false" autocomplete="off"
                placeholder="SHARE CODE / ссылка...">
@@ -555,11 +574,11 @@
     </div>
 
     <span id="lbl-hotkey" class="hdr-ver" style="display:none;">HOTKEY</span>
-    <div class="ir-sep"></div>
+    <div class="ir-sep" id="ir-sep"></div>
     <input class="field-input key-box ir-hk-key" id="inp-key" type="text"
            readonly spellcheck="false" data-tooltip="Нажми ЗАХВАТ, чтобы назначить">
     <button class="btn-capture ir-hk-capture" id="btn-capture" data-tooltip="Захват клавиши"><span class="ir-hk-capture-ring"></span></button>
-    <div class="chk-wrap ir-hk-chk">
+    <div class="chk-wrap ir-hk-chk" id="hk-chk-wrap">
       <span class="toggle-track ir-hk-toggle" id="toggle-track">
         <span class="toggle-thumb" id="toggle-thumb"></span>
       </span>
@@ -699,7 +718,7 @@
     <span class="status-bar-sep sep">&#183;</span>
     <span class="status-bar-item" id="status-last">Последний: никогда</span>
     <span class="status-bar-spacer"></span>
-    <span class="status-bar-item" id="status-version">v1.14</span>
+    <span class="status-bar-item" id="status-version">v1.15</span>
   </div>
   </div><!-- /.app-shell -->
 

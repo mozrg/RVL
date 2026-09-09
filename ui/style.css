@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    style.css  ·  RVL — B&W Edition
    IE 11 / Shell.Explorer compatible
    No CSS variables, no calc(), no flexbox gap
@@ -1865,8 +1865,8 @@ body.theme-light .guide-nav-indicator { color: #BBBBBB; }
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.14);
-    transform: scale(1.14);
+    -ms-transform: scale(1.15);
+    transform: scale(1.15);
 }
 .color-input {
     width: 72px;
@@ -4085,8 +4085,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.14);
-    transform: scale(1.14);
+    -ms-transform: scale(1.15);
+    transform: scale(1.15);
 }
 .color-input {
     width: 72px;
@@ -6633,8 +6633,8 @@ body.theme-light .tooltip-arrow {
 }
 .color-swatch:hover {
     opacity: 0.85;
-    -ms-transform: scale(1.14);
-    transform: scale(1.14);
+    -ms-transform: scale(1.15);
+    transform: scale(1.15);
 }
 .color-input {
     width: 72px;
@@ -8755,10 +8755,15 @@ body.theme-light .btn-factory-reset:hover { background: rgba(200,0,0,0.06); bord
 .bulk-body {
     -ms-flex: 1 1 0px;
     flex: 1 1 0px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    /* The table wrapper below is the single scroll container. Scrolling the
+       body as well produced a second, redundant scrollbar in the modal. */
+    overflow: hidden;
     padding: 0;
     min-height: 0;
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-direction: column;
+    flex-direction: column;
     scrollbar-face-color: #333333;
     scrollbar-track-color: #111111;
     scrollbar-arrow-color: #444444;
@@ -10755,11 +10760,25 @@ body.theme-light .grp-header::before {
 
 /* ── Bulk edit modal enhancements ────────────────────────── */
 .bulk-table-wrap {
+    /* The only scroll container in the bulk modal: it fills the flex body,
+       so the sticky table header and the rows share one scrollbar. */
+    -ms-flex: 1 1 0px;
+    flex: 1 1 0px;
+    min-height: 0;
     overflow: auto;
-    max-height: 320px;
     border-radius: 8px;
     border: 1px solid #1A1A1A;
+    scrollbar-face-color: #333333;
+    scrollbar-track-color: #111111;
+    scrollbar-arrow-color: #444444;
+    scrollbar-highlight-color: #111111;
+    scrollbar-3dlight-color: #111111;
+    scrollbar-darkshadow-color: #111111;
+    scrollbar-shadow-color: #333333;
 }
+.bulk-table-wrap::-webkit-scrollbar { width: 4px; }
+.bulk-table-wrap::-webkit-scrollbar-track { background: #0F0F0F; border-radius: 2px; }
+.bulk-table-wrap::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 2px; }
 .bulk-table {
     width: 100%;
     border-collapse: collapse;
@@ -13077,6 +13096,7 @@ body.theme-custom .pd-info {
 .ui-custom-reset {
     height: 22px;
     padding: 0 10px;
+    margin-left: 6px;
     border-radius: 6px;
     background: #111111;
     border: 1px solid #242424;
@@ -13109,13 +13129,71 @@ body.theme-custom .pd-info {
 .ui-custom-list::-webkit-scrollbar { width: 4px; }
 .ui-custom-list::-webkit-scrollbar-track { background: #0F0F0F; border-radius: 2px; }
 .ui-custom-list::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 2px; }
-.ui-group-label {
-    padding: 7px 10px 3px;
-    font-size: 7.5px;
-    font-weight: 800;
-    letter-spacing: 0.14em;
-    color: #555555;
-    text-transform: uppercase;
+.ui-custom-tools-btns {
+    display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center;
+    -ms-flex-wrap: wrap; flex-wrap: wrap; margin-left: auto;
+}
+.ui-custom-sub {
+    height: 22px; padding: 0 9px; margin-left: 6px;
+    border-radius: 6px; background: transparent;
+    border: 1px solid #242424; color: #888888;
+    font-size: 8px; font-family: inherit; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer;
+    -ms-transition: background .16s, color .16s, border-color .16s;
+    transition: background .16s, color .16s, border-color .16s;
+}
+.ui-custom-sub:hover { border-color: #555555; color: #DDDDDD; background: #161616; }
+.ui-custom-search-wrap { margin: 2px 0 8px; }
+.ui-custom-search {
+    width: 100%; height: 28px; box-sizing: border-box; padding: 0 10px;
+    background: #0D0D0D; border: 1px solid #1E1E1E; border-radius: 7px;
+    color: #DDDDDD; font-size: 10px; font-family: inherit;
+}
+.ui-custom-search:focus { outline: none; border-color: #3A3A3A; }
+.ui-group { margin-bottom: 2px; }
+.ui-group-head {
+    display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center;
+    padding: 5px 8px; cursor: pointer; -ms-user-select: none; user-select: none;
+    border-radius: 6px;
+}
+.ui-group-head:hover { background: #141414; }
+.ui-group-caret {
+    width: 12px; font-size: 9px; color: #777777; margin-right: 6px;
+    -ms-transition: transform .15s; transition: transform .15s;
+}
+.ui-group-caret.collapsed { -ms-transform: rotate(-90deg); transform: rotate(-90deg); }
+.ui-group-name {
+    -ms-flex: 1 1 auto; flex: 1 1 auto; min-width: 0;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+    color: #9A9A9A; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ui-group-acts { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; }
+.ui-group-btn {
+    height: 18px; padding: 0 7px; margin-left: 5px;
+    border-radius: 5px; background: #141414; border: 1px solid #242424;
+    color: #888888; font-size: 8px; font-family: inherit; letter-spacing: 0.04em;
+    cursor: pointer;
+    -ms-transition: background .15s, color .15s, border-color .15s;
+    transition: background .15s, color .15s, border-color .15s;
+}
+.ui-group-btn:hover { color: #DDDDDD; border-color: #555555; background: #1C1C1C; }
+.ui-group-body { padding: 1px 0 3px; }
+.ui-no-results {
+    padding: 16px 10px; text-align: center; color: #666666; font-size: 10px;
+}
+.ui-row-name { cursor: pointer; }
+.ui-row-name:hover { color: #E0E0E0; }
+.ui-flash {
+    outline: 2px solid #EF4444 !important; outline-offset: 1px;
+    position: relative; z-index: 9999;
+    -ms-animation: uiFlash .85s ease-out; animation: uiFlash .85s ease-out;
+}
+.ui-flash-show { display: inline-block !important; }
+@keyframes uiFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(239,68,68,0.85); }
+    70%  { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
 }
 .ui-row {
     display: -ms-flexbox;
@@ -13184,6 +13262,35 @@ body.theme-light .ui-row-text { background: #FFFFFF; border-color: #D8DCE4; colo
 body.theme-light .ui-custom-count { color: #8A92A0; }
 body.theme-light .ui-custom-reset { background: #FFFFFF; border-color: #D8DCE4; color: #6A7280; }
 body.theme-light .ui-custom-reset:hover { background: #F0F2F6; color: #2A2F3A; border-color: #B9BFCA; }
+body.theme-light .ui-custom-sub { background: #FFFFFF; border-color: #D8DCE4; color: #6A7280; }
+body.theme-light .ui-custom-sub:hover { background: #F0F2F6; color: #2A2F3A; border-color: #B9BFCA; }
+body.theme-light .ui-custom-search { background: #FFFFFF; border-color: #D8DCE4; color: #22252C; }
+body.theme-light .ui-group-head:hover { background: #EFF1F5; }
+body.theme-light .ui-group-name { color: #8A92A0; }
+body.theme-light .ui-group-btn { background: #FFFFFF; border-color: #D8DCE4; color: #6A7280; }
+body.theme-light .ui-group-btn:hover { background: #F0F2F6; color: #2A2F3A; border-color: #B9BFCA; }
+body.theme-light .ui-row-name { color: #3A3F4A; }
+body.theme-light .ui-row-name:hover { color: #111111; }
+body.theme-light .ui-no-results { color: #8A92A0; }
+/* ---- §ui-custom · per-row "remove background" button ---- */
+.ui-row-bg {
+    margin-left: 6px;
+    padding: 2px 7px;
+    background: #141414;
+    border: 1px solid #2A2A2A;
+    border-radius: 5px;
+    color: #8A8A8A;
+    font-size: 8px;
+    font-family: inherit;
+    cursor: pointer;
+    -ms-flex-negative: 0;
+    flex-shrink: 0;
+}
+.ui-row-bg:hover { color: #DDDDDD; border-color: #555555; background: #1C1C1C; }
+.ui-row-bg.on { color: #FFFFFF; border-color: #5B8DEF; background: rgba(91,141,239,0.18); }
+body.theme-light .ui-row-bg { background: #FFFFFF; border-color: #D8DCE4; color: #6A7280; }
+body.theme-light .ui-row-bg:hover { background: #F0F2F6; color: #2A2F3A; border-color: #B9BFCA; }
+body.theme-light .ui-row-bg.on { background: #EAF0FB; color: #2A57A8; border-color: #5B8DEF; }
 /* ── §game-icon · place avatar in the detail panel ────────── */
 .pd-icon-img {
     width: 100%;

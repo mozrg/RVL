@@ -190,6 +190,10 @@ var STRINGS = {
         maskInputsLabel:    "Скрывать вводимые данные",
         alwaysOnTopLabel:   "Поверх всех окон",
         autostartLabel:     "Автозапуск при запуске системы",
+        avatarsLabel:       "Аватарки игр",
+        avatarsLoadLabel:   "Загружать аватарки игр",
+        clearAvatarsBtn:    "Удалить все аватарки",
+        avatarsCleared:     "Все аватарки удалены",
         showFieldTip:       "Показать",
         hideFieldTip:       "Скрыть",
         settingsSaveBtn:    "СОХРАНИТЬ",
@@ -238,7 +242,10 @@ var STRINGS = {
         /* Interface customization */
         uiCustomLabel:"ЭЛЕМЕНТЫ ИНТЕРФЕЙСА", uiResetBtn:"СБРОСИТЬ",
         uiHiddenWord:"скрыто", uiAllVisible:"все элементы видны", uiTextPh:"свой текст",
-        uiGroups:{header:"ЗАГОЛОВОК",input:"СТРОКА ВВОДА",toolbar:"ПАНЕЛЬ ИНСТРУМЕНТОВ",list:"СПИСОК И ДЕТАЛИ",status:"СТАТУС-БАР"},
+        uiSearchPh:"Поиск элемента...", uiHideAll:"Скрыть всё", uiShowAll:"Показать всё",
+        uiGroupHide:"скрыть", uiGroupShow:"показать", uiFlashHint:"Показать на экране", uiNoResults:"Ничего не найдено",
+        uiBgBtn:"фон", uiBgHint:"Убрать фон элемента",
+        uiGroups:{header:"ЗАГОЛОВОК",input:"СТРОКА ВВОДА",toolbar:"ПАНЕЛЬ ИНСТРУМЕНТОВ",list:"СПИСОК И ДЕТАЛИ",status:"СТАТУС-БАР",overlay:"ВСПЛЫВАЮЩЕЕ"},
         uiNames:{
             "hdr-logo":"Логотип",
             "header-version":"Версия в шапке",
@@ -254,6 +261,7 @@ var STRINGS = {
             "inp-share-code":"Поле: SHARE CODE",
             "inp-key":"Поле клавиши хоткея",
             "btn-capture":"Кнопка захвата клавиши",
+            "ir-sep":"Разделитель строки ввода",
             "chk-txt-hotkey":"Подпись HK",
             "toggle-track":"Включатель хоткея",
             "search-wrap":"Поиск (панель)",
@@ -294,7 +302,19 @@ var STRINGS = {
             "status-bar":"Статус-бар",
             "status-count":"Статус: счётчик пресетов",
             "status-last":"Статус: последний запуск",
-            "status-version":"Статус: версия"
+            "status-version":"Статус: версия",
+            "toast-container":"Уведомления (тосты)",
+            "ctx-menu":"Контекстное меню (ПКМ)",
+            "hk-chk-wrap":"Переключатель хоткея (фон)",
+            "eye-place":"Кнопка «показать» PLACE ID",
+            "clr-place":"Кнопка очистки PLACE ID",
+            "eye-link":"Кнопка «показать» LINK CODE",
+            "clr-link":"Кнопка очистки LINK CODE",
+            "eye-share-code":"Кнопка «показать» SHARE CODE",
+            "clr-share-code":"Кнопка очистки SHARE CODE",
+            "sort-toggle":"Кнопка свернуть сортировку",
+            "sort-bar":"Панель сортировки",
+            "sort-collapsed":"Свёрнутая сортировка"
         },
         launchDelayLabel:"Задержка запуска",launchDelayUnit:"с",
         launchCountdown:function(n){return "&#9654;&nbsp;ЗАПУСК "+n+"с...";},
@@ -480,6 +500,10 @@ var STRINGS = {
         maskInputsLabel:    "Mask input fields",
         alwaysOnTopLabel:   "Always on top",
         autostartLabel:     "Launch at system startup",
+        avatarsLabel:       "GAME AVATARS",
+        avatarsLoadLabel:   "Load game avatars",
+        clearAvatarsBtn:    "Delete all avatars",
+        avatarsCleared:     "All avatars deleted",
         showFieldTip:       "Show",
         hideFieldTip:       "Hide",
         settingsSaveBtn:    "SAVE",
@@ -528,6 +552,9 @@ var STRINGS = {
         /* Interface customization */
         uiCustomLabel:"INTERFACE ELEMENTS", uiResetBtn:"RESET",
         uiHiddenWord:"hidden", uiAllVisible:"all elements visible", uiTextPh:"custom text",
+        uiSearchPh:"Search element...", uiHideAll:"Hide all", uiShowAll:"Show all",
+        uiGroupHide:"hide", uiGroupShow:"show", uiFlashHint:"Show on screen", uiNoResults:"No results",
+        uiBgBtn:"bg", uiBgHint:"Remove element background",
         uiGroups:{header:"HEADER",input:"INPUT ROW",toolbar:"TOOLBAR",list:"LIST & DETAILS",status:"STATUS BAR"},
         uiNames:{
             "hdr-logo":"Logo",
@@ -544,6 +571,7 @@ var STRINGS = {
             "inp-share-code":"Field: SHARE CODE",
             "inp-key":"Hotkey key field",
             "btn-capture":"Capture button",
+            "ir-sep":"Input row separator",
             "chk-txt-hotkey":"HK label",
             "toggle-track":"Hotkey toggle",
             "search-wrap":"Search (panel)",
@@ -584,7 +612,19 @@ var STRINGS = {
             "status-bar":"Status bar",
             "status-count":"Status: counter",
             "status-last":"Status: last launch",
-            "status-version":"Status: version"
+            "status-version":"Status: version",
+            "toast-container":"Notifications (toasts)",
+            "ctx-menu":"Context menu (right-click)",
+            "hk-chk-wrap":"Hotkey toggle (background)",
+            "eye-place":"Show button: PLACE ID",
+            "clr-place":"Clear button: PLACE ID",
+            "eye-link":"Show button: LINK CODE",
+            "clr-link":"Clear button: LINK CODE",
+            "eye-share-code":"Show button: SHARE CODE",
+            "clr-share-code":"Clear button: SHARE CODE",
+            "sort-toggle":"Collapse sorting button",
+            "sort-bar":"Sort bar",
+            "sort-collapsed":"Collapsed sort"
         },
         launchDelayLabel:"Launch delay",launchDelayUnit:"s",
         launchCountdown:function(n){return "&#9654;&nbsp;LAUNCH "+n+"s...";},
@@ -775,6 +815,7 @@ var renamingGroupId       = null;
 var sortMode          = "manual";  /* manual | name | date | launches | fav */
 var undoStack         = [];        /* [{type, data, prevIndex}] — 1-step undo for delete */
 var compactMode       = false;
+var avatarsEnabled    = true;        /* false = never fetch game avatars (index-number fallback) */
 var dirtyState        = false;     /* unsaved changes flag for exit confirm */
 var dirtyBaseline     = null;      /* serialized state after the last clean save */
 var dirtyTrackingSuppressed = false; /* programmatic field updates are not edits */
@@ -821,6 +862,12 @@ function initApp(skipStartupPreset) {
     autostartOn = (as === "1");
     syncAutostartToggle(true);
 
+    /* Game avatars: when disabled, no fetch requests are sent and the cached
+       paths are hidden — the detail panel keeps showing the index fallback. */
+    var av = el("__cfg_avatars") ? el("__cfg_avatars").value : "1";
+    avatarsEnabled = (av !== "0");
+    syncAvatarsToggle(true);
+
     /* Enhancement: Compact mode — read from config and apply */
     var cm = el("__cfg_compact_mode") ? el("__cfg_compact_mode").value : "0";
     compactMode = (cm === "1");
@@ -843,6 +890,7 @@ function initApp(skipStartupPreset) {
     /* §ui-custom: interface customization state from config */
     parseUiHidden(el("__cfg_ui_hidden") ? el("__cfg_ui_hidden").value : "");
     parseUiText(el("__cfg_ui_text") ? el("__cfg_ui_text").value : "");
+    parseUiNoBg(el("__cfg_ui_nobg") ? el("__cfg_ui_nobg").value : "");
 
     /* ── Language ── */
     var langVal = trim(el("__cfg_lang") ? el("__cfg_lang").value : "");
@@ -869,7 +917,7 @@ function initApp(skipStartupPreset) {
     customTheme.accent  = normalizeHex(el("__cfg_theme_accent").value, "#FFFFFF");
 
     try {
-        var tpRaw = el("__cfg_theme_presets").value;
+        var tpRaw = themePresetsBridgeRaw();
         var tpParsed = JSON.parse(tpRaw || "[]");
         if (isArray(tpParsed)) userThemePresets = tpParsed;
     } catch (e) {
@@ -1162,17 +1210,26 @@ window.onload = function () {
 
     /* The native settings page lives inside an ActiveX browser control, so
        the parent AHK window cannot reliably receive WM_NCHITTEST over the
-       whole header.  Start the native drag from the header itself. */
+       whole header.  Start the native drag from the header itself — with the
+       same immediacy the main titlebar has: a direct one-shot flag the host
+       polls every tick. The settings command queue can sit behind the 180ms
+       CMD:settings_live heartbeat and every queued command is preceded by a
+       full COM state copy, which makes a queued CMD:drag_start land late. */
     var settingsHeader = document.querySelector(".settings-header");
     if (settingsHeader) {
         settingsHeader.onmousedown = function (e) {
             e = e || window.event;
             var t = e.target || e.srcElement;
             if (t && t.id === "settings-close") return true;
+            if (e.button !== 0) return true;
             if (__rvlNativeSettingsPopup) {
-                sendCmd("CMD:drag_start");
+                if (settingsHeader.setCapture) {
+                    try { settingsHeader.setCapture(); } catch (x) {}
+                }
+                try { var dr = el("__drag_req"); if (dr) dr.value = "1"; } catch (x2) {}
                 return cancelEv(e);
             }
+            return true;
         };
     }
 
@@ -1271,6 +1328,33 @@ window.onload = function () {
     var uiResetBtn = el("btn-ui-custom-reset");
     if (uiResetBtn) uiResetBtn.onclick = uiCustomResetAll;
 
+    /* §ui-custom: global "hide all / show all" + live search filter */
+    var uiHideAll = el("btn-ui-hide-all");
+    if (uiHideAll) uiHideAll.onclick = function () {
+        for (var i = 0; i < UI_ELEMENTS.length; i++) {
+            if (UI_NEVER_HIDE[UI_ELEMENTS[i].id]) continue;
+            uiHiddenState[UI_ELEMENTS[i].id] = true;
+        }
+        applyInterfaceSettings();
+        syncUiBridgeFields();
+        uiCustomRenderList(true);
+    };
+    var uiShowAll = el("btn-ui-show-all");
+    if (uiShowAll) uiShowAll.onclick = function () {
+        uiHiddenState = {};
+        applyInterfaceSettings();
+        syncUiBridgeFields();
+        uiCustomRenderList(true);
+    };
+    var uiSearch = el("ui-custom-search");
+    if (uiSearch) {
+        uiSearch.value = uiCustomSearch;
+        uiSearch.onkeyup = uiSearch.oninput = function () {
+            uiCustomSearch = this.value;
+            uiCustomRenderList(true);
+        };
+    }
+
     el("search-inp").oninput = function () {
         applyFilterEnhanced(this.value);
     };
@@ -1358,6 +1442,21 @@ window.onload = function () {
         return false;
     };
 
+    el("avatars-track").onclick = function (e) {
+        e = e || window.event;
+        cancelEv(e);
+        var chk = el("chk-avatars");
+        chk.checked = !chk.checked;
+        avatarsEnabled = chk.checked;
+        syncAvatarsToggle(false);
+        return false;
+    };
+
+    var clearAvBtn = el("btn-clear-avatars");
+    if (clearAvBtn) clearAvBtn.onclick = function () {
+        sendCmd("CMD:clear_avatars");
+    };
+
     el("lang-opt-ru").onclick = function () { selectLang("ru"); };
     el("lang-opt-en").onclick = function () { selectLang("en"); };
 
@@ -1415,6 +1514,14 @@ window.onload = function () {
         if (titlebar.releaseCapture) {
             try { titlebar.releaseCapture(); } catch(x){}
         }
+        var sh = document.querySelector(".settings-header");
+        if (sh && sh.releaseCapture) {
+            try { sh.releaseCapture(); } catch(x){}
+        }
+        /* Drop a drag request the host has not polled yet: releasing the
+           button before the 50ms tick must not leave a stale "1" that would
+           start a phantom drag on the next click. */
+        try { var dr = el("__drag_req"); if (dr && dr.value === "1") dr.value = "0"; } catch(x){}
     };
 
     /* Esc closes context menu, guide, settings overlays */
@@ -1716,7 +1823,7 @@ function buildTPChip(p, isUser) {
                         userThemePresets.splice(i, 1);
                         renderTPGrid();
                         flushThemePresetsOut();
-                        sendCmd("CMD:settings_save");
+                        sendCmd("CMD:save_theme_presets");
                         return;
                     }
                 }
@@ -1771,7 +1878,7 @@ function confirmTPCreate() {
     cancelTPCreate();
     renderTPGrid();
     flushThemePresetsOut();
-    sendCmd("CMD:settings_save");
+    sendCmd("CMD:save_theme_presets");
 }
 
 function cancelTPCreate() {
@@ -2603,6 +2710,22 @@ function syncAutostartToggle(skipCmd) {
     if (!skipCmd) sendCmd("CMD:set_autostart");
 }
 
+/* Mirrors syncAutostartToggle for the "load game avatars" setting. No AHK
+   command is needed on toggle — the host reads the value at save time, and
+   requestPlaceThumb() checks avatarsEnabled before ever sending a request.
+   After a toggle we re-render so the panel updates immediately. */
+function syncAvatarsToggle(skipCmd) {
+    var track = el("avatars-track");
+    if (!track) return;
+    track.className = avatarsEnabled ? "toggle-track on" : "toggle-track";
+    var chk = el("chk-avatars");
+    if (chk) chk.checked = avatarsEnabled;
+    if (el("__cfg_avatars")) el("__cfg_avatars").value = avatarsEnabled ? "1" : "0";
+    var wrap = track.parentNode;
+    if (wrap) wrap.className = avatarsEnabled ? "chk-wrap chk-on" : "chk-wrap";
+    if (!skipCmd && typeof renderPresets === "function") renderPresets();
+}
+
 function onSaveClose() {
     flushPresetsOut();
     clearDirty();
@@ -2727,6 +2850,8 @@ function saveSettings() {
     /* Enhancement: save compact mode and sort mode */
     if (el("__cfg_compact_mode")) el("__cfg_compact_mode").value = compactMode ? "1" : "0";
     if (el("__cfg_sort_mode"))    el("__cfg_sort_mode").value    = sortMode;
+    /* §avatars: persist the "load game avatars" toggle */
+    if (el("__cfg_avatars"))      el("__cfg_avatars").value      = avatarsEnabled ? "1" : "0";
     /* §ui-custom: keep the bridge fields in lockstep with the live state */
     syncUiBridgeFields();
     if (__rvlSettingsPopupMode) {
@@ -2951,6 +3076,8 @@ function applyLanguage() {
     setText("chk-txt-mask",           S.maskInputsLabel);
     setText("chk-txt-aot",            S.alwaysOnTopLabel);
     setText("chk-txt-autostart",      S.autostartLabel || "Автозапуск при запуске системы");
+    setText("chk-txt-avatars",        S.avatarsLoadLabel || "Загружать аватарки игр");
+    setText("btn-clear-avatars",      S.clearAvatarsBtn || "Удалить все аватарки");
     applyMaskInputs();
 
     /* Show/hide hotkey block */
@@ -2959,6 +3086,10 @@ function applyLanguage() {
     setLabel("lbl-ui-custom", (S.uiCustomLabel || "ЭЛЕМЕНТЫ ИНТЕРФЕЙСА"));
     var uiRst = el("btn-ui-custom-reset");
     if (uiRst) uiRst.innerHTML = "&#8634; " + htmlEscape(S.uiResetBtn || "СБРОСИТЬ");
+    var uiSrch = el("ui-custom-search");
+    if (uiSrch) uiSrch.placeholder = S.uiSearchPh || "Поиск элемента...";
+    setText("btn-ui-hide-all", S.uiHideAll || "Скрыть всё");
+    setText("btn-ui-show-all", S.uiShowAll || "Показать всё");
     setText("chk-txt-showhide",       S.showHideEnable);
     setLabel("lbl-gradient",   S.gradientLabel  || "ГРАДИЕНТ ФОНА");
     setLabel("lbl-grad-color2", S.gradientColor2 || "Цвет 2");
@@ -3808,11 +3939,19 @@ function applyCustomThemeStyle() {
         r.push("body.theme-custom .ui-custom-list{background:" + ra(S, 0.45) + ";border-color:" + t15 + " !important}");
         r.push("body.theme-custom .ui-custom-list::-webkit-scrollbar-track{background:" + S + "}");
         r.push("body.theme-custom .ui-custom-list::-webkit-scrollbar-thumb{background:" + a40 + "}");
-        r.push("body.theme-custom .ui-group-label{color:" + t40 + "}");
+        r.push("body.theme-custom .ui-group-name{color:" + t40 + "}");
+        r.push("body.theme-custom .ui-group-btn{background:" + S + ";border-color:" + a27 + ";color:" + t67 + "}");
+        r.push("body.theme-custom .ui-group-btn:hover{background:" + a10 + ";color:" + T + ";border-color:" + t53 + "}");
+        r.push("body.theme-custom .ui-custom-sub{background:" + S + ";border-color:" + a27 + ";color:" + t67 + "}");
+        r.push("body.theme-custom .ui-custom-sub:hover{background:" + a10 + ";color:" + T + ";border-color:" + t53 + "}");
+        r.push("body.theme-custom .ui-custom-search{background:" + S + ";border-color:" + a27 + ";color:" + T + "}");
         r.push("body.theme-custom .ui-row:hover{background:" + a10 + " !important}");
         r.push("body.theme-custom .ui-row-name{color:" + t73 + "}");
         r.push("body.theme-custom .ui-row-text{background:" + S + ";border-color:" + a27 + ";color:" + T + "}");
         r.push("body.theme-custom .ui-row-text:focus{border-color:" + t53 + "}");
+        r.push("body.theme-custom .ui-row-bg{background:" + S + ";border-color:" + a27 + ";color:" + t67 + "}");
+        r.push("body.theme-custom .ui-row-bg:hover{background:" + a10 + ";color:" + T + ";border-color:" + t53 + "}");
+        r.push("body.theme-custom .ui-row-bg.on{background:" + a15 + ";color:" + A + ";border-color:" + A + "}");
         r.push("body.theme-custom .ui-custom-count{color:" + t47 + "}");
         r.push("body.theme-custom .ui-custom-reset{background:" + S + ";border-color:" + a27 + ";color:" + t67 + "}");
         r.push("body.theme-custom .ui-custom-reset:hover{background:" + ra(S, 0.95) + ";border-color:" + t53 + ";color:" + T + "}");
@@ -3919,7 +4058,6 @@ var UI_ELEMENTS = [
     {id:"hdr-logo",        g:"header"},
     {id:"header-version",  g:"header", t:1},
     {id:"roblox-status",   g:"header"},
-    {id:"btn-settings",    g:"header", t:1},
     {id:"btn-min",         g:"header", t:1},
     {id:"btn-close",       g:"header", t:1},
     {id:"method-tabs",     g:"input"},
@@ -3930,8 +4068,16 @@ var UI_ELEMENTS = [
     {id:"inp-share-code",  g:"input", p:1},
     {id:"inp-key",         g:"input"},
     {id:"btn-capture",     g:"input"},
+    {id:"ir-sep",          g:"input"},
     {id:"chk-txt-hotkey",  g:"input", t:1},
     {id:"toggle-track",    g:"input"},
+    {id:"hk-chk-wrap",     g:"input", bg:1},
+    {id:"eye-place",       g:"input"},
+    {id:"clr-place",       g:"input"},
+    {id:"eye-link",        g:"input"},
+    {id:"clr-link",        g:"input"},
+    {id:"eye-share-code",  g:"input"},
+    {id:"clr-share-code",  g:"input"},
     {id:"search-wrap",     g:"toolbar"},
     {id:"search-inp",      g:"toolbar", p:1},
     {id:"sort-show",       g:"toolbar", t:1},
@@ -3951,6 +4097,9 @@ var UI_ELEMENTS = [
     {id:"sort-date",       g:"list", t:1},
     {id:"sort-launches",   g:"list", t:1},
     {id:"sort-fav",        g:"list", t:1},
+    {id:"sort-toggle",     g:"list"},
+    {id:"sort-bar",        g:"list"},
+    {id:"sort-collapsed",  g:"list"},
     {id:"presets-list",    g:"list"},
     {id:"pdetail",         g:"list"},
     {id:"empty-state-title", g:"list", t:1},
@@ -3970,11 +4119,38 @@ var UI_ELEMENTS = [
     {id:"status-bar",      g:"status"},
     {id:"status-count",    g:"status"},
     {id:"status-last",     g:"status"},
-    {id:"status-version",  g:"status", t:1}
+    {id:"status-version",  g:"status", t:1},
+    {id:"toast-container", g:"overlay"},
+    {id:"ctx-menu",        g:"overlay"}
 ];
-var UI_GROUPS = ["header", "input", "toolbar", "list", "status"];
+var UI_GROUPS = ["header", "input", "toolbar", "list", "status", "overlay"];
+/* Elements that can never be hidden. The settings entry must stay reachable so
+   the user can always re-open settings and restore visibility. */
+var UI_NEVER_HIDE = { "btn-settings": true };
+/* Structural containers that should fully disappear when every tracked child is
+   hidden, so "hide all" leaves no empty bars behind. neverHide children count
+   as always-visible, which keeps the header (and its settings button) on screen.
+   Ordered innermost-first: an auto-collapsed child counts as hidden for its
+   parent, so a whole row vanishes once its wrapper boxes vanish. */
+var UI_CONTAINERS = [
+    {sel:"#titlebar", kids:["hdr-logo","header-version","roblox-status","btn-settings","btn-min","btn-close"]},
+    {sel:"#fw-place", kids:["inp-place","eye-place","clr-place"]},
+    {sel:"#fw-link",  kids:["inp-link","eye-link","clr-link"]},
+    {sel:"#fw-share", kids:["inp-share-code","eye-share-code","clr-share-code"]},
+    {sel:"#method-panel-1", kids:["fw-place","fw-link"]},
+    {sel:"#method-panel-2", kids:["fw-share"]},
+    {sel:"#method-tabs", kids:["method-tab-1","method-tab-2"]},
+    {sel:"#hk-chk-wrap", kids:["toggle-track","chk-txt-hotkey"]},
+    {sel:"#input-row", kids:["method-tabs","method-panel-1","method-panel-2","inp-key","btn-capture","ir-sep","hk-chk-wrap"]},
+    {sel:"#search-wrap", kids:["search-inp"]},
+    {sel:"#toolbar", kids:["search-wrap","search-inp","sort-show","btn-groups","btn-history","btn-dashboard","btn-backup","btn-bulk-edit","btn-export","btn-import","btn-guide","view-toggle-inline","btn-add-preset"]},
+    {sel:"#status-bar", kids:["status-count","status-last","status-version"]}
+];
 var uiHiddenState = {};
 var uiTextState = {};
+var uiNoBgState = {};        /* ids whose background should be removed */
+var uiCustomSearch = "";        /* live filter text (not persisted) */
+var uiGroupCollapsed = {};      /* group name -> true when collapsed */
 
 /* encodeURIComponent leaves ! ' ( ) * ~ untouched — escape those too so the
    "~" pair separator and "|" id separator can never appear inside a value. */
@@ -4023,9 +4199,26 @@ function serializeUiText() {
     return out.join("~");
 }
 
+function parseUiNoBg(raw) {
+    uiNoBgState = {};
+    var parts = String(raw || "").split(",");
+    for (var i = 0; i < parts.length; i++) {
+        if (parts[i]) uiNoBgState[parts[i]] = true;
+    }
+}
+
+function serializeUiNoBg() {
+    var out = [];
+    for (var id in uiNoBgState) {
+        if (uiNoBgState.hasOwnProperty(id) && uiNoBgState[id]) out.push(id);
+    }
+    return out.join(",");
+}
+
 function syncUiBridgeFields() {
     if (el("__cfg_ui_hidden")) el("__cfg_ui_hidden").value = serializeUiHidden();
     if (el("__cfg_ui_text"))   el("__cfg_ui_text").value   = serializeUiText();
+    if (el("__cfg_ui_nobg"))   el("__cfg_ui_nobg").value   = serializeUiNoBg();
 }
 
 /* Apply label/placeholder overrides. Originals are snapshotted on first
@@ -4057,6 +4250,10 @@ function applyInterfaceTexts() {
 /* Hide/show pass. Inline display values are snapshotted so unhiding restores
    exactly what the app logic had, never fighting app-managed visibility. */
 function applyInterfaceSettings() {
+    /* Guard: neverHide elements must stay reachable (e.g. settings button). */
+    for (var nk in UI_NEVER_HIDE) {
+        if (UI_NEVER_HIDE.hasOwnProperty(nk)) delete uiHiddenState[nk];
+    }
     for (var i = 0; i < UI_ELEMENTS.length; i++) {
         var node = el(UI_ELEMENTS[i].id);
         if (!node) continue;
@@ -4073,6 +4270,64 @@ function applyInterfaceSettings() {
         }
     }
     applyInterfaceTexts();
+    applyUiContainerCollapse();
+    applyUiNoBg();
+}
+
+/* Remove the visual background of elements the user opted into (e.g. the HK
+   toggle pill), keeping the control itself fully visible and functional.
+   Inline styles are used on purpose: syncToggle() rewrites the wrap's whole
+   className, which would wipe a marker class, but never touches these. */
+function applyUiNoBg() {
+    for (var i = 0; i < UI_ELEMENTS.length; i++) {
+        var e = UI_ELEMENTS[i];
+        if (!e.bg) continue;
+        var node = el(e.id);
+        if (!node) continue;
+        if (uiNoBgState[e.id]) {
+            node.style.background = "transparent";
+            node.style.borderColor = "transparent";
+            node.style.boxShadow = "none";
+        } else {
+            node.style.background = "";
+            node.style.borderColor = "";
+            node.style.boxShadow = "";
+        }
+    }
+}
+
+/* Collapse a structural container once every tracked child is hidden, so hiding
+   all toolbar/header/input/status items removes the now-empty bar too. A
+   neverHide child (settings) keeps its container visible on purpose. */
+function applyUiContainerCollapse() {
+    var auto = {};   /* containers collapsed in this pass, keyed by id */
+    for (var ci = 0; ci < UI_CONTAINERS.length; ci++) {
+        var c = UI_CONTAINERS[ci];
+        /* UI_CONTAINERS stores CSS-ish selectors ("#id"); el() is
+           getElementById and must receive the bare id. */
+        var cid = c.sel.charAt(0) === "#" ? c.sel.substring(1) : c.sel;
+        if (uiHiddenState[cid]) { auto[cid] = true; continue; }
+        var cont = el(cid);
+        if (!cont) continue;
+        var allHidden = true;
+        for (var k = 0; k < c.kids.length; k++) {
+            var kid = c.kids[k];
+            if (UI_NEVER_HIDE[kid]) { allHidden = false; break; }
+            if (!uiHiddenState[kid] && !auto[kid]) { allHidden = false; break; }
+        }
+        if (allHidden) {
+            auto[cid] = true;
+            if (cont.getAttribute("data-ui-orig-display") === null) {
+                cont.setAttribute("data-ui-orig-display", cont.style.display || "");
+            }
+            cont.style.display = "none";
+            cont.setAttribute("data-ui-hidden", "1");
+        } else if (cont.getAttribute("data-ui-hidden") === "1") {
+            cont.style.display = cont.getAttribute("data-ui-orig-display") || "";
+            cont.removeAttribute("data-ui-hidden");
+            cont.removeAttribute("data-ui-orig-display");
+        }
+    }
 }
 
 function uiCustomSyncRow(id) {
@@ -4095,69 +4350,185 @@ function uiCustomRenderList(force) {
     var host = el("ui-custom-list");
     if (!host) return;
     var S = STRINGS[currentLang] || STRINGS.ru;
-    /* Rebuild only when the language or the serialized state actually
-       changed — this function is called from the 180ms live-sync path. */
-    var ser = serializeUiHidden() + "#" + serializeUiText();
+    var ser = serializeUiHidden() + "#" + serializeUiText() + "#" + serializeUiNoBg() + "#" + uiCustomSearch + "#" + JSON.stringify(uiGroupCollapsed);
     if (!force && host.getAttribute("data-lang") === currentLang && host.getAttribute("data-ser") === ser) {
         updateUiCustomCount();
         return;
     }
+    var q = uiCustomSearch.trim().toLowerCase();
     var html = "";
+    var anyVisible = false;
     for (var gi = 0; gi < UI_GROUPS.length; gi++) {
         var g = UI_GROUPS[gi];
-        var gName = (S.uiGroups && S.uiGroups[g]) || g;
-        html += '<div class="ui-group-label">' + htmlEscape(gName) + '</div>';
+        var rows = [];
         for (var i = 0; i < UI_ELEMENTS.length; i++) {
             var e = UI_ELEMENTS[i];
             if (e.g !== g) continue;
-            var name = (S.uiNames && S.uiNames[e.id]) || e.id;
-            var on = !uiHiddenState[e.id];
-            html += '<div class="ui-row">'
-                 +  '<span class="toggle-track ui-mini-toggle' + (on ? ' on' : '') + '" id="ui-tgl-' + e.id + '"><span class="toggle-thumb"></span></span>'
-                 +  '<span class="ui-row-name">' + htmlEscape(name) + '</span>'
-                 +  (e.t || e.p
-                    ? '<input class="ui-row-text" id="ui-txt-' + e.id + '" type="text" maxlength="48" spellcheck="false" autocomplete="off" placeholder="' + htmlEscape(S.uiTextPh || "") + '">'
-                    : '')
+            if (q) {
+                var nm = (S.uiNames && S.uiNames[e.id]) || e.id;
+                if ((nm + " " + e.id).toLowerCase().indexOf(q) < 0) continue;
+            }
+            rows.push(e);
+        }
+        if (rows.length === 0) continue;
+        anyVisible = true;
+        /* An active search overrides collapse so matches are always visible. */
+        var collapsed = q ? false : !!uiGroupCollapsed[g];
+        var gName = (S.uiGroups && S.uiGroups[g]) || g;
+        html += '<div class="ui-group">'
+             +  '<div class="ui-group-head" data-group="' + g + '">'
+             +    '<span class="ui-group-caret' + (collapsed ? ' collapsed' : '') + '">&#9662;</span>'
+             +    '<span class="ui-group-name">' + htmlEscape(gName) + '</span>'
+             +    '<span class="ui-group-acts">'
+             +      '<button type="button" class="ui-group-btn" data-act="hide" data-group="' + g + '">' + htmlEscape(S.uiGroupHide || "скрыть") + '</button>'
+             +      '<button type="button" class="ui-group-btn" data-act="show" data-group="' + g + '">' + htmlEscape(S.uiGroupShow || "показать") + '</button>'
+             +    '</span>'
+             +  '</div>'
+             +  '<div class="ui-group-body" style="' + (collapsed ? 'display:none' : '') + '">';
+        for (var r = 0; r < rows.length; r++) {
+            var e2 = rows[r];
+            var name2 = (S.uiNames && S.uiNames[e2.id]) || e2.id;
+            var on = !uiHiddenState[e2.id];
+            html += '<div class="ui-row" data-id="' + e2.id + '">'
+                 +  '<span class="toggle-track ui-mini-toggle' + (on ? ' on' : '') + '" id="ui-tgl-' + e2.id + '"><span class="toggle-thumb"></span></span>'
+                 +  '<span class="ui-row-name" id="ui-name-' + e2.id + '" title="' + htmlEscape(S.uiFlashHint || "Показать на экране") + '">' + htmlEscape(name2) + '</span>'
+                 +  (e2.t || e2.p
+                     ? '<input class="ui-row-text" id="ui-txt-' + e2.id + '" type="text" maxlength="48" spellcheck="false" autocomplete="off" placeholder="' + htmlEscape(S.uiTextPh || "") + '">'
+                     : '')
+                 +  (e2.bg
+                     ? '<button type="button" class="ui-row-bg' + (uiNoBgState[e2.id] ? ' on' : '') + '" id="ui-bg-' + e2.id + '" title="' + htmlEscape(S.uiBgHint || "") + '">' + htmlEscape(S.uiBgBtn || "фон") + '</button>'
+                     : '')
                  +  '</div>';
         }
+        html += '</div></div>';
+    }
+    if (!anyVisible) {
+        html = '<div class="ui-no-results">' + htmlEscape(S.uiNoResults || "Ничего не найдено") + '</div>';
     }
     host.innerHTML = html;
     host.setAttribute("data-lang", currentLang);
-    host.setAttribute("data-ser", serializeUiHidden() + "#" + serializeUiText());
+    host.setAttribute("data-ser", ser);
+    /* Bind every element row (toggle + text + flash on name click). */
     for (var k = 0; k < UI_ELEMENTS.length; k++) {
-        var e2 = UI_ELEMENTS[k];
-        (function (eid) {
-            var tgl = el("ui-tgl-" + eid);
-            if (tgl) {
-                tgl.onclick = function () {
-                    if (uiHiddenState[eid]) delete uiHiddenState[eid];
-                    else uiHiddenState[eid] = true;
-                    uiCustomSyncRow(eid);
-                    applyInterfaceSettings();
-                    syncUiBridgeFields();
-                    updateUiCustomCount();
-                    return false;
-                };
-            }
-            var inp = el("ui-txt-" + eid);
-            if (inp) {
-                inp.value = uiTextState[eid] || "";
-                inp.onkeyup = function () {
-                    if (inp.value !== "") uiTextState[eid] = inp.value;
-                    else delete uiTextState[eid];
-                    applyInterfaceTexts();
-                    syncUiBridgeFields();
-                };
-                inp.onchange = inp.onkeyup;
-            }
-        })(e2.id);
+        bindUiRow(UI_ELEMENTS[k].id);
+    }
+    /* Bind collapse heads and per-group bulk buttons. */
+    var divs = host.getElementsByTagName("div");
+    for (var h = 0; h < divs.length; h++) {
+        if (divs[h].className && divs[h].className.indexOf("ui-group-head") >= 0) {
+            bindUiGroupHead(divs[h]);
+        }
     }
     updateUiCustomCount();
+}
+
+function bindUiRow(eid) {
+    var tgl = el("ui-tgl-" + eid);
+    if (tgl) {
+        tgl.onclick = function () {
+            if (uiHiddenState[eid]) delete uiHiddenState[eid];
+            else uiHiddenState[eid] = true;
+            uiCustomSyncRow(eid);
+            applyInterfaceSettings();
+            syncUiBridgeFields();
+            updateUiCustomCount();
+            return false;
+        };
+    }
+    var name = el("ui-name-" + eid);
+    if (name) name.onclick = function () { flashUiElement(eid); return false; };
+    var inp = el("ui-txt-" + eid);
+    if (inp) {
+        inp.value = uiTextState[eid] || "";
+        inp.onkeyup = function () {
+            if (inp.value !== "") uiTextState[eid] = inp.value;
+            else delete uiTextState[eid];
+            applyInterfaceTexts();
+            syncUiBridgeFields();
+        };
+        inp.onchange = inp.onkeyup;
+    }
+    var bgBtn = el("ui-bg-" + eid);
+    if (bgBtn) {
+        bgBtn.onclick = function () {
+            if (uiNoBgState[eid]) delete uiNoBgState[eid];
+            else uiNoBgState[eid] = true;
+            if (uiNoBgState[eid]) addClass(bgBtn, "on");
+            else removeClass(bgBtn, "on");
+            applyUiNoBg();
+            syncUiBridgeFields();
+            return false;
+        };
+    }
+}
+
+function bindUiGroupHead(head) {
+    var g = head.getAttribute("data-group");
+    var carets = head.getElementsByTagName("span");
+    for (var c = 0; c < carets.length; c++) {
+        if (carets[c].className && carets[c].className.indexOf("ui-group-caret") >= 0) {
+            carets[c].onclick = function (e) { toggleUiGroup(g); if (e && e.stopPropagation) e.stopPropagation(); return false; };
+        }
+    }
+    head.onclick = function (e) {
+        /* Bulk buttons inside the head handle themselves. */
+        if (e && e.target && e.target.className && e.target.className.indexOf("ui-group-btn") >= 0) return true;
+        toggleUiGroup(g);
+        return false;
+    };
+    var btns = head.getElementsByTagName("button");
+    for (var b = 0; b < btns.length; b++) {
+        (function (btn) {
+            btn.onclick = function (e) {
+                uiCustomGroupAct(g, btn.getAttribute("data-act") === "show");
+                if (e && e.stopPropagation) e.stopPropagation();
+                return false;
+            };
+        })(btns[b]);
+    }
+}
+
+function toggleUiGroup(g) {
+    uiGroupCollapsed[g] = !uiGroupCollapsed[g];
+    uiCustomRenderList(true);
+}
+
+function uiCustomGroupAct(g, show) {
+    for (var i = 0; i < UI_ELEMENTS.length; i++) {
+        if (UI_ELEMENTS[i].g !== g) continue;
+        if (!show && UI_NEVER_HIDE[UI_ELEMENTS[i].id]) continue;
+        if (show) delete uiHiddenState[UI_ELEMENTS[i].id];
+        else uiHiddenState[UI_ELEMENTS[i].id] = true;
+    }
+    applyInterfaceSettings();
+    syncUiBridgeFields();
+    uiCustomRenderList(true);
+}
+
+function flashUiElement(id) {
+    var node = el(id);
+    if (!node) return;
+    var hidden = (node.style.display === "none") || node.getAttribute("data-ui-hidden") === "1";
+    /* If the element is hidden, briefly reveal it so the flash is visible. */
+    addClass(node, "ui-flash");
+    if (hidden) addClass(node, "ui-flash-show");
+    setTimeout(function () { removeClass(node, "ui-flash"); removeClass(node, "ui-flash-show"); }, 850);
+}
+
+function addClass(node, cls) {
+    var c = node.className || "";
+    if ((" " + c + " ").indexOf(" " + cls + " ") < 0) node.className = c ? (c + " " + cls) : cls;
+}
+function removeClass(node, cls) {
+    var c = node.className || "";
+    c = (" " + c + " ").replace(" " + cls + " ", " ");
+    node.className = c.replace(/^\s+|\s+$/g, "");
 }
 
 function uiCustomResetAll() {
     uiHiddenState = {};
     uiTextState = {};
+    uiNoBgState = {};
     applyInterfaceSettings();
     syncUiBridgeFields();
     uiCustomRenderList();
@@ -5404,7 +5775,7 @@ function importThemePresetsFromAHK() {
         userThemePresets = imported;
         renderTPGrid();
         flushThemePresetsOut();
-        sendCmd("CMD:settings_save");
+        sendCmd("CMD:save_theme_presets");
     } catch (e) { /* invalid JSON – ignore */ }
 }
 
@@ -5880,6 +6251,19 @@ function flushThemePresetsOut() {
     } catch (e) {}
 }
 
+/* Read the theme-preset bridge. The *_out input holds the newest state:
+   this document flushes into it, and CopySettingsDom keeps it in sync
+   between the main page and the detached settings window. __cfg_theme_presets
+   is only the startup snapshot, so it is used merely as a fallback. */
+function themePresetsBridgeRaw() {
+    var raw = "";
+    try { var o = el("__theme_presets_out"); if (o) raw = o.value; } catch (e) {}
+    if (!raw) {
+        try { raw = el("__cfg_theme_presets") ? el("__cfg_theme_presets").value : ""; } catch (e2) {}
+    }
+    return raw;
+}
+
 function flushGroupsOut() {
     try {
         el("__preset_groups_out").value = JSON.stringify(groups);
@@ -5899,6 +6283,7 @@ var SETTINGS_BRIDGE_IDS = [
     "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset", "__last_loaded_preset_id",
     "__cfg_opacity", "__cfg_sh_key", "__cfg_sh_en", "__cfg_mask_inputs",
     "__cfg_always_on_top", "__cfg_autostart", "__cfg_compact_mode", "__cfg_sort_mode",
+    "__cfg_avatars",
     "__cfg_theme_presets", "__cfg_preset_groups"
 ];
 var SETTINGS_VISIBLE_IDS = [
@@ -5908,7 +6293,7 @@ var SETTINGS_VISIBLE_IDS = [
 ];
 var SETTINGS_CHECK_IDS = [
     "chk-enabled", "chk-gradient", "chk-auto-minimize", "chk-tooltips",
-    "chk-mask-inputs", "chk-always-on-top", "chk-autostart", "chk-compact-mode", "sh-chk-enabled"
+    "chk-mask-inputs", "chk-always-on-top", "chk-autostart", "chk-avatars", "chk-compact-mode", "sh-chk-enabled"
 ];
 
 function settingsOpener() {
@@ -6016,6 +6401,7 @@ function applySettingsToOpener() {
         owner.alwaysOnTop = alwaysOnTop;
         owner.compactMode = compactMode;
         owner.launchDelay = launchDelay;
+        owner.avatarsEnabled = avatarsEnabled;
         owner.customTheme.bg = customTheme.bg;
         owner.customTheme.surface = customTheme.surface;
         owner.customTheme.text = customTheme.text;
@@ -6054,6 +6440,12 @@ function syncSettingsFromNativeBridge() {
         alwaysOnTop = el("__cfg_always_on_top").value === "1";
         compactMode = el("__cfg_compact_mode").value === "1";
         launchDelay = parseInt(el("__cfg_launch_delay").value, 10) || 0;
+        var avBridge = el("__cfg_avatars") ? el("__cfg_avatars").value : "1";
+        if ((avBridge !== "0") !== avatarsEnabled) {
+            avatarsEnabled = (avBridge !== "0");
+            syncAvatarsToggle(true);
+            if (typeof renderPresets === "function") renderPresets();
+        }
         currentLang = trim(el("__cfg_lang").value) === "en" ? "en" : "ru";
         showHideKey = trim(el("__cfg_sh_key").value || "");
         showHideEn = el("__cfg_sh_en").value === "1";
@@ -6070,9 +6462,10 @@ function syncSettingsFromNativeBridge() {
         /* §ui-custom: live interface customization from the native popup */
         parseUiHidden(el("__cfg_ui_hidden") ? el("__cfg_ui_hidden").value : "");
         parseUiText(el("__cfg_ui_text") ? el("__cfg_ui_text").value : "");
+        parseUiNoBg(el("__cfg_ui_nobg") ? el("__cfg_ui_nobg").value : "");
 
         try {
-            var nativeThemePresets = JSON.parse(el("__cfg_theme_presets").value || "[]");
+            var nativeThemePresets = JSON.parse(themePresetsBridgeRaw() || "[]");
             if (isArray(nativeThemePresets)) userThemePresets = nativeThemePresets;
         } catch (ignoreThemePresets) {}
 
@@ -6083,6 +6476,9 @@ function syncSettingsFromNativeBridge() {
         applyLanguage();
         /* §ui-custom: rebuild the element list so it reflects popup edits */
         uiCustomRenderList();
+        /* Actually apply the hide/show + container collapse on the main window,
+           LAST so it wins over any theme/language re-render of these elements. */
+        applyInterfaceSettings();
     } catch (e) {}
 }
 
@@ -7270,11 +7666,15 @@ function syncSortButtons() {
         btn.className = (sortMode === opts[i].val)
             ? "sort-opt sort-opt-active" : "sort-opt";
     }
-    /* Show sort bar when there are >1 presets */
+    /* Show sort bar when there are >1 presets. Respect the interface-customization
+       hide setting: if the user hid the sort bar / collapsed sort, force it off
+       regardless of the automatic visibility logic. */
     var sb = el("sort-bar");
     var sc = el("sort-collapsed");
-    if (sb) sb.style.display = (presets.length > 1 && !sortBarCollapsed) ? "" : "none";
-    if (sc) sc.style.display = (presets.length > 1 && sortBarCollapsed) ? "" : "none";
+    if (sb) sb.style.display = uiHiddenState["sort-bar"] ? "none"
+        : (presets.length > 1 && !sortBarCollapsed) ? "" : "none";
+    if (sc) sc.style.display = uiHiddenState["sort-collapsed"] ? "none"
+        : (presets.length > 1 && sortBarCollapsed) ? "" : "none";
 }
 
 /* Enhancement: collapse/expand sort bar to save space */
@@ -8126,6 +8526,9 @@ function showContextMenu(e, presetId) {
     e = e || window.event;
     if (!e) return;
     cancelEv(e);
+    /* Respect the interface-customization setting: if the user hid the menu,
+       never let the right-click override the hidden state. */
+    if (uiHiddenState["ctx-menu"]) return;
     var menu = el("ctx-menu");
     if (!menu) return;
     ctxPresetId = presetId;
@@ -9181,13 +9584,16 @@ function renderDetailPanel(id) {
    __thumb_resp — JS never touches the network directly (IE). */
 var __thumbCache = {};
 function placeThumbSrc(placeId) {
+    /* §avatars-off: when avatar loading is disabled, never return a cached
+       path so the panel keeps the index-number fallback. */
+    if (!avatarsEnabled) return "";
     var t = placeId ? __thumbCache[placeId] : null;
     return (t && t.state === "ok" && t.src) ? t.src : "";
 }
 /* Failed attempts retry after 90s, stalled "pending" after 20s — so one
    offline moment never freezes the avatar for the whole session. */
 function requestPlaceThumb(key) {
-    if (!key) return;
+    if (!key || !avatarsEnabled) return;
     var t = __thumbCache[key];
     var now = (new Date()).getTime();
     if (t) {
@@ -9300,6 +9706,20 @@ window.addEventListener("load", function () {
             }
             if (pp && ppKey && __thumbCache[ppKey] && __thumbCache[ppKey].state === "ok") {
                 renderDetailPanel(detailPresetId);
+            }
+        }
+        /* §clear-avatars: the host set __avatars_cleared (timestamp) after
+           wiping images\av. Drop every cached path and fall back to index
+           numbers until avatars are re-requested. */
+        var clearedEl = el("__avatars_cleared");
+        if (clearedEl && clearedEl.value) {
+            clearedEl.value = "";
+            __thumbCache = {};
+            if (typeof renderPresets === "function") renderPresets();
+            if (detailPresetId) renderDetailPanel(detailPresetId);
+            if (typeof showToast === "function") {
+                var SA = (STRINGS && STRINGS[currentLang]) || STRINGS.ru;
+                showToast(SA.avatarsCleared || "Все аватарки удалены", null, null, 2200);
             }
         }
     }, 350);

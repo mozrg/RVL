@@ -1,5 +1,5 @@
-; ============================================================
-;  RVL.ahk  v1.14
+﻿; ============================================================
+;  RVL.ahk  v1.15
 ;  AHK v1.1+
 ; ============================================================
 ;@Ahk2Exe-SetIcon images\rvl.ico
@@ -16,7 +16,8 @@ global LOG     := A_ScriptDir "\data\history.log"
 global TMP_HTML := A_Temp "\RVL_ui.html"
 global TMP_SETTINGS_HTML := A_Temp "\RVL_settings_ui.html"
 global RVL_ICON := A_ScriptDir "\images\rvl.ico"
-global APP_VERSION := "1.14"
+global AVATAR_DIR := A_ScriptDir "\images\av"
+global APP_VERSION := "1.15"
 global UPDATE_RELEASES := "https://api.github.com/repos/mozrg/RVL/releases/latest"
 global UPDATE_RELEASES_LIST := "https://api.github.com/repos/mozrg/RVL/releases?per_page=1"
 global UPDATE_TAGS := "https://api.github.com/repos/mozrg/RVL/tags?per_page=10"
@@ -46,6 +47,7 @@ global HK_CAPTURE_KEYS := "Numpad0,Numpad1,Numpad2,Numpad3,Numpad4,Numpad5,Numpa
 ; ── State ───────────────────────────────────────────────────
 global WB
 global SettingsWB
+global g_mainWB := ""   ; main document, valid while a settings command is dispatched
 global hMainWnd := 0
 global hSettingsWnd := 0
 global g_command_source := "main"
@@ -97,11 +99,13 @@ global g_launch_delay     := 0
 global g_tooltips     := 1
 global g_ui_hidden    := ""
 global g_ui_text      := ""
+global g_ui_nobg      := ""
 global g_shKey        := ""
 global g_shEn         := 0
 global g_mask_inputs  := 1
 global g_always_on_top := 0
 global g_autostart := "0"
+global g_avatars := 1   ; 1 = load game avatars, 0 = keep showing the index fallback
 global g_prevShHotkey := ""
 global g_windowVisible := true
 global g_update_state := "idle"
@@ -125,6 +129,9 @@ if (FileExist(UPDATE_STATUS_FILE)) {
 ; ── Ensure data folder exists ────────────────────────────────
 IfNotExist, %A_ScriptDir%\data
     FileCreateDir, %A_ScriptDir%\data
+
+; ── Avatar cache folder (images\av) ─────────────────────────
+EnsureAvatarDir()
 
 ; ── Build combined HTML ──────────────────────────────────────
 FileRead, uiCSS,  *P65001 %A_ScriptDir%\ui\style.css
@@ -175,6 +182,25 @@ UiMsg(key, fallback) {
     global g_msgs
     v := g_msgs[key]
     return (v != "") ? v : fallback
+}
+
+; Create images\av (game avatar cache) and move cached icons from the old
+; %TEMP%\RVL_icon_*.png location, so nothing is re-downloaded after the
+; migration. Old .done markers are deleted — they are only worker signals.
+EnsureAvatarDir() {
+    global AVATAR_DIR
+    IfNotExist, %AVATAR_DIR%
+        FileCreateDir, %AVATAR_DIR%
+    Loop, Files, %A_Temp%\RVL_icon_*.png
+    {
+        dest := AVATAR_DIR . "\" . A_LoopFileName
+        if (FileExist(dest))
+            try FileDelete, %A_LoopFileLongPath%
+        else
+            try FileCopy, %A_LoopFileLongPath%, %dest%, 0
+    }
+    Loop, Files, %A_Temp%\RVL_icon_*.png.done
+        try FileDelete, %A_LoopFileLongPath%
 }
 
 ; ── GUI ─────────────────────────────────────────────────────
@@ -267,8 +293,24 @@ Return
 ; ============================================================
 OnExportThemePresets:
     Gosub, ReadDom
+    ; The sending document's __theme_presets_out snapshot can legitimately be
+    ; stale or empty: a detached popup only knows the presets that existed when
+    ; it was created. Fall back to the file every settings save keeps current,
+    ; otherwise the export silently refuses data that is on disk.
     if (g_theme_presets = "" || g_theme_presets = "[]") {
-        TrayTip, RVL, No theme presets to export, 2, 2
+        if (FileExist(THEME_PRESETS)) {
+            FileRead, tpFile, *P65001 %THEME_PRESETS%
+            tpFile := Trim(tpFile)
+            if (tpFile != "" && tpFile != "[]")
+                g_theme_presets := tpFile
+        }
+    }
+    ThumbLog("export_theme_presets len=" . StrLen(g_theme_presets))
+    if (g_theme_presets = "" || g_theme_presets = "[]") {
+        ; Visible feedback inside the window that raised the command: a tray
+        ; balloon alone is easy to miss and made the button look dead.
+        try WB.document.parentWindow.execScript("showToast('" . UiMsg("no_theme_presets", "No saved color presets - open Settings and save one first") . "')")
+        TrayTip, RVL, No theme presets to export, 3, 2
         return
     }
     FileSelectFile, savePath, S16, %A_ScriptDir%\data\theme_presets.json, Export theme presets — choose file, JSON files (*.json)
@@ -278,8 +320,11 @@ OnExportThemePresets:
         f := FileOpen(savePath, "w", "UTF-8")
         f.Write(g_theme_presets)
         f.Close()
+        try WB.document.parentWindow.execScript("showToast('" . UiMsg("theme_presets_exported", "Color presets exported") . "')")
         TrayTip, RVL, Theme presets exported successfully, 2, 1
     } catch e {
+        ThumbLog("theme export EXC " . e.What . ": " . e.Message . " @line " . e.Line)
+        try WB.document.parentWindow.execScript("showToast('" . UiMsg("theme_export_fail", "Color presets export failed") . "')")
         TrayTip, RVL, Export failed: %e%, 3, 3
     }
 Return
@@ -394,6 +439,20 @@ ProcessCommands:
             Gosub, OpenSettingsWindow
         }
 
+        ; Direct one-shot bridge for the detached settings window drag, so it
+        ; starts as instantly as the main titlebar drag. The settings command
+        ; queue is drained behind the 180ms CMD:settings_live heartbeat, and
+        ; every queued command first pays a full COM state copy - a queued
+        ; CMD:drag_start can land too late to feel like a native drag.
+        dragReq := "0"
+        if (hSettingsWnd && g_settings_ready)
+            try dragReq := SettingsWB.document.getElementById("__drag_req").value
+        if (dragReq = "1") {
+            try SettingsWB.document.getElementById("__drag_req").value := "0"
+            DllCall("ReleaseCapture")
+            DllCall("SendMessage", "Ptr", hSettingsWnd, "UInt", 0xA1, "Ptr", 2, "Ptr", 0)
+        }
+
         ; ── Command queue: drain all pending commands in one tick ──
         ; Replaces document.title polling. JS pushes "CMD:foo\n" lines
         ; into __cmd_queue; we read the whole buffer, clear it, then
@@ -462,6 +521,7 @@ ProcessSettingsCommands:
     try SettingsWB.document.getElementById("__cmd_queue").value := ""
 
     mainWB := WB
+    g_mainWB := WB
     g_command_source := "settings"
     Loop, Parse, qBuf, `n
     {
@@ -586,6 +646,8 @@ DispatchCommand:
         Gosub, OnExportThemePresets
     } else if (cmd = "CMD:import_theme_presets") {
         Gosub, OnImportThemePresets
+    } else if (cmd = "CMD:save_theme_presets") {
+        Gosub, OnSaveThemePresets
     } else if (cmd = "CMD:save_preset_groups") {
         Gosub, OnSavePresetGroups
     } else if (cmd = "CMD:copy_clipboard") {
@@ -594,6 +656,8 @@ DispatchCommand:
         Gosub, OnLoadHistory
     } else if (cmd = "CMD:clear_history") {
         Gosub, OnClearHistory
+    } else if (cmd = "CMD:clear_avatars") {
+        Gosub, OnClearAvatars
     } else if (cmd = "CMD:backup_create") {
         Gosub, OnBackupCreate
     } else if (cmd = "CMD:backup_restore") {
@@ -678,7 +742,7 @@ Return
 ; two identical HTML documents. Using one list keeps imports, theme presets,
 ; hotkey capture and future settings controls working in the child window.
 CopySettingsDom(sourceWB, targetWB) {
-    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_theme_grad_op|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_autostart|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version|__cfg_ui_hidden|__cfg_ui_text"
+    valueIds := "__cfg_place|__cfg_link|__cfg_hotkey|__cfg_enabled|__cfg_method|__cfg_presets|__cfg_theme_mode|__cfg_theme_bg|__cfg_theme_surface|__cfg_theme_text|__cfg_theme_accent|__cfg_auto_minimize|__cfg_scale|__cfg_launch_delay|__cfg_theme_grad_en|__cfg_theme_grad_bg2|__cfg_theme_grad_angle|__cfg_theme_grad_op|__cfg_tooltips|__cfg_lang|__cfg_last_preset|__last_loaded_preset_id|__cfg_opacity|__cfg_sh_key|__cfg_sh_en|__cfg_mask_inputs|__cfg_always_on_top|__cfg_autostart|__cfg_avatars|__cfg_compact_mode|__cfg_sort_mode|__cfg_theme_presets|__cfg_preset_groups|__presets_out|__theme_presets_out|__preset_groups_out|__import_data|__import_theme_data|__clipboard_data|__history_data|__dash_export_req|__app_version|__cfg_ui_hidden|__cfg_ui_text|__cfg_ui_nobg|__avatars_cleared"
     Loop, Parse, valueIds, |
     {
         fieldId := A_LoopField
@@ -692,7 +756,7 @@ CopySettingsDom(sourceWB, targetWB) {
         try targetWB.document.getElementById(fieldId).value := sourceWB.document.getElementById(fieldId).value
     }
 
-    checkedIds := "chk-enabled|chk-gradient|chk-auto-minimize|chk-tooltips|chk-mask-inputs|chk-always-on-top|chk-autostart|chk-compact-mode|sh-chk-enabled"
+    checkedIds := "chk-enabled|chk-gradient|chk-auto-minimize|chk-tooltips|chk-mask-inputs|chk-always-on-top|chk-autostart|chk-avatars|chk-compact-mode|sh-chk-enabled"
     Loop, Parse, checkedIds, |
     {
         fieldId := A_LoopField
@@ -799,8 +863,41 @@ OnSettingsSave:
     Gosub, ReadDom
     Gosub, SaveConfig
     Gosub, WriteThemePresets
+    Gosub, RefreshThemePresetsBridge
     if (g_command_source = "settings")
         Gosub, CloseSettingsWindow
+Return
+
+; Persist theme presets from the color-preset modal without closing the
+; settings window: creating, deleting or importing a preset must not
+; destroy the window that hosts the modal the user is working in.
+OnSaveThemePresets:
+    Gosub, ReadDom
+    Gosub, SaveConfig
+    Gosub, WriteThemePresets
+    Gosub, RefreshThemePresetsBridge
+Return
+
+; Push the persisted presets JSON back into the AHK bridge inputs of every
+; live document. __cfg_theme_presets was previously only ever written by the
+; startup InjectConfig: a save closed the popup, but a reopened popup still
+; read the stale startup snapshot, showed an empty grid - and the next save
+; flushed that empty array back to disk, really losing the presets.
+RefreshThemePresetsBridge:
+    if (g_theme_presets = "" && FileExist(THEME_PRESETS)) {
+        FileRead, tpRaw, *P65001 %THEME_PRESETS%
+        tpRaw := Trim(tpRaw)
+        if (tpRaw != "")
+            g_theme_presets := tpRaw
+    }
+    if (g_theme_presets = "")
+        return
+    try WB.document.getElementById("__cfg_theme_presets").value := g_theme_presets
+    try WB.document.getElementById("__theme_presets_out").value := g_theme_presets
+    if (g_mainWB != "" && WB != g_mainWB) {
+        try g_mainWB.document.getElementById("__cfg_theme_presets").value := g_theme_presets
+        try g_mainWB.document.getElementById("__theme_presets_out").value := g_theme_presets
+    }
 Return
 
 ; ============================================================
@@ -870,7 +967,7 @@ OnCheckUpdate:
                 break
             tagName := Trim(tagMatch1)
             scanPos += StrLen(tagMatch)
-            ; Only plain numeric tags (1.14, v1.14) may drive an update so a
+            ; Only plain numeric tags (1.15, v1.15) may drive an update so a
             ; random non-version tag can never trigger one.
             if (tagName != "" && RegExMatch(tagName, "^v?[0-9]+(\.[0-9]+)*$") && VersionToNumber(tagName) > VersionToNumber(remoteVersion)) {
                 remoteVersion := tagName
@@ -1222,15 +1319,17 @@ ReadDom:
         g_mask_inputs   := WB.document.getElementById("__cfg_mask_inputs") ? WB.document.getElementById("__cfg_mask_inputs").value : "1"
         g_always_on_top := WB.document.getElementById("__cfg_always_on_top") ? WB.document.getElementById("__cfg_always_on_top").value : "0"
         g_autostart := WB.document.getElementById("__cfg_autostart") ? WB.document.getElementById("__cfg_autostart").value : "0"
+        g_avatars := WB.document.getElementById("__cfg_avatars") ? WB.document.getElementById("__cfg_avatars").value : "1"
         g_ui_hidden := WB.document.getElementById("__cfg_ui_hidden") ? WB.document.getElementById("__cfg_ui_hidden").value : ""
         g_ui_text   := WB.document.getElementById("__cfg_ui_text") ? WB.document.getElementById("__cfg_ui_text").value : ""
+        g_ui_nobg   := WB.document.getElementById("__cfg_ui_nobg") ? WB.document.getElementById("__cfg_ui_nobg").value : ""
         g_theme_presets := WB.document.getElementById("__theme_presets_out").value
         g_preset_groups_json := WB.document.getElementById("__preset_groups_out") ? WB.document.getElementById("__preset_groups_out").value : g_preset_groups_json
     } catch e {
         g_place := "" , g_link := "" , g_hkKey := "F4" , g_hkEn := 1
         g_theme_mode := "dark" , g_theme_bg := "#0A0A0A" , g_theme_surface := "#111111" , g_theme_text := "#E8E8E8" , g_theme_accent := "#FFFFFF"
         g_theme_presets := "[]"
-        g_mask_inputs := "1" , g_always_on_top := "0"
+        g_mask_inputs := "1" , g_always_on_top := "0" , g_avatars := "1"
     }
 Return
 
@@ -1260,12 +1359,14 @@ InjectConfig:
     IniRead, maskIn,     %CFG%, Settings, MaskInputs,      1
     IniRead, aot,        %CFG%, Settings, AlwaysOnTop,     0
     IniRead, autostart,  %CFG%, Settings, Autostart,       0
+    IniRead, avatars,    %CFG%, Settings, AvatarsEnabled,  1
     IniRead, compactMode, %CFG%, Settings, CompactMode,    0
     IniRead, sortMode,   %CFG%, Settings, SortMode,        manual
     IniRead, winX,       %CFG%, Settings, WindowX,         -1
     IniRead, winY,       %CFG%, Settings, WindowY,         -1
     IniRead, uiHidden,   %CFG%, Settings, UiHidden,
     IniRead, uiText,     %CFG%, Settings, UiText,
+    IniRead, uiNoBg,     %CFG%, Settings, UiNoBg,
 
     pjson := "[]"
     if (FileExist(PRESETS)) {
@@ -1314,10 +1415,12 @@ InjectConfig:
         WB.document.getElementById("__cfg_mask_inputs").value     := maskIn
         WB.document.getElementById("__cfg_always_on_top").value   := aot
         WB.document.getElementById("__cfg_autostart").value        := autostart
+        WB.document.getElementById("__cfg_avatars").value          := avatars
         WB.document.getElementById("__cfg_compact_mode").value     := compactMode
         WB.document.getElementById("__cfg_sort_mode").value        := sortMode
         WB.document.getElementById("__cfg_ui_hidden").value        := uiHidden
         WB.document.getElementById("__cfg_ui_text").value          := uiText
+        WB.document.getElementById("__cfg_ui_nobg").value          := uiNoBg
         WB.document.getElementById("__cfg_theme_presets").value  := tpjson
         WB.document.getElementById("__cfg_preset_groups").value  := pgjson
         WB.document.getElementById("__cfg_theme_grad_en").value    := thgren
@@ -1372,6 +1475,7 @@ SaveConfig:
     IniWrite, %g_mask_inputs%,     %CFG%, Settings, MaskInputs
     IniWrite, %g_always_on_top%,   %CFG%, Settings, AlwaysOnTop
     IniWrite, %g_autostart%,       %CFG%, Settings, Autostart
+    IniWrite, %g_avatars%,         %CFG%, Settings, AvatarsEnabled
     ; Enhancement: save compact mode and sort mode
     try {
         cmVal := WB.document.getElementById("__cfg_compact_mode").value
@@ -1386,6 +1490,8 @@ SaveConfig:
         IniWrite, %uiHVal%, %CFG%, Settings, UiHidden
         uiTVal := WB.document.getElementById("__cfg_ui_text") ? WB.document.getElementById("__cfg_ui_text").value : ""
         IniWrite, %uiTVal%, %CFG%, Settings, UiText
+        uiNVal := WB.document.getElementById("__cfg_ui_nobg") ? WB.document.getElementById("__cfg_ui_nobg").value : ""
+        IniWrite, %uiNVal%, %CFG%, Settings, UiNoBg
     }
 Return
 
@@ -1687,12 +1793,19 @@ Return
 ;  number and retries later on failure.
 ; ============================================================
 OnThumbRequest:
+    ; §avatars-off: the "load avatars" setting is OFF — answer with an empty
+    ; path so JS keeps the index-number fallback and never retries this key.
+    if (g_avatars != "1") {
+        ThumbLog("disabled " . cmd)
+        ThumbRespond(WB.document, SubStr(cmd, 15), "")
+        return
+    }
     thumbKey := SubStr(cmd, 15)
     if (thumbKey = "") {
         return
     }
     thumbFileKey := RegExReplace(thumbKey, "\W")
-    thumbPath := A_Temp "\RVL_icon_" . thumbFileKey . ".png"
+    thumbPath := AVATAR_DIR "\RVL_icon_" . thumbFileKey . ".png"
     if (FileExist(thumbPath)) {
         ; Disk cache hit - answer immediately.
         ThumbLog("hit " . thumbKey)
@@ -1730,7 +1843,7 @@ ThumbLog(msg) {
 ThumbStartLaunch:
     thumbKey := g_thumb_launch_key
     thumbFileKey := RegExReplace(thumbKey, "\W")
-    thumbPath := A_Temp "\RVL_icon_" . thumbFileKey . ".png"
+    thumbPath := AVATAR_DIR "\RVL_icon_" . thumbFileKey . ".png"
     thumbDone := thumbPath . ".done"
     g_thumb_key := thumbKey
     g_thumb_path := thumbPath
@@ -2417,6 +2530,7 @@ Return
 ;  FACTORY RESET
 ; ============================================================
 OnFactoryReset:
+    ClearAvatarCache()
     try FileDelete, %CFG%
     try FileDelete, %PRESETS%
     try FileDelete, %THEME_PRESETS%
@@ -2531,6 +2645,36 @@ OnClearHistory:
         WB.document.getElementById("__history_data").value := "[]"
     }
 Return
+
+; ============================================================
+;  CLEAR AVATAR CACHE
+;  Deletes every downloaded game avatar from images\av and
+;  aborts an in-flight fetch so it cannot recreate a file.
+;  Both pages (main + detached settings) get a one-shot marker
+;  in __avatars_cleared, so JS drops its cached paths and falls
+;  back to the index numbers until the icons are re-requested.
+; ============================================================
+OnClearAvatars:
+    SetTimer, ThumbDoneCheck, Off
+    g_thumb_step := 0
+    g_thumb_pending_key := ""
+    ClearAvatarCache()
+    stampNow := A_TickCount
+    try WB.document.getElementById("__avatars_cleared").value := stampNow
+    try SettingsWB.document.getElementById("__avatars_cleared").value := stampNow
+    try g_mainWB.document.getElementById("__avatars_cleared").value := stampNow
+    ThumbLog("avatars cleared")
+Return
+
+ClearAvatarCache() {
+    global AVATAR_DIR
+    IfNotExist, %AVATAR_DIR%
+        return
+    Loop, Files, %AVATAR_DIR%\*.png
+        try FileDelete, %A_LoopFileLongPath%
+    Loop, Files, %AVATAR_DIR%\*.done
+        try FileDelete, %A_LoopFileLongPath%
+}
 
 ; ============================================================
 ;  BACKUP CREATE (Enhancement G2)
