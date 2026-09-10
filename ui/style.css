@@ -11918,10 +11918,17 @@ body.theme-light .sort-collapsed .sort-toggle { background: #FFFFFF; border-colo
     border-left: 1px solid #222222; padding: 12px; position: relative;
 }
 .pd-empty {
-    -ms-flex-positive: 1; -ms-flex-negative: 1; -ms-flex-preferred-size: 0px; -ms-flex: 1 1 0px; flex: 1 1 0px; display: -ms-flexbox; display: flex;
+    /* Pinned to the panel: the flex-centered variant could end up narrower
+       than the panel with the hint text overflowing and clipped on the left
+       when there are no presets at all. */
+    position: absolute;
+    inset: 0;
+    padding: 12px;
+    display: -ms-flexbox; display: flex;
     -ms-flex-direction: column; flex-direction: column; -ms-flex-align: center; align-items: center;
     -ms-flex-pack: center; justify-content: center; color: #333333; text-align: center;
 }
+.pd-empty-text, #pd-empty-text { max-width: 100%; }
 .pd-empty-icon { font-size: 26px; margin-bottom: 8px; opacity: 0.4; }
 .pd-content { display: -ms-flexbox; display: flex; -ms-flex-direction: column; flex-direction: column; height: 100%; }
 .pd-hdr { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; margin-bottom: 8px; -ms-flex-negative: 0; flex-shrink: 0; }

@@ -255,6 +255,10 @@ public sealed class WebMainForm : Form
     public async void ShowDeferred(IWin32Window owner)
     {
         Owner = owner as Form;
+        /* Restore the last closed position BEFORE the handle exists — tool
+           windows open where they were closed; the first-ever open uses
+           CenterParent (a fixed spot relative to the launcher). */
+        ApplySavedToolWindowPosition();
         if (!IsHandleCreated) { var _ = Handle; }
         ApplyDwmWindowAttributes();
         await EnsureWebInitializedAsync();
@@ -815,6 +819,32 @@ public sealed class WebMainForm : Form
         }
     }
 
+    /* Tool windows remember where they were closed. Keys are per-kind so,
+       e.g., Groups and History each keep their own spot; the first-ever open
+       has no keys and falls back to CenterParent. */
+    private void ApplySavedToolWindowPosition()
+    {
+        var x = _config.GetInt(PositionXKey, -1);
+        var y = _config.GetInt(PositionYKey, -1);
+        if (x < 0 && y < 0) return;
+        StartPosition = FormStartPosition.Manual;
+        Location = new Point(x, y);
+        if (!SystemInformation.VirtualScreen.IntersectsWith(new Rectangle(Location, Size)))
+        {
+            StartPosition = FormStartPosition.CenterParent;
+        }
+    }
+
+    private void SaveToolWindowPosition()
+    {
+        _config.Set(PositionXKey, Left.ToString());
+        _config.Set(PositionYKey, Top.ToString());
+        _config.SaveIni();
+    }
+
+    private string PositionXKey => _windowKind == "main" ? "WindowX" : "Window_" + _windowKind + "_X";
+    private string PositionYKey => _windowKind == "main" ? "WindowY" : "Window_" + _windowKind + "_Y";
+
     private void DragWindow()
     {
         ReleaseCapture(); SendMessage(Handle, WmNclButtonDown, (nint)2, 0);
@@ -1100,7 +1130,12 @@ public sealed class WebMainForm : Form
 
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
     {
-        if (_windowKind != "main") return;
+        if (_windowKind != "main")
+        {
+            /* Tool windows reopen where they were closed. */
+            SaveToolWindowPosition();
+            return;
+        }
         SaveWindowPosition();
         foreach (var id in _registeredKeys.Values.Distinct()) UnregisterHotKey(Handle, id);
         UnregisterHotKey(Handle, MainHotKeyId); UnregisterHotKey(Handle, ShowHideHotKeyId);
