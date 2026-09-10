@@ -11928,7 +11928,7 @@ body.theme-light .sort-collapsed .sort-toggle { background: #FFFFFF; border-colo
     -ms-flex-direction: column; flex-direction: column; -ms-flex-align: center; align-items: center;
     -ms-flex-pack: center; justify-content: center; color: #333333; text-align: center;
 }
-.pd-empty-text, #pd-empty-text { max-width: 100%; }
+.pd-empty-text, #pd-empty-text { max-width: 100%; white-space: normal; overflow-wrap: break-word; }
 .pd-empty-icon { font-size: 26px; margin-bottom: 8px; opacity: 0.4; }
 .pd-content { display: -ms-flexbox; display: flex; -ms-flex-direction: column; flex-direction: column; height: 100%; }
 .pd-hdr { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; margin-bottom: 8px; -ms-flex-negative: 0; flex-shrink: 0; }
