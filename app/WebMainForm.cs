@@ -84,12 +84,17 @@ public sealed class WebMainForm : Form
         Text = _isSettings ? "RVL — Настройки" : windowKind == "main" ? "RVL" : "RVL — " + WindowTitle(windowKind);
         Icon = LoadIcon();
         FormBorderStyle = FormBorderStyle.None;
-        StartPosition = windowKind == "main" ? FormStartPosition.Manual : FormStartPosition.CenterParent;
+        StartPosition = windowKind == "main" ? FormStartPosition.CenterScreen : FormStartPosition.CenterParent;
         ClientSize = _isSettings ? new Size(760, 680) : windowKind == "main" ? new Size(900, 610) : ToolWindowSize(windowKind);
         MinimumSize = _isSettings ? new Size(600, 420) : new Size(360, 300);
         BackColor = ThemeSurfaceColor();
         ShowInTaskbar = true;
         KeyPreview = true;
+        /* The position must be final BEFORE the window is created — otherwise
+           a fresh install flashes the form in the top-left corner and an
+           existing install shows it there for a frame before it jumps to the
+           saved spot. */
+        if (windowKind == "main") ApplySavedStartupPosition();
 
         _web.Dock = DockStyle.Fill;
         _web.CreationProperties = new CoreWebView2CreationProperties();
@@ -232,7 +237,8 @@ public sealed class WebMainForm : Form
             _web.CoreWebView2.Navigate(uri);
             if (_windowKind == "main")
             {
-                ApplySavedWindowPosition();
+                TopMost = _config.GetBool("AlwaysOnTop");
+                Opacity = Math.Clamp(_config.GetInt("Opacity", 255), 26, 255) / 255d;
                 CreateTray();
                 _statusTimer = new System.Windows.Forms.Timer { Interval = 2000 };
                 _statusTimer.Tick += async (_, _) => await UpdateRobloxStatusAsync();
@@ -552,7 +558,20 @@ public sealed class WebMainForm : Form
         if (!match.Success) return;
         var width = Math.Clamp(int.Parse(match.Groups[1].Value), MinimumSize.Width, 1200);
         var height = Math.Clamp(int.Parse(match.Groups[2].Value), MinimumSize.Height, 1000);
+        /* Fresh-install check BEFORE resizing: the Resize event persists the
+           position as soon as the size changes, which would otherwise defeat
+           the "no saved position yet" test. */
+        var isFresh = _windowKind == "main" && _config.GetInt("WindowX", -1) < 0;
         ClientSize = new Size(width, height);
+        /* A fresh install opens centered at its startup size; this
+           content-driven resize would otherwise leave it hanging up-left of
+           center. Re-center once and persist — afterwards user moves win. */
+        if (isFresh)
+        {
+            var area = Screen.PrimaryScreen.WorkingArea;
+            Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+            SaveWindowPosition();
+        }
     }
 
     private async Task LaunchFromBridgeAsync(Dictionary<string, string> values)
@@ -779,12 +798,21 @@ public sealed class WebMainForm : Form
         _config.Set("WindowX", Left.ToString()); _config.Set("WindowY", Top.ToString()); _config.SaveIni();
     }
 
-    private void ApplySavedWindowPosition()
+    /* Runs in the constructor, before the window exists: restore the saved
+       position, or keep CenterScreen when there is none yet. A position saved
+       for a monitor that is no longer connected is dropped — the window then
+       opens centered instead of off-screen. */
+    private void ApplySavedStartupPosition()
     {
-        var x = _config.GetInt("WindowX", -1); var y = _config.GetInt("WindowY", -1);
-        if (x >= 0 && y >= 0) { StartPosition = FormStartPosition.Manual; Location = new Point(x, y); }
-        TopMost = _config.GetBool("AlwaysOnTop");
-        var opacity = Math.Clamp(_config.GetInt("Opacity", 255), 26, 255); Opacity = opacity / 255d;
+        var x = _config.GetInt("WindowX", -1);
+        var y = _config.GetInt("WindowY", -1);
+        if (x < 0 && y < 0) return;
+        StartPosition = FormStartPosition.Manual;
+        Location = new Point(x, y);
+        if (!SystemInformation.VirtualScreen.IntersectsWith(new Rectangle(Location, Size)))
+        {
+            StartPosition = FormStartPosition.CenterScreen;
+        }
     }
 
     private void DragWindow()

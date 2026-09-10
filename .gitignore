@@ -1,2 +1,4 @@
 # Runtime cache of downloaded game avatars (images/av/RVL_icon_*.png)
 images/av/
+
+dist/
