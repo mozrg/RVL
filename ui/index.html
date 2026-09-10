@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
@@ -13,6 +13,8 @@
       try {
         if (window.location.hash === "#settings-native") {
           document.documentElement.className = "settings-popup";
+        } else if (/^#(history|dashboard|backup|bulk|export|guide|groups|themes|new)-native$/.test(window.location.hash || "")) {
+          document.documentElement.className = "rvl-native-window";
         }
       } catch (e) {}
     })();
@@ -290,9 +292,9 @@
           <div class="launch-delay-row" style="margin-top:8px;">
             <span class="color-name" id="lbl-launch-delay">Задержка запуска</span>
             <div class="delay-stepper">
-              <button class="delay-btn" id="delay-minus">&#8722;</button>
+              <button class="delay-btn" id="delay-minus"></button>
               <span class="delay-value" id="delay-display">0с</span>
-              <button class="delay-btn" id="delay-plus">&#43;</button>
+              <button class="delay-btn" id="delay-plus"></button>
             </div>
           </div>
         </div>
@@ -303,7 +305,7 @@
             <span class="ui-custom-tools-btns">
               <button class="ui-custom-sub" id="btn-ui-hide-all" type="button">Скрыть всё</button>
               <button class="ui-custom-sub" id="btn-ui-show-all" type="button">Показать всё</button>
-              <button class="ui-custom-reset" id="btn-ui-custom-reset" type="button">&#8634; СБРОСИТЬ</button>
+              <button class="ui-custom-reset" id="btn-ui-custom-reset" type="button">СБРОСИТЬ</button>
             </span>
           </div>
           <div class="ui-custom-search-wrap">
@@ -331,10 +333,25 @@
         </div>
 
         <div class="settings-block">
+          <div class="settings-label" id="lbl-hotkey-st">КЛАВИША ЗАПУСКА</div>
+          <div class="sh-hotkey-row">
+            <input class="field-input key-box" id="st-key-box" type="text" readonly spellcheck="false" data-tooltip="Нажми ЗАХВАТ, чтобы назначить">
+            <button class="btn-capture" id="st-btn-capture">ЗАХВАТ</button>
+            <div class="chk-wrap">
+              <span class="toggle-track" id="st-toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+              <input type="checkbox" id="st-chk-enabled" class="chk-hidden">
+              <span class="chk-txt" id="chk-txt-st">Включить</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-block">
           <div class="settings-label" id="lbl-showhide">КЛАВИША СВЕРНУТЬ/РАЗВЕРНУТЬ</div>
           <div class="sh-hotkey-row">
             <input class="field-input key-box" id="sh-key-box" type="text" readonly spellcheck="false">
-            <button class="btn-capture" id="sh-btn-capture">&#9673;&nbsp;ЗАХВАТ</button>
+            <button class="btn-capture" id="sh-btn-capture">ЗАХВАТ</button>
             <div class="chk-wrap">
               <span class="toggle-track" id="sh-toggle-track">
                 <span class="toggle-thumb"></span>
@@ -478,7 +495,7 @@
   <!-- UPDATE PROMPT: shown after a real version check finds a newer release. -->
   <div class="update-prompt-overlay" id="update-prompt-overlay" style="display:none;">
     <div class="update-prompt-card">
-      <div class="update-prompt-icon update-prompt-logo" aria-label="RVL"><img class="update-prompt-logo-image" src="images/rvl.png" alt="RVL" onerror="this.style.display='none'; this.parentNode.innerHTML='RVL';"></div>
+      <div class="update-prompt-icon update-prompt-logo" aria-label="RVL"><img class="update-prompt-logo-image" src="../images/rvl.png" alt="RVL" onerror="this.style.display='none'; this.parentNode.innerHTML='RVL';"></div>
       <div class="update-prompt-copy">
         <div class="update-prompt-title" id="update-prompt-title">Доступно обновление</div>
         <div class="update-prompt-text" id="update-prompt-text">Найдена новая версия <span class="rvl-logo rvl-inline-logo" aria-label="RVL"></span></div>
@@ -534,9 +551,9 @@
     <span class="tb-ver hdr-ver" id="header-version">v1.15</span>
     <span class="hdr-spacer"></span>
     <span id="roblox-status" class="roblox-status hdr-status" data-tooltip="Поиск Roblox..."></span>
-    <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки">&#9881;</span>
-    <span id="btn-min"   class="tc-btn hdr-btn" data-tooltip="Сохранить &amp; свернуть">&#8722;</span>
-    <span id="btn-close" class="tc-btn hdr-btn close" data-tooltip="Закрыть">&#215;</span>
+    <span id="btn-settings" class="tc-btn hdr-btn" data-tooltip="Настройки"></span>
+    <span id="btn-min"   class="tc-btn hdr-btn" data-tooltip="Сохранить &amp; свернуть"></span>
+    <span id="btn-close" class="tc-btn hdr-btn close" data-tooltip="Закрыть"></span>
   </div>
 
   <!-- INPUT ROW (maket .input-row) -->
@@ -551,14 +568,14 @@
       <div class="field-input-wrap ir-field-wrap" id="fw-place">
         <input class="field-input ir-field" id="inp-place" type="password"
                spellcheck="false" autocomplete="off" placeholder="PLACE ID">
-        <button type="button" class="field-eye ir-eye" id="eye-place" tabindex="-1" data-tooltip="Показать">&#128065;</button>
-        <button type="button" class="field-clear" id="clr-place" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+        <button type="button" class="field-eye ir-eye" id="eye-place" tabindex="-1" data-tooltip="Показать"></button>
+        <button type="button" class="field-clear" id="clr-place" tabindex="-1" data-tooltip="Очистить"></button>
       </div>
       <div class="field-input-wrap ir-field-wrap" id="fw-link">
         <input class="field-input ir-field" id="inp-link" type="password"
                spellcheck="false" autocomplete="off" placeholder="LINK CODE">
-        <button type="button" class="field-eye ir-eye" id="eye-link" tabindex="-1" data-tooltip="Показать">&#128065;</button>
-        <button type="button" class="field-clear" id="clr-link" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+        <button type="button" class="field-eye ir-eye" id="eye-link" tabindex="-1" data-tooltip="Показать"></button>
+        <button type="button" class="field-clear" id="clr-link" tabindex="-1" data-tooltip="Очистить"></button>
       </div>
     </div>
 
@@ -568,8 +585,8 @@
         <input class="field-input ir-field" id="inp-share-code" type="password"
                spellcheck="false" autocomplete="off"
                placeholder="SHARE CODE / ссылка...">
-        <button type="button" class="field-eye ir-eye" id="eye-share-code" tabindex="-1" data-tooltip="Показать">&#128065;</button>
-        <button type="button" class="field-clear" id="clr-share-code" tabindex="-1" data-tooltip="Очистить">&#215;</button>
+        <button type="button" class="field-eye ir-eye" id="eye-share-code" tabindex="-1" data-tooltip="Показать"></button>
+        <button type="button" class="field-clear" id="clr-share-code" tabindex="-1" data-tooltip="Очистить"></button>
       </div>
     </div>
 
@@ -604,24 +621,24 @@
     </div>
     <button class="sort-toggle tb-sort" id="sort-show" data-tooltip="Сортировка">СОРТ &#9662;</button>
     <button class="btn-ghost tb-btn" id="btn-groups" data-tooltip="Группы">#</button>
-    <button class="btn-ghost tb-btn" id="btn-history" data-tooltip="История запусков">&#9778;</button>
-    <button class="btn-ghost tb-btn" id="btn-dashboard" data-tooltip="Статистика">&#9636;</button>
-    <button class="btn-ghost tb-btn" id="btn-backup" data-tooltip="Резервное копирование">&#9711;</button>
-    <button class="btn-ghost tb-btn" id="btn-bulk-edit" data-tooltip="Массовое редактирование">&#9776;</button>
-    <button class="btn-io tb-btn" id="btn-export" data-tooltip="Экспорт пресетов в файл">&#8679;</button>
-    <button class="btn-io tb-btn" id="btn-import" data-tooltip="Импорт пресетов из файла">&#8681;</button>
-    <button class="btn-guide tb-btn" id="btn-guide" data-tooltip="Как добавить VIP сервер">&#63;</button>
+    <button class="btn-ghost tb-btn" id="btn-history" data-tooltip="История запусков"></button>
+    <button class="btn-ghost tb-btn" id="btn-dashboard" data-tooltip="Статистика"></button>
+    <button class="btn-ghost tb-btn" id="btn-backup" data-tooltip="Резервное копирование"></button>
+    <button class="btn-ghost tb-btn" id="btn-bulk-edit" data-tooltip="Массовое редактирование"></button>
+    <button class="btn-io tb-btn" id="btn-export" data-tooltip="Экспорт пресетов в файл"></button>
+    <button class="btn-io tb-btn" id="btn-import" data-tooltip="Импорт пресетов из файла"></button>
+    <button class="btn-guide tb-btn" id="btn-guide" data-tooltip="Как добавить VIP сервер"></button>
     <div class="view-toggle tb-view-toggle" id="view-toggle-inline">
-      <button class="view-btn view-active tb-btn" id="view-list" data-tooltip="Список">&#9776;</button>
-      <button class="view-btn tb-btn" id="view-grid" data-tooltip="Сетка">&#9638;</button>
+      <button class="view-btn view-active tb-btn" id="view-list" data-tooltip="Список"></button>
+      <button class="view-btn tb-btn" id="view-grid" data-tooltip="Сетка"></button>
     </div>
-    <button class="btn-ghost tb-add" id="btn-add-preset">&#43; Новый</button>
+    <button class="btn-ghost tb-add" id="btn-add-preset"></button>
   </div>
 
   <!-- SORT DROPDOWN (floats under toolbar) -->
   <div class="sort-bar" id="sort-bar" style="display:none">
     <span class="sort-label" id="lbl-sort">СОРТИРОВКА</span>
-    <button class="sort-toggle" id="sort-toggle" data-tooltip="Скрыть сортировку">&#9650;</button>
+    <button class="sort-toggle" id="sort-toggle" data-tooltip="Скрыть сортировку"></button>
     <button class="sort-opt sort-opt-active" id="sort-manual">Вручную</button>
     <button class="sort-opt" id="sort-name">По имени</button>
     <button class="sort-opt" id="sort-date">По дате</button>
@@ -662,7 +679,7 @@
       </div>
       <div class="pd-content" id="pd-content" style="display:none">
         <div class="pd-hdr">
-          <div class="pd-icon" id="pd-icon">&#127918;</div>
+          <div class="pd-icon" id="pd-icon"></div>
           <div class="pd-title-wrap">
             <div class="pd-name" id="pd-name">—</div>
             <div class="pd-tags" id="pd-tags"></div>
@@ -673,15 +690,15 @@
             <span class="pd-label" id="pd-lbl-place">PLACE ID</span>
             <span class="pd-val" id="pd-val-place">—</span>
             <div class="pd-actions">
-              <button class="pd-btn" id="pd-copy-place" data-tooltip="Копировать">&#128203;</button>
+              <button class="pd-btn" id="pd-copy-place" data-tooltip="Копировать"></button>
             </div>
           </div>
           <div class="pd-row">
             <span class="pd-label" id="pd-lbl-link">LINK CODE</span>
             <span class="pd-val" id="pd-val-link">—</span>
             <div class="pd-actions">
-              <button class="pd-btn" id="pd-copy-link" data-tooltip="Копировать">&#128203;</button>
-              <button class="pd-btn" id="pd-eye-link" data-tooltip="Показать">&#128065;</button>
+              <button class="pd-btn" id="pd-copy-link" data-tooltip="Копировать"></button>
+              <button class="pd-btn" id="pd-eye-link" data-tooltip="Показать"></button>
             </div>
           </div>
           <div class="pd-row">
@@ -696,16 +713,16 @@
             <span class="pd-label" id="pd-lbl-hk">ХОТКЕЙ</span>
             <span class="pd-val" id="pd-val-hk">—</span>
             <div class="pd-actions">
-              <button class="pd-btn" id="pd-hk-assign" data-tooltip="Назначить">&#9998;</button>
+              <button class="pd-btn" id="pd-hk-assign" data-tooltip="Назначить"></button>
             </div>
           </div>
         </div>
         <div class="pd-ftr">
-          <button class="btn-primary btn-go" id="btn-launch">&#9654; ЗАПУСТИТЬ</button>
-          <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать">&#9998;</button>
-          <button class="btn-tool" id="pd-fav" data-tooltip="Избранное">&#9733;</button>
-          <button class="btn-tool" id="pd-del" data-tooltip="Удалить">&#128465;</button>
-          <button class="btn-tool" id="btn-save" data-tooltip="Сохранить &amp; закрыть">&#128190;</button>
+          <button class="btn-primary btn-go" id="btn-launch">ЗАПУСТИТЬ</button>
+          <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать"></button>
+          <button class="btn-tool" id="pd-fav" data-tooltip="Избранное"></button>
+          <button class="btn-tool" id="pd-del" data-tooltip="Удалить"></button>
+          <button class="btn-tool" id="btn-save" data-tooltip="Сохранить &amp; закрыть"></button>
         </div>
       </div>
     </div>
@@ -727,16 +744,16 @@
 
   <!-- CONTEXT MENU (right-click on preset) -->
   <div class="ctx-menu" id="ctx-menu" style="display:none">
-    <div class="ctx-item" id="ctx-launch">&#9654;&nbsp;<span id="ctx-launch-text">Запустить</span></div>
+    <div class="ctx-item" id="ctx-launch"><span id="ctx-launch-text">Запустить</span></div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item" id="ctx-copy">&#128203;&nbsp;<span id="ctx-copy-text">Копировать ссылку</span></div>
-    <div class="ctx-item" id="ctx-duplicate">&#10064;&nbsp;<span id="ctx-dup-text">Дублировать</span></div>
-    <div class="ctx-item" id="ctx-edit">&#9998;&nbsp;<span id="ctx-edit-text">Редактировать</span></div>
+    <div class="ctx-item" id="ctx-copy"><span id="ctx-copy-text">Копировать ссылку</span></div>
+    <div class="ctx-item" id="ctx-duplicate"><span id="ctx-dup-text">Дублировать</span></div>
+    <div class="ctx-item" id="ctx-edit"><span id="ctx-edit-text">Редактировать</span></div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item" id="ctx-color">&#128396;&nbsp;<span id="ctx-color-text">Цвет метки</span></div>
-    <div class="ctx-item" id="ctx-icon">&#128221;&nbsp;<span id="ctx-icon-text">Иконка</span></div>
+    <div class="ctx-item" id="ctx-color"><span id="ctx-color-text">Цвет метки</span></div>
+    <div class="ctx-item" id="ctx-icon"><span id="ctx-icon-text">Иконка</span></div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item ctx-danger" id="ctx-delete">&#128465;&nbsp;<span id="ctx-del-text">Удалить</span></div>
+    <div class="ctx-item ctx-danger" id="ctx-delete"><span id="ctx-del-text">Удалить</span></div>
   </div>
 
   <!-- MULTI-SELECT TOOLBAR -->
@@ -837,10 +854,12 @@
     var btnClose = document.getElementById('guide-close');
 
     function openGuide() {
+      if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window guide"); return; }
       overlay.style.display = 'flex';
       setTimeout(function() { overlay.className = 'guide-overlay guide-overlay-visible'; }, 10);
     }
     function closeGuide() {
+      if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
       overlay.className = 'guide-overlay';
       setTimeout(function() { overlay.style.display = 'none'; }, 220);
     }
@@ -900,6 +919,42 @@
       <div class="bulk-footer">
         <button class="btn-primary bulk-save" id="bulk-save">Сохранить</button>
         <button class="bulk-cancel-btn" id="bulk-cancel">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW PRESET WINDOW OVERLAY (detached "new preset" tool window) -->
+  <div class="np-overlay" id="np-overlay">
+    <div class="np-modal">
+      <div class="np-header">
+        <span class="np-title" id="np-title-text">НОВЫЙ ПРЕСЕТ</span>
+        <span class="np-close" id="np-close">&#215;</span>
+      </div>
+      <div class="np-body">
+        <div class="np-label">НАЗВАНИЕ</div>
+        <input class="field-input np-name" id="np-name" type="text" placeholder="Название пресета..."
+               maxlength="32" spellcheck="false" autocomplete="off">
+        <div class="method-tabs np-tabs">
+          <button type="button" class="method-tab method-tab-active" id="np-tab-1">СП 1</button>
+          <button type="button" class="method-tab" id="np-tab-2">СП 2</button>
+        </div>
+        <div id="np-panel-1">
+          <div class="np-label">PLACE ID</div>
+          <input class="field-input np-inp" id="np-place" type="text"
+                 spellcheck="false" autocomplete="off" placeholder="PLACE ID">
+          <div class="np-label">LINK CODE</div>
+          <input class="field-input np-inp" id="np-link" type="text"
+                 spellcheck="false" autocomplete="off" placeholder="LINK CODE / ссылка...">
+        </div>
+        <div id="np-panel-2" style="display:none;">
+          <div class="np-label">SHARE CODE</div>
+          <input class="field-input np-inp" id="np-share" type="text"
+                 spellcheck="false" autocomplete="off" placeholder="SHARE CODE / ссылка...">
+        </div>
+      </div>
+      <div class="np-footer">
+        <button class="btn-primary np-save" id="np-save">СОХРАНИТЬ</button>
+        <button class="btn-secondary np-cancel" id="np-cancel">ОТМЕНА</button>
       </div>
     </div>
   </div>

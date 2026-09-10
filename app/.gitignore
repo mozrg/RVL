@@ -1,0 +1,6 @@
+bin/
+obj/
+publish/
+publish-fd/
+publish-no-rid/
+release/

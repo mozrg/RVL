@@ -97,6 +97,12 @@ var currentGuidePage = 1;   /* guide modal page 1 or 2 */
 var __rvlSettingsPopupMode = false;
 var __rvlNativeSettingsPopup = false;
 var __rvlSettingsPopup = null;
+/* WebView2 exposes this bridge before the C# host has injected saved state.
+   Detect it immediately so a click on a tool never falls back to the old
+   in-window overlay behind the launcher. */
+var __rvlNativeHost = false;
+try { __rvlNativeHost = !!(window.chrome && window.chrome.webview); } catch (e) {}
+var __rvlNativeWindow = "";
 var RVL_STARTUP_MIN_DURATION = 4000;
 var RVL_VERSION_CHECK_MIN_DURATION = 4000;
 var rvlStartupShownAt = new Date().getTime();
@@ -104,6 +110,8 @@ var rvlStartupCheckShownAt = 0;
 try {
     __rvlNativeSettingsPopup = window.location.hash === "#settings-native";
     __rvlSettingsPopupMode = __rvlNativeSettingsPopup || window.location.hash === "#settings";
+    var __nativeWindowMatch = /^#(history|dashboard|backup|bulk|export|guide|groups|themes|new)-native$/.exec(window.location.hash || "");
+    if (__nativeWindowMatch) __rvlNativeWindow = __nativeWindowMatch[1];
 } catch (e) {}
 
 var STRINGS = {
@@ -121,13 +129,13 @@ var STRINGS = {
         labelLink:      "LINK CODE",
         labelHotkey:    "HOTKEY",
         enableHotkey:   "Включить хоткей",
-        captureBtn:     "&#9673;&nbsp;ЗАХВАТ",
-        capturingBtn:   "&#9679;&nbsp;НАЖМИТЕ...",
+        captureBtn:     "ЗАХВАТ",
+        capturingBtn:   "НАЖМИТЕ...",
         labelPresets:   "PRESETS",
-        launchBtn:      "&#9654;&nbsp;ЗАПУСК",
+        launchBtn:      "ЗАПУСК",
         saveCloseBtn:   "СОХРАНИТЬ",
         addPresetBtn:   "&#43;&nbsp;НОВЫЙ",
-        searchPh:       "\uD83D\uDD0D Поиск пресетов...",
+        searchPh:       "Поиск пресетов...",
         presetNamePh:   "Название пресета...",
         /* Preset row */
         loadBtn:        "ЗАГР.",
@@ -236,8 +244,8 @@ var STRINGS = {
         /* Show/hide hotkey settings */
         showHideLabel:   "КЛАВИША СВЕРНУТЬ/РАЗВЕРНУТЬ",
         showHideEnable:  "Включить",
-        showHideCapture: "&#9673;&nbsp;ЗАХВАТ",
-        showHideCapturing:"&#9679;&nbsp;НАЖМИТЕ...",
+        showHideCapture: "ЗАХВАТ",
+        showHideCapturing:"НАЖМИТЕ...",
         gradientLabel:"ГРАДИЕНТ ФОНА",gradientColor2:"Цвет 2",gradientAngle:"УГОЛ",gradientOpacityLabel:"ПРОЗРАЧНОСТЬ",
         /* Interface customization */
         uiCustomLabel:"ЭЛЕМЕНТЫ ИНТЕРФЕЙСА", uiResetBtn:"СБРОСИТЬ",
@@ -245,7 +253,7 @@ var STRINGS = {
         uiSearchPh:"Поиск элемента...", uiHideAll:"Скрыть всё", uiShowAll:"Показать всё",
         uiGroupHide:"скрыть", uiGroupShow:"показать", uiFlashHint:"Показать на экране", uiNoResults:"Ничего не найдено",
         uiBgBtn:"фон", uiBgHint:"Убрать фон элемента",
-        uiGroups:{header:"ЗАГОЛОВОК",input:"СТРОКА ВВОДА",toolbar:"ПАНЕЛЬ ИНСТРУМЕНТОВ",list:"СПИСОК И ДЕТАЛИ",status:"СТАТУС-БАР",overlay:"ВСПЛЫВАЮЩЕЕ"},
+        uiGroups:{header:"ЗАГОЛОВОК",toolbar:"ПАНЕЛЬ ИНСТРУМЕНТОВ",list:"СПИСОК И ДЕТАЛИ",status:"СТАТУС-БАР",overlay:"ВСПЛЫВАЮЩЕЕ"},
         uiNames:{
             "hdr-logo":"Логотип",
             "header-version":"Версия в шапке",
@@ -253,17 +261,6 @@ var STRINGS = {
             "btn-settings":"Кнопка: настройки",
             "btn-min":"Кнопка: свернуть",
             "btn-close":"Кнопка: закрыть",
-            "method-tabs":"Переключатель СП 1 / СП 2",
-            "method-tab-1":"Вкладка: Способ 1",
-            "method-tab-2":"Вкладка: Способ 2",
-            "inp-place":"Поле: PLACE ID",
-            "inp-link":"Поле: LINK CODE",
-            "inp-share-code":"Поле: SHARE CODE",
-            "inp-key":"Поле клавиши хоткея",
-            "btn-capture":"Кнопка захвата клавиши",
-            "ir-sep":"Разделитель строки ввода",
-            "chk-txt-hotkey":"Подпись HK",
-            "toggle-track":"Включатель хоткея",
             "search-wrap":"Поиск (панель)",
             "search-inp":"Поле поиска",
             "sort-show":"Кнопка СОРТ",
@@ -317,7 +314,7 @@ var STRINGS = {
             "sort-collapsed":"Свёрнутая сортировка"
         },
         launchDelayLabel:"Задержка запуска",launchDelayUnit:"с",
-        launchCountdown:function(n){return "&#9654;&nbsp;ЗАПУСК "+n+"с...";},
+        launchCountdown:function(n){return "ЗАПУСК "+n+"с...";},
         dupTip:"Дублировать пресет",
         dupIndicatorTip:function(n){return "\u26A0 "+n+" пресета с одинаковым кодом";},
         editPresetTip:"Редактировать Place ID, Link/Share Code и группу",
@@ -431,13 +428,13 @@ var STRINGS = {
         labelLink:      "LINK CODE",
         labelHotkey:    "HOTKEY",
         enableHotkey:   "Enable hotkey",
-        captureBtn:     "&#9673;&nbsp;CAPTURE",
-        capturingBtn:   "&#9679;&nbsp;PRESS KEY...",
+        captureBtn:     "CAPTURE",
+        capturingBtn:   "PRESS KEY...",
         labelPresets:   "PRESETS",
-        launchBtn:      "&#9654;&nbsp;LAUNCH",
+        launchBtn:      "LAUNCH",
         saveCloseBtn:   "SAVE &amp; CLOSE",
         addPresetBtn:   "&#43;&nbsp;NEW",
-        searchPh:       "\uD83D\uDD0D Search presets...",
+        searchPh:       "Search presets...",
         presetNamePh:   "Preset name...",
         /* Preset row */
         loadBtn:        "LOAD",
@@ -546,8 +543,8 @@ var STRINGS = {
         /* Show/hide hotkey settings */
         showHideLabel:   "MINIMIZE / RESTORE HOTKEY",
         showHideEnable:  "Enable",
-        showHideCapture: "&#9673;&nbsp;CAPTURE",
-        showHideCapturing:"&#9679;&nbsp;PRESS KEY...",
+        showHideCapture: "CAPTURE",
+        showHideCapturing:"PRESS KEY...",
         gradientLabel:"BACKGROUND GRADIENT",gradientColor2:"Color 2",gradientAngle:"ANGLE",gradientOpacityLabel:"OPACITY",
         /* Interface customization */
         uiCustomLabel:"INTERFACE ELEMENTS", uiResetBtn:"RESET",
@@ -555,7 +552,7 @@ var STRINGS = {
         uiSearchPh:"Search element...", uiHideAll:"Hide all", uiShowAll:"Show all",
         uiGroupHide:"hide", uiGroupShow:"show", uiFlashHint:"Show on screen", uiNoResults:"No results",
         uiBgBtn:"bg", uiBgHint:"Remove element background",
-        uiGroups:{header:"HEADER",input:"INPUT ROW",toolbar:"TOOLBAR",list:"LIST & DETAILS",status:"STATUS BAR"},
+        uiGroups:{header:"HEADER",toolbar:"TOOLBAR",list:"LIST & DETAILS",status:"STATUS BAR",overlay:"POPUPS"},
         uiNames:{
             "hdr-logo":"Logo",
             "header-version":"Header version",
@@ -563,17 +560,6 @@ var STRINGS = {
             "btn-settings":"Button: settings",
             "btn-min":"Button: minimize",
             "btn-close":"Button: close",
-            "method-tabs":"Method switcher",
-            "method-tab-1":"Tab: Method 1",
-            "method-tab-2":"Tab: Method 2",
-            "inp-place":"Field: PLACE ID",
-            "inp-link":"Field: LINK CODE",
-            "inp-share-code":"Field: SHARE CODE",
-            "inp-key":"Hotkey key field",
-            "btn-capture":"Capture button",
-            "ir-sep":"Input row separator",
-            "chk-txt-hotkey":"HK label",
-            "toggle-track":"Hotkey toggle",
             "search-wrap":"Search (panel)",
             "search-inp":"Search field",
             "sort-show":"SORT button",
@@ -627,7 +613,7 @@ var STRINGS = {
             "sort-collapsed":"Collapsed sort"
         },
         launchDelayLabel:"Launch delay",launchDelayUnit:"s",
-        launchCountdown:function(n){return "&#9654;&nbsp;LAUNCH "+n+"s...";},
+        launchCountdown:function(n){return "LAUNCH "+n+"s...";},
         dupTip:"Duplicate preset",
         dupIndicatorTip:function(n){return "\u26A0 "+n+" presets with same code";},
         editPresetTip:"Edit Place ID, Link/Share Code and group",
@@ -1032,6 +1018,7 @@ function initApp(skipStartupPreset) {
     if (lpInp) lpInp.value = lastLoadedPresetId || "";
 
     syncThemeControls();
+    syncSettingsHotkeyUI();
     applyTheme();
     /* Enhancement: apply compact mode AFTER applyTheme so the class
        isn't wiped by applyTheme's body.className overwrite. */
@@ -1055,7 +1042,13 @@ function initApp(skipStartupPreset) {
 /* ============================================================
    DOM READY
    ============================================================ */
-window.onload = function () {
+function bootRvlUi() {
+    /* `load` waits for every resource, including image retries.  In a
+       detached native window that used to leave an otherwise ready form
+       black for several seconds.  DOMContentLoaded is sufficient because
+       every control lives in index.html before app.js is included. */
+    if (window.__rvlUiBooted) return;
+    window.__rvlUiBooted = true;
     if (__rvlSettingsPopupMode) {
         /* The native AHK settings window receives its state from the host
            after the second WebBrowser control has finished loading. A normal
@@ -1065,10 +1058,19 @@ window.onload = function () {
             initApp();
             prepareSettingsPopup();
         } else {
-            /* Hide the launcher immediately; the host injects the current
-               values and calls initNativeSettingsPopup shortly afterwards. */
-            prepareSettingsPopup();
+            /* Render the settings surface immediately with safe defaults.
+               The host replaces them with persisted values a moment later;
+               a visible default UI is much better than a black window. */
+            window.__rvlNativeReady = true;
+            document.documentElement.classList.add("settings-native-ready");
+            initNativeSettingsPopup();
         }
+    } else if (__rvlNativeWindow) {
+        /* Detached tool windows must display their own surface right away.
+           They are intentionally initialized before the bridge state arrives
+           so they never show the hidden main launcher or a black delay. */
+        initApp(true);
+        initNativeWindow(__rvlNativeWindow);
     } else {
         /* Use the queue-based bridge. document.title is no longer used
            for command signalling (see sendCmd). */
@@ -1081,9 +1083,11 @@ window.onload = function () {
     el("btn-launch").onclick        = onLaunch;
     el("btn-save").onclick          = onSaveClose;
     el("btn-capture").onclick       = function () { startCapture(); return false; };
-    el("btn-add-preset").onclick    = togglePresetForm;
+    el("btn-add-preset").onclick    = requestNewPresetWindow;
     el("btn-preset-ok").onclick     = confirmNewPreset;
     el("btn-preset-cancel").onclick = closePresetForm;
+    initNewPresetWindow();
+    initSettingsHotkeyBlock();
 
     /* Enhancement: track dirty state on input field changes */
     var dirtyFields = ["inp-place", "inp-link", "inp-share-code", "inp-key"];
@@ -1220,9 +1224,17 @@ window.onload = function () {
         settingsHeader.onmousedown = function (e) {
             e = e || window.event;
             var t = e.target || e.srcElement;
-            if (t && t.id === "settings-close") return true;
+            if (t && (t.id === "settings-close" || (t.className && String(t.className).indexOf("settings-close") >= 0))) return true;
             if (e.button !== 0) return true;
             if (__rvlNativeSettingsPopup) {
+                /* The C# host learns about drags only through the WebView2
+                   bridge; the __drag_req flag below is the legacy AHK poll
+                   path and is never read by the native host. */
+                if (window.chrome && window.chrome.webview) {
+                    cancelEv(e);
+                    sendCmd("CMD:drag_start");
+                    return false;
+                }
                 if (settingsHeader.setCapture) {
                     try { settingsHeader.setCapture(); } catch (x) {}
                 }
@@ -1691,12 +1703,20 @@ window.onload = function () {
         var k = e.keyCode || e.which;
         if (k === 13) confirmAddGroup();
     };
-};
+}
+
+/* Keep the full-load handler as a compatibility fallback, but boot as soon
+   as the DOM is usable in WebView2.  The guard above makes this idempotent. */
+if (document.addEventListener) {
+    document.addEventListener("DOMContentLoaded", bootRvlUi, false);
+}
+window.onload = bootRvlUi;
 
 /* ============================================================
    THEME PRESETS MANAGER
    ============================================================ */
 function openTPManager() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window themes"); return; }
     /* Ensure button texts are in the current language before showing */
     var S = STRINGS[currentLang] || STRINGS.ru;
     var bts = el("btn-tp-save"); if (bts) { try { bts.innerText = S.cpSaveColors; } catch(e) { bts.innerHTML = S.cpSaveColors; } }
@@ -1721,6 +1741,7 @@ function openTPManager() {
 }
 
 function closeTPManager(keep) {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("tp-overlay");
     overlay.className = "tp-overlay";
     setTimeout(function () {
@@ -1901,6 +1922,7 @@ function clearTPDeleteConfirm() {
    PRESET GROUPS (FOLDERS) MANAGER
    ============================================================ */
 function openGroupsManager() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window groups"); return; }
     newGroupDraftColor = GROUP_COLORS[groups.length % GROUP_COLORS.length];
     var sw = el("grp-new-color-swatch");
     if (sw) sw.style.background = newGroupDraftColor;
@@ -1917,6 +1939,7 @@ function openGroupsManager() {
 }
 
 function closeGroupsManager() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("grp-overlay");
     overlay.className = "grp-overlay";
     setTimeout(function () {
@@ -1934,6 +1957,7 @@ var exportSelectedIds    = {};        /* presetId -> true     */
 var exportSelectedGroupId = null;     /* group id | "ungrouped" | null */
 
 function openExportModal() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window export"); return; }
     var S = STRINGS[currentLang] || STRINGS.ru;
     setText("export-title-text",   S.exportModalTitle  || "ЭКСПОРТ ПРЕСЕТОВ");
     setText("export-mode-presets", S.exportModePresets || "ПРЕСЕТЫ");
@@ -1962,6 +1986,7 @@ function openExportModal() {
 }
 
 function closeExportModal() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("export-overlay");
     overlay.className = "export-overlay";
     setTimeout(function () {
@@ -2473,9 +2498,10 @@ function calcWindowHeight() {
 }
 
 function sendResize() {
-    /* The child settings window is a normal browser popup. Its layout must
-       never resize the native RVL window that owns the AHK bridge. */
-    if (__rvlSettingsPopupMode) return;
+    /* Detached surfaces have their own fixed native client area.  They must
+       never calculate the hidden launcher's height or send a resize command
+       back through the bridge. */
+    if (__rvlSettingsPopupMode || __rvlNativeWindow) return;
     var h = calcWindowHeight();
     var w = Math.round(BASE_W * uiScale);
     var scaledH = Math.round(h * uiScale);
@@ -2556,10 +2582,12 @@ function startShowHideCapture() {
     var S = STRINGS[currentLang] || STRINGS.ru;
     if (btn) { btn.innerHTML = S.showHideCapturing; btn.className = "btn-capture capturing"; }
     sendCmd("CMD:sh_capture_start");
+    beginPageKeyCapture();
 }
 
 function stopShowHideCaptureExternal(keyName) {
     capturingShowHide = false;
+    endPageKeyCapture();
     var btn = el("sh-btn-capture");
     var S = STRINGS[currentLang] || STRINGS.ru;
     if (btn) { btn.innerHTML = S.showHideCapture; btn.className = "btn-capture"; }
@@ -3356,6 +3384,10 @@ function applyTheme() {
        which wiped out the compact-mode class added by applyCompactMode(). */
     if (compactMode) cls.push("compact-mode");
     if (__rvlSettingsPopupMode) cls.push("settings-popup");
+    /* Detached tool windows keep their marker on <html>/<body>. Wiping it
+       (as this rewrite used to do) un-hides the launcher shell and restores
+       the collapsed launcher body inside the child window. */
+    if (__rvlNativeWindow) cls.push("rvl-native-window");
 
     document.documentElement.className = cls.join(" ");
     document.body.className = cls.join(" ");
@@ -4060,24 +4092,6 @@ var UI_ELEMENTS = [
     {id:"roblox-status",   g:"header"},
     {id:"btn-min",         g:"header", t:1},
     {id:"btn-close",       g:"header", t:1},
-    {id:"method-tabs",     g:"input"},
-    {id:"method-tab-1",    g:"input", t:1},
-    {id:"method-tab-2",    g:"input", t:1},
-    {id:"inp-place",       g:"input", p:1},
-    {id:"inp-link",        g:"input", p:1},
-    {id:"inp-share-code",  g:"input", p:1},
-    {id:"inp-key",         g:"input"},
-    {id:"btn-capture",     g:"input"},
-    {id:"ir-sep",          g:"input"},
-    {id:"chk-txt-hotkey",  g:"input", t:1},
-    {id:"toggle-track",    g:"input"},
-    {id:"hk-chk-wrap",     g:"input", bg:1},
-    {id:"eye-place",       g:"input"},
-    {id:"clr-place",       g:"input"},
-    {id:"eye-link",        g:"input"},
-    {id:"clr-link",        g:"input"},
-    {id:"eye-share-code",  g:"input"},
-    {id:"clr-share-code",  g:"input"},
     {id:"search-wrap",     g:"toolbar"},
     {id:"search-inp",      g:"toolbar", p:1},
     {id:"sort-show",       g:"toolbar", t:1},
@@ -4123,7 +4137,7 @@ var UI_ELEMENTS = [
     {id:"toast-container", g:"overlay"},
     {id:"ctx-menu",        g:"overlay"}
 ];
-var UI_GROUPS = ["header", "input", "toolbar", "list", "status", "overlay"];
+var UI_GROUPS = ["header", "toolbar", "list", "status", "overlay"];
 /* Elements that can never be hidden. The settings entry must stay reachable so
    the user can always re-open settings and restore visibility. */
 var UI_NEVER_HIDE = { "btn-settings": true };
@@ -4134,14 +4148,6 @@ var UI_NEVER_HIDE = { "btn-settings": true };
    parent, so a whole row vanishes once its wrapper boxes vanish. */
 var UI_CONTAINERS = [
     {sel:"#titlebar", kids:["hdr-logo","header-version","roblox-status","btn-settings","btn-min","btn-close"]},
-    {sel:"#fw-place", kids:["inp-place","eye-place","clr-place"]},
-    {sel:"#fw-link",  kids:["inp-link","eye-link","clr-link"]},
-    {sel:"#fw-share", kids:["inp-share-code","eye-share-code","clr-share-code"]},
-    {sel:"#method-panel-1", kids:["fw-place","fw-link"]},
-    {sel:"#method-panel-2", kids:["fw-share"]},
-    {sel:"#method-tabs", kids:["method-tab-1","method-tab-2"]},
-    {sel:"#hk-chk-wrap", kids:["toggle-track","chk-txt-hotkey"]},
-    {sel:"#input-row", kids:["method-tabs","method-panel-1","method-panel-2","inp-key","btn-capture","ir-sep","hk-chk-wrap"]},
     {sel:"#search-wrap", kids:["search-inp"]},
     {sel:"#toolbar", kids:["search-wrap","search-inp","sort-show","btn-groups","btn-history","btn-dashboard","btn-backup","btn-bulk-edit","btn-export","btn-import","btn-guide","view-toggle-inline","btn-add-preset"]},
     {sel:"#status-bar", kids:["status-count","status-last","status-version"]}
@@ -5368,7 +5374,7 @@ function buildPresetRow(p, dispIdx, bucketItems, posInBucket) {
 
     var fav = document.createElement("button");
     fav.className = "preset-fav" + (p.favorite ? " preset-fav-on" : "");
-    fav.innerHTML = "&#9733;"; /* ★ */
+    fav.innerHTML = rvlSvgIcon("star"); /* SVG star — no glyph fallbacks */
     fav.setAttribute("data-pid", p.id);
     fav.setAttribute("data-tooltip", p.favorite
         ? (SL.favUnsetTip  || "Убрать из избранного")
@@ -5557,11 +5563,13 @@ function startPresetHKCapture(id) {
     el("__preset_hk_pending").value = id;
     renderPresets();
     sendCmd("CMD:capture_preset_hk");
+    beginPageKeyCapture();
 }
 
 function finishPresetHKCapture(keyName) {
     var id = capturePresetId;
     capturePresetId = null;
+    endPageKeyCapture();
     el("__preset_hk_pending").value = "";
     if (!id) { renderPresets(); return; }
     for (var i = 0; i < presets.length; i++) {
@@ -6030,20 +6038,96 @@ function startCapture() {
     btn.className = "btn-capture ir-hk-capture capturing";
 
     sendCmd("CMD:capture_start");
+    beginPageKeyCapture();
 }
 
 function stopCaptureExternal(keyName) {
     capturingKey = false;
+    endPageKeyCapture();
     var btn = el("btn-capture");
     btn.innerHTML = '<span class="ir-hk-capture-ring"></span>';
     btn.className = "btn-capture ir-hk-capture";
+    var stBtn = el("st-btn-capture");
+    if (stBtn) stBtn.innerHTML = "ЗАХВАТ";
 
     if (keyName !== null && keyName !== "") {
         el("inp-key").value = keyName;
         el("chk-enabled").checked = true;
         syncToggle(true);
+        var cfgKey = el("__cfg_hotkey");
+        if (cfgKey) cfgKey.value = keyName;
+        var cfgEn = el("__cfg_enabled");
+        if (cfgEn) cfgEn.value = "1";
+        syncSettingsHotkeyUI();
         sendCmd("CMD:hotkey_update");
     }
+}
+
+/* ── Page-level key capture ─────────────────────────────────
+   WebView2 keeps keyboard input inside the browser, so the host's
+   ProcessCmdKey path never fires while the page has focus. The page
+   captures the key itself and routes it to whichever capture UI started:
+   the main/settings launch hotkey, the show/hide hotkey or a preset
+   hotkey. Escape cancels. */
+function keyNameFromEvent(ev) {
+    var key = ev.key || "";
+    var code = ev.code || "";
+    if (key === "Shift" || key === "Control" || key === "Alt" || key === "Meta") return "";
+    if (/^F([1-9]|1[0-9]|2[0-4])$/.test(key)) return key;
+    var m = /^Key([A-Z])$/.exec(code);
+    if (m) return m[1];
+    m = /^Digit([0-9])$/.exec(code);
+    if (m) return "D" + m[1];
+    m = /^Numpad([0-9])$/.exec(code);
+    if (m) return "Numpad" + m[1];
+    m = /^Numpad(Add|Subtract|Multiply|Divide|Decimal)$/.exec(code);
+    if (m) return "Numpad" + m[1];
+    var named = {
+        ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right",
+        Enter: "Enter", " ": "Space", Spacebar: "Space", Backspace: "Back",
+        Delete: "Delete", Insert: "Insert", Home: "Home", End: "End",
+        PageUp: "PageUp", PageDown: "PageDown", Tab: "Tab"
+    };
+    return named[key] || "";
+}
+
+function pageCaptureFinish(key) {
+    if (capturePresetId) { finishPresetHKCapture(key); return; }
+    if (capturingShowHide) { stopShowHideCaptureExternal(key); return; }
+    stopCaptureExternal(key);
+}
+
+var __rvlKeyCapHandler = null;
+
+function endPageKeyCapture() {
+    if (__rvlKeyCapHandler) {
+        document.removeEventListener("keydown", __rvlKeyCapHandler, true);
+        __rvlKeyCapHandler = null;
+    }
+}
+
+function beginPageKeyCapture() {
+    if (__rvlKeyCapHandler) return;
+    __rvlKeyCapHandler = function (ev) {
+        ev = ev || window.event;
+        if (!capturingKey && !capturePresetId && !capturingShowHide) {
+            endPageKeyCapture();
+            return;
+        }
+        if (ev.preventDefault) ev.preventDefault(); else ev.returnValue = false;
+        if (ev.stopPropagation) ev.stopPropagation();
+        if (ev.key === "Escape") {
+            endPageKeyCapture();
+            pageCaptureFinish(null);
+            return false;
+        }
+        var key = keyNameFromEvent(ev);
+        if (!key) return false; /* modifier or unknown key — keep waiting */
+        endPageKeyCapture();
+        pageCaptureFinish(key);
+        return false;
+    };
+    document.addEventListener("keydown", __rvlKeyCapHandler, true);
 }
 
 /* ============================================================
@@ -6482,6 +6566,21 @@ function syncSettingsFromNativeBridge() {
     } catch (e) {}
 }
 
+function reloadPresetsFromNativeBridge() {
+    try {
+        var raw = el("__cfg_presets") ? el("__cfg_presets").value : "[]";
+        var parsed = JSON.parse(raw || "[]");
+        if (isArray(parsed)) presets = parsed;
+        var groupRaw = el("__cfg_preset_groups") ? el("__cfg_preset_groups").value : "[]";
+        var parsedGroups = JSON.parse(groupRaw || "[]");
+        if (isArray(parsedGroups)) groups = parsedGroups;
+        var themeRaw = el("__cfg_theme_presets") ? el("__cfg_theme_presets").value : "[]";
+        var parsedThemes = JSON.parse(themeRaw || "[]");
+        if (isArray(parsedThemes)) userThemePresets = parsedThemes;
+        if (typeof renderPresets === "function") renderPresets();
+    } catch (e) {}
+}
+
 function syncPopupUpdateBridge() {
     var owner = settingsOpener();
     if (!owner) return false;
@@ -6498,6 +6597,7 @@ function syncPopupUpdateBridge() {
 
 function prepareSettingsPopup() {
     if (!__rvlSettingsPopupMode) return;
+    if (__rvlNativeSettingsPopup && !window.__rvlNativeReady) return;
     /* initApp restores hidden saved values into the visible fields. Copy the
        owner's live fields once more so unsaved main-window edits are not
        lost if the user saves from the detached settings window. */
@@ -6523,7 +6623,19 @@ function prepareSettingsPopup() {
         overlay.style.width = "100%";
         overlay.style.height = "100%";
         overlay.style.display = "flex";
+        overlay.style.visibility = "visible";
         overlay.className = "settings-overlay settings-overlay-visible";
+    }
+    var settingsHeader = document.querySelector ? document.querySelector(".settings-header") : null;
+    if (settingsHeader && !settingsHeader.__rvlDragBound) {
+        settingsHeader.__rvlDragBound = true;
+        settingsHeader.onmousedown = function (e) {
+            e = e || window.event;
+            var t = e.target || e.srcElement;
+            if (t && (t.id === "settings-close" || t.className === "settings-close")) return;
+            cancelEv(e);
+            sendCmd("CMD:drag_start");
+        };
     }
     syncThemeControls();
     syncLangButtons();
@@ -6567,9 +6679,247 @@ function initNativeSettingsPopup() {
     if (el("inp-share-code")) el("inp-share-code").value = liveFields.share;
     if (el("inp-key")) el("inp-key").value = liveFields.key;
     prepareSettingsPopup();
+    if (typeof refreshRvlIcons === "function") refreshRvlIcons();
+}
+
+/* Native tool windows reuse the existing overlays in their own WebView2
+   form. This keeps the AHK layout and behaviour while removing nested modal
+   boxes from the native application. */
+function initNativeWindow(kind) {
+    if (!kind || !window.__rvlNativeWindow) return;
+    var root = document.documentElement;
+    if (root.className.indexOf("rvl-native-window") < 0) root.className += " rvl-native-window";
+    if (document.body.className.indexOf("rvl-native-window") < 0) document.body.className += " rvl-native-window";
+    /* The launcher scales <body> with a CSS transform. A transformed body
+       becomes the containing block for the fixed overlay, and with the
+       launcher shell hidden the body collapses to zero height — its
+       overflow:hidden then clips the whole surface to a black window. The
+       detached settings popup resets the same box in prepareSettingsPopup();
+       tool windows must do it too. */
+    document.body.style.width = "100%";
+    document.body.style.height = "100%";
+    document.body.style.msTransform = "none";
+    document.body.style.transform = "none";
+    var shell = el("app-shell"); if (shell) shell.style.display = "none";
+    var splash = el("startup-screen"); if (splash) splash.style.display = "none";
+    var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
+        bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
+        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal }[kind];
+    if (typeof fn === "function") fn();
+    bindNativeWindowDrag(kind);
+}
+
+/* A tool window has no OS title bar, so its modal header acts as one:
+   dragging it moves the whole window through the host bridge, exactly like
+   the settings header does. The header also receives its inline SVG icon —
+   the old CSS ::before glyphs were plain-font symbols and emoji. */
+function bindNativeWindowDrag(kind) {
+    var overlayId = { history: "history-overlay", dashboard: "dashboard-overlay",
+        backup: "backup-overlay", bulk: "bulk-overlay", export: "export-overlay",
+        guide: "guide-overlay", groups: "grp-overlay", themes: "tp-overlay", new: "np-overlay" }[kind] || (kind + "-overlay");
+    var overlay = el(overlayId);
+    if (!overlay) return;
+    var header = overlay.querySelector("[class*='-header']");
+    if (!header) return;
+    var titleIconMap = { history: "history", dashboard: "chart", backup: "backup",
+        bulk: "bulk", export: "upload", guide: "help", groups: "list", themes: "palette", new: "plus" };
+    var iconEl = header.querySelector(".rvl-title-icon");
+    if (!iconEl && !header.__rvlIconBound) {
+        var titleEl = header.querySelector("[class*='-title']");
+        if (titleEl && titleIconMap[kind]) {
+            iconEl = document.createElement("span");
+            iconEl.className = "rvl-title-icon rvl-svg-icon";
+            iconEl.innerHTML = rvlSvgIcon(titleIconMap[kind]);
+            header.insertBefore(iconEl, titleEl);
+        }
+    }
+    header.__rvlIconBound = true;
+    if (header.__rvlDragBound) return;
+    header.__rvlDragBound = true;
+    header.style.cursor = "default";
+    header.onmousedown = function (e) {
+        e = e || window.event;
+        var t = e.target || e.srcElement;
+        /* Buttons and the close control keep their own click behaviour. */
+        if (t && t.closest && t.closest("button")) return;
+        if (t && t.className && String(t.className).indexOf("close") >= 0) return;
+        if (e.button !== 0) return;
+        cancelEv(e);
+        sendCmd("CMD:drag_start");
+        return false;
+    };
+}
+
+/* ── New preset window ("+ НОВЫЙ" opens a detached window) ────────── */
+var npMethod = 1;
+
+function requestNewPresetWindow() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window new"); return; }
+    openNewPresetModal();
+}
+
+function openNewPresetModal() {
+    var overlay = el("np-overlay");
+    if (!overlay) return;
+    npMethod = (el("__cfg_method") && el("__cfg_method").value === "2") ? 2 : 1;
+    npSwitchMethod(npMethod);
+    if (el("np-name")) el("np-name").value = "";
+    if (el("np-place")) el("np-place").value = "";
+    if (el("np-link")) el("np-link").value = "";
+    if (el("np-share")) el("np-share").value = "";
+    overlay.style.display = "flex";
+    overlay.className = "np-overlay np-open";
+    setTimeout(function () {
+        try { if (el("np-name")) el("np-name").focus(); } catch (e) {}
+    }, 50);
+}
+
+function npSwitchMethod(n) {
+    npMethod = (n === 2) ? 2 : 1;
+    var t1 = el("np-tab-1"), t2 = el("np-tab-2");
+    if (t1) t1.className = "method-tab" + (npMethod === 1 ? " method-tab-active" : "");
+    if (t2) t2.className = "method-tab" + (npMethod === 2 ? " method-tab-active" : "");
+    var p1 = el("np-panel-1"), p2 = el("np-panel-2");
+    if (p1) p1.style.display = npMethod === 1 ? "" : "none";
+    if (p2) p2.style.display = npMethod === 2 ? "" : "none";
+}
+
+function closeNewPresetModal() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
+    var overlay = el("np-overlay");
+    if (overlay) {
+        overlay.className = "np-overlay";
+        overlay.style.display = "none";
+    }
+}
+
+/* Extract a share code from a pasted URL, mirroring the launcher's parser. */
+function npNormalizeShare(value) {
+    var code = trim(value);
+    var m = code.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
+    if (m) return m[1];
+    var m3 = code.match(/^([A-Za-z0-9]{20,})&type=Server$/i);
+    if (m3) return m3[1] + "&type=Server";
+    return code;
+}
+
+function confirmNewPresetWindow() {
+    var name = trim(el("np-name") ? el("np-name").value : "");
+    if (!name) { try { el("np-name").focus(); } catch (e) {} return; }
+    var placeId = "";
+    var linkCode = "";
+    if (npMethod === 2) {
+        linkCode = npNormalizeShare(el("np-share") ? el("np-share").value : "");
+        if (!linkCode) { try { el("np-share").focus(); } catch (e2) {} return; }
+    } else {
+        placeId = trim(el("np-place") ? el("np-place").value : "");
+        linkCode = trim(el("np-link") ? el("np-link").value : "");
+        /* A full VIP URL may be pasted into either field — split it. */
+        var mPlace = (placeId + " " + linkCode).match(/roblox\.com\/games\/(\d+)/i);
+        var mLink = (placeId + " " + linkCode).match(/[?&]privateServerLinkCode=([A-Za-z0-9]+)/i);
+        if (mPlace) placeId = mPlace[1];
+        if (mLink) linkCode = mLink[1];
+        if (!placeId || !linkCode) { try { el("np-place").focus(); } catch (e3) {} return; }
+    }
+    presets.push({
+        id: uid(),
+        name: name,
+        placeId: placeId,
+        linkCode: linkCode,
+        method: npMethod
+    });
+    flushPresetsOut();
+    setDirty();
+    sendCmd("CMD:save_preset");
+    closeNewPresetModal();
+}
+
+/* Bind the new-preset window controls (exists in every window; only the
+   detached "new" window ever shows the overlay). */
+function initNewPresetWindow() {
+    var t1 = el("np-tab-1"), t2 = el("np-tab-2");
+    if (t1) t1.onclick = function () { npSwitchMethod(1); };
+    if (t2) t2.onclick = function () { npSwitchMethod(2); };
+    var save = el("np-save");
+    if (save) save.onclick = confirmNewPresetWindow;
+    var cancel = el("np-cancel");
+    if (cancel) cancel.onclick = closeNewPresetModal;
+    var close = el("np-close");
+    if (close) close.onclick = closeNewPresetModal;
+    var nameInp = el("np-name");
+    if (nameInp) nameInp.onkeydown = function (e) {
+        e = e || window.event;
+        if ((e.keyCode || e.which) === 13) confirmNewPresetWindow();
+    };
+    var shareInp = el("np-share");
+    if (shareInp) shareInp.onpaste = function () {
+        setTimeout(function () { if (el("np-share")) el("np-share").value = npNormalizeShare(el("np-share").value); }, 0);
+    };
+    var linkInp = el("np-link");
+    if (linkInp) linkInp.onpaste = function () {
+        setTimeout(function () {
+            var raw = trim(el("np-link").value);
+            var mPlace = raw.match(/roblox\.com\/games\/(\d+)/i);
+            var mLink = raw.match(/[?&]privateServerLinkCode=([A-Za-z0-9]+)/i);
+            if (mPlace && el("np-place")) el("np-place").value = mPlace[1];
+            if (mLink) el("np-link").value = mLink[1];
+        }, 0);
+    };
+}
+
+/* ── Settings window: main launch hotkey ──────────────────────────── */
+function syncSettingsHotkeyUI() {
+    var keyEl = el("__cfg_hotkey");
+    var box = el("st-key-box");
+    if (box && keyEl) box.value = keyEl.value;
+    var on = el("__cfg_enabled") ? el("__cfg_enabled").value !== "0" : true;
+    var chk = el("st-chk-enabled");
+    if (chk) chk.checked = on;
+    var track = el("st-toggle-track");
+    if (track) track.className = "toggle-track" + (on ? " on" : "");
+    var wrap = track ? track.parentNode : null;
+    if (wrap) wrap.className = on ? "chk-wrap chk-on" : "chk-wrap";
+}
+
+function toggleSettingsHotkey() {
+    var cfg = el("__cfg_enabled");
+    if (!cfg) return;
+    var on = cfg.value !== "0";
+    cfg.value = on ? "0" : "1";
+    var hidden = el("chk-enabled");
+    if (hidden) hidden.checked = !on;
+    syncSettingsHotkeyUI();
+    sendCmd("CMD:hotkey_update");
+}
+
+function startSettingsCapture() {
+    if (capturingKey) return;
+    capturingKey = true;
+    var btn = el("st-btn-capture");
+    if (btn) {
+        btn.innerHTML = '<span class="ir-hk-capture-ring"></span>';
+        btn.className = "btn-capture capturing";
+    }
+    sendCmd("CMD:capture_start");
+    beginPageKeyCapture();
+}
+
+function initSettingsHotkeyBlock() {
+    var cap = el("st-btn-capture");
+    if (cap) cap.onclick = function () { startSettingsCapture(); return false; };
+    var track = el("st-toggle-track");
+    if (track) track.onclick = function (e) { e = e || window.event; cancelEv(e); toggleSettingsHotkey(); return false; };
 }
 
 function sendCmd(cmd) {
+    /* Native C# host bridge. The hidden-input/title bridges below remain for
+       the legacy AHK client, so the same UI can run on both hosts while the
+       migration is in progress. */
+    try {
+        if (window.chrome && window.chrome.webview) {
+            window.chrome.webview.postMessage(cmd);
+        }
+    } catch (nativeBridgeError) {}
     var owner = settingsOpener();
     if (owner) {
         /* Resize/ready/drag belong to the native owner and must not leak from
@@ -6850,7 +7200,7 @@ function buildPresetEditModal(id, p) {
     nameInp.spellcheck = false;
     applyStyleObj(nameInp, TH.inp);
 
-    /* Enhancement: Icon selector (emoji) */
+    /* Enhancement: Icon selector — SVG icon set (no emoji anywhere) */
     var iconLabel = document.createElement("div");
     iconLabel.className = "preset-edit-label";
     applyStyleObj(iconLabel, TH.label);
@@ -6858,21 +7208,22 @@ function buildPresetEditModal(id, p) {
 
     var iconRow = document.createElement("div");
     iconRow.className = "pe-icon-row";
-    var EMOJIS = ["","🎮","🏆","⭐","🔥","💎","🎯","🚀","⚔️","🛡️","🏰","👑","🌟","💣","🗡️","🏹","⚡","🎁","💰","🔮"];
-    for (var ei = 0; ei < EMOJIS.length; ei++) {
-        (function(emoji){
+    var NONE_BTN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>';
+    var PRESET_ICONS = ["", "gamepad", "trophy", "fire", "gem", "target", "rocket", "sword", "shield", "castle", "crown", "sparkles", "zap", "gift"];
+    for (var ei = 0; ei < PRESET_ICONS.length; ei++) {
+        (function(iconName){
             var btn = document.createElement("button");
             btn.type = "button";
-            btn.className = "pe-icon-btn" + (p.icon === emoji ? " pe-icon-active" : "");
-            btn.appendChild(document.createTextNode(emoji || "✕"));
-            btn.setAttribute("data-emoji", emoji);
+            btn.className = "pe-icon-btn" + (p.icon === iconName || (!iconName && !p.icon) ? " pe-icon-active" : "");
+            btn.innerHTML = iconName ? rvlSvgIcon(iconName) : NONE_BTN;
+            btn.setAttribute("data-icon", iconName);
             btn.onclick = function() {
                 var btns = iconRow.querySelectorAll(".pe-icon-btn");
                 for (var bi = 0; bi < btns.length; bi++) btns[bi].className = "pe-icon-btn";
                 this.className = "pe-icon-btn pe-icon-active";
             };
             iconRow.appendChild(btn);
-        })(EMOJIS[ei]);
+        })(PRESET_ICONS[ei]);
     }
 
     /* Enhancement: Color selector */
@@ -6893,7 +7244,7 @@ function buildPresetEditModal(id, p) {
                 btn.style.background = color;
             } else {
                 btn.className = "pe-color-btn pe-color-none" + (p.color === color ? " pe-color-active" : "");
-                btn.appendChild(document.createTextNode("✕"));
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 6 12 12M18 6 6 18"/></svg>';
             }
             btn.setAttribute("data-color", color);
             btn.onclick = function() {
@@ -7098,7 +7449,7 @@ function confirmPresetEditM2(id, scInp) {
 /* Helper: get selected icon from edit modal */
 function getSelectedEditIcon() {
     var btns = document.querySelectorAll(".pe-icon-btn.pe-icon-active");
-    if (btns.length > 0) return btns[0].getAttribute("data-emoji") || "";
+    if (btns.length > 0) return btns[0].getAttribute("data-icon") || "";
     return "";
 }
 
@@ -7223,22 +7574,27 @@ function applyBulkTheme() {
 }
 
 function openBulkEdit() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window bulk"); return; }
     var ov = el("bulk-overlay");
     if (!ov) return;
 
     ov.style.display = "block";
 
-    /* Center modal via JS for IE WebBrowser compatibility */
-    var modal = ov.querySelector ? ov.querySelector(".bulk-modal") : null;
-    if (modal) {
-        var ww = document.documentElement.clientWidth  || document.body.clientWidth  || 420;
-        var wh = document.documentElement.clientHeight || document.body.clientHeight || 500;
-        var mw = 370; var mh = 440;
-        modal.style.position = "absolute";
-        modal.style.left = Math.max(0, Math.round((ww - mw) / 2)) + "px";
-        modal.style.top  = Math.max(0, Math.round((wh - mh) / 2)) + "px";
-        modal.style.width  = mw + "px";
-        modal.style.height = mh + "px";
+    /* Center modal via JS for IE WebBrowser compatibility. A detached tool
+       window fills its panel edge-to-edge through the rvl-native-window CSS,
+       so the fixed 370x440 inline box must not be applied there. */
+    if (!window.__rvlNativeWindow) {
+        var modal = ov.querySelector ? ov.querySelector(".bulk-modal") : null;
+        if (modal) {
+            var ww = document.documentElement.clientWidth  || document.body.clientWidth  || 420;
+            var wh = document.documentElement.clientHeight || document.body.clientHeight || 500;
+            var mw = 370; var mh = 440;
+            modal.style.position = "absolute";
+            modal.style.left = Math.max(0, Math.round((ww - mw) / 2)) + "px";
+            modal.style.top  = Math.max(0, Math.round((wh - mh) / 2)) + "px";
+            modal.style.width  = mw + "px";
+            modal.style.height = mh + "px";
+        }
     }
 
     applyBulkTheme();
@@ -7255,6 +7611,7 @@ function openBulkEdit() {
 
 
 function closeBulkEdit() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var ov = el("bulk-overlay");
     if (ov) {
         ov.className = "bulk-overlay";
@@ -8007,6 +8364,7 @@ function requestExit() {
 var historyFilter = "all";
 
 function openHistory() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window history"); return; }
     var overlay = el("history-overlay");
     if (!overlay) return;
     overlay.style.display = "flex";
@@ -8017,6 +8375,7 @@ function openHistory() {
 }
 
 function closeHistory() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("history-overlay");
     if (!overlay) return;
     overlay.className = "history-overlay";
@@ -8053,6 +8412,9 @@ function renderHistory() {
         tr.className = "history-empty-row";
         var td = document.createElement("td");
         td.colSpan = 4;
+        var emptyIcon = document.createElement("span");
+        emptyIcon.innerHTML = rvlSvgIcon("history");
+        td.appendChild(emptyIcon);
         td.appendChild(document.createTextNode(S.historyEmpty));
         tr.appendChild(td);
         tbody.appendChild(tr);
@@ -8092,6 +8454,7 @@ function formatHistoryDate(ts) {
 
 /* ── §F2 · Dashboard modal ───────────────────────────────── */
 function openDashboard() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window dashboard"); return; }
     var overlay = el("dashboard-overlay");
     if (!overlay) return;
     overlay.style.display = "flex";
@@ -8102,6 +8465,7 @@ function openDashboard() {
 }
 
 function closeDashboard() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("dashboard-overlay");
     if (!overlay) return;
     overlay.className = "dashboard-overlay";
@@ -8119,7 +8483,7 @@ function renderDashboard() {
         var p = presets[i];
         var lc = p.launches || 0;
         total += lc;
-        if (lc > 0) launches.push({ name: p.name, count: lc, last: p.lastLaunch || 0 });
+        if (lc > 0) launches.push({ id: p.id, name: p.name, count: lc, last: p.lastLaunch || 0 });
         if ((p.lastLaunch || 0) > now - 604800000) weekCount++;
     }
 
@@ -8175,14 +8539,13 @@ function renderDashboard() {
                 var rank = document.createElement("span");
                 rank.className = "dashboard-top-rank";
                 rank.appendChild(document.createTextNode(String(r + 1)));
-                /* Use preset color if available */
-                var presetObj = null;
-                for (var pi = 0; pi < presets.length; pi++) {
-                    if (presets[pi].name === launches[r].name) { presetObj = presets[pi]; break; }
-                }
-                if (presetObj && presetObj.color) {
-                    rank.style.background = presetObj.color;
-                    rank.style.borderColor = presetObj.color;
+                /* Same badge color the main preset list shows for this preset:
+                   custom color first, otherwise the palette by display index. */
+                var presetObj = findPreset(launches[r].id);
+                var rankColor = presetObj ? (presetObj.color || DOT_COLORS[(presetObj._dispIdx || 0) % DOT_COLORS.length]) : "";
+                if (rankColor) {
+                    rank.style.background = rankColor;
+                    rank.style.borderColor = rankColor;
                 }
                 var name = document.createElement("span");
                 name.className = "dashboard-top-name";
@@ -8293,6 +8656,7 @@ function exportStatsJSON() {
 
 /* ── §G1 · Backup / restore ──────────────────────────────── */
 function openBackup() {
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) { sendCmd("CMD:open_window backup"); return; }
     var overlay = el("backup-overlay");
     if (!overlay) return;
     overlay.style.display = "flex";
@@ -8300,6 +8664,7 @@ function openBackup() {
 }
 
 function closeBackup() {
+    if (window.__rvlNativeWindow) { sendCmd("CMD:close_window"); return; }
     var overlay = el("backup-overlay");
     if (!overlay) return;
     overlay.className = "backup-overlay";
@@ -8330,8 +8695,91 @@ var SVG_ICONS = {
     copy:  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
     history: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     chart: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>',
-    backup: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+    backup: '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    settings: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37c1 .608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>',
+    minus: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>',
+    close: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 6 12 12M18 6 6 18"/></svg>',
+    eye: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></svg>',
+    bulk: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6h14M6 12h14M6 18h14"/><path d="M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    upload: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 20h14"/></svg>',
+    download: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>',
+    help: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 17v.01"/><path d="M12 13.5a1.5 1.5 0 0 1 1-1.5a2.833 2.833 0 1 0-3-4"/></svg>',
+    list: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    grid: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/></svg>',
+    play: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7V5Z"/></svg>',
+    save: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4h12l2 2v14H5Z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></svg>',
+    edit: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Z"/><path d="m13 6 4 4"/></svg>',
+    star: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z"/></svg>',
+    trash: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    plus: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+    chevronUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 15 6-6 6 6"/></svg>',
+    /* Preset icon picker — SVG replacements for the old emoji set */
+    gamepad: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12a4 4 0 0 1 4 4v4a3 3 0 0 1-5.6 1.5L15.5 15h-7l-.9 1.5A3 3 0 0 1 2 15v-4a4 4 0 0 1 4-4z"/><path d="M7 10v3M5.5 11.5h3"/><path d="M16 10.5h.01M18 12.5h.01"/></svg>',
+    trophy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v8a5 5 0 0 1-10 0V4z"/><path d="M7 9H4V6h3M17 9h3V6h-3"/></svg>',
+    fire: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c2-2.96 0-7-1-8c0 3.038-1.773 4.741-3 6c-1.226 1.26-2 3.24-2 5a6 6 0 1 0 12 0c0-1.532-1.056-3.94-2-5c-1.786 3-2.791 3-4 2z"/></svg>',
+    gem: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5h12l3 5-8.5 9.5a.7.7 0 0 1-1 0L3 10l3-5Z"/><path d="M3 10h18"/></svg>',
+    target: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/></svg>',
+    rocket: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8.5 8.5 0 0 0 7 7a6 6 0 0 0 4.5-2.5a22.5 22.5 0 0 0 1.5-9.5a22.5 22.5 0 0 0-9.5 1.5A6 6 0 0 0 4 13"/><path d="M12 15l-5-5c2-3.5 5-6 10-7c-1 5-3.5 8-7 10"/><circle cx="15" cy="9" r="1"/></svg>',
+    sword: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4l-1 7.5L7.5 23 4 19.5 15.5 8 20 4Z"/><path d="M4 17.5 6.5 20"/></svg>',
+    shield: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10c-4-1.5-7-5.5-7-10V6l7-3Z"/></svg>',
+    castle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V6l2-2 2 2v3h6V6l2-2 2 2v15"/><path d="M9 21v-4a3 3 0 0 1 6 0v4"/></svg>',
+    crown: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18h14l1.5-10L15 11l-3-6l-3 6l-5.5-3L5 18Z"/><path d="M5 21h14"/></svg>',
+    sparkles: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>',
+    zap: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 13h6l-1 8l8-10h-6l1-8Z"/></svg>',
+    gift: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="4" rx="1"/><path d="M6 13v7h12v-7M12 9v11"/><path d="M12 9a3 3 0 1 0-3-3c0 1.5 1 3 3 3ZM12 9a3 3 0 1 1 3-3c0 1.5-1 3-3 3Z"/></svg>',
+    palette: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.58 9 8c0 1.06-.47 2.07-1.5 2.07h-2.05a1.95 1.95 0 0 0-1.45 3.25c.18.21.5.55.5 1.18c0 1.27-1.13 1.5-2.5 1.5z"/><path d="M7.5 10.5v.01M12 7.5v.01M16.5 10.5v.01"/></svg>'
 };
+
+function rvlSvgIcon(name) {
+    var raw = SVG_ICONS[name] || "";
+    return raw ? raw.replace("<svg ", '<svg class="rvl-svg-icon" aria-hidden="true" ') : "";
+}
+/* Preset icons store an SVG icon NAME; legacy emoji values resolve to "" so
+   no emoji can ever reach the screen. */
+function presetIconSvg(icon) {
+    return (icon && SVG_ICONS[icon]) ? rvlSvgIcon(icon) : "";
+}
+function rvlSetIcon(id, name) {
+    var node = el(id);
+    if (node) node.innerHTML = rvlSvgIcon(name);
+}
+function refreshRvlIcons() {
+    var map = {
+        "btn-settings":"settings", "btn-min":"minus", "btn-close":"close",
+        "settings-close":"close", "tp-close":"close", "grp-close":"close", "guide-close":"close",
+        "history-close":"close", "dashboard-close":"close", "backup-close":"close", "cpicker-close":"close",
+        "bulk-close":"close", "export-close":"close",
+        "eye-place":"eye", "eye-link":"eye", "eye-share-code":"eye",
+        "clr-place":"close", "clr-link":"close", "clr-share-code":"close",
+        "btn-history":"history", "btn-dashboard":"chart", "btn-backup":"backup",
+        "btn-bulk-edit":"bulk", "btn-export":"upload", "btn-import":"download",
+        "btn-guide":"help", "view-list":"list", "view-grid":"grid",
+        "btn-tp-export":"upload", "btn-tp-import":"download", "pd-empty-icon":"list",
+        "delay-minus":"minus", "delay-plus":"plus", "sort-toggle":"chevronUp",
+        "pd-copy-place":"copy", "pd-copy-link":"copy", "pd-eye-link":"eye",
+        "pd-hk-assign":"edit", "pd-edit":"edit", "pd-fav":"star",
+        "pd-del":"trash", "btn-save":"save"
+    };
+    for (var id in map) if (map.hasOwnProperty(id)) rvlSetIcon(id, map[id]);
+    /* Context menu items keep their text label — prepend the SVG, never
+       touch the inner span. */
+    var ctxMap = { "ctx-launch":"play", "ctx-copy":"copy", "ctx-duplicate":"copy",
+        "ctx-edit":"edit", "ctx-color":"palette", "ctx-icon":"sparkles", "ctx-delete":"trash" };
+    for (var cid in ctxMap) {
+        if (!ctxMap.hasOwnProperty(cid)) continue;
+        var cnode = el(cid);
+        if (cnode && !cnode.__rvlCtxIcon) {
+            cnode.__rvlCtxIcon = true;
+            var cico = document.createElement("span");
+            cico.innerHTML = rvlSvgIcon(ctxMap[cid]);
+            cnode.insertBefore(cico, cnode.firstChild);
+        }
+    }
+    var lb = el("btn-launch");
+    if (lb) lb.innerHTML = rvlSvgIcon("play") + (currentLang === "en" ? " LAUNCH" : " ЗАПУСТИТЬ");
+    var add = el("btn-add-preset");
+    if (add) add.innerHTML = rvlSvgIcon("plus") + (currentLang === "en" ? " NEW" : " НОВЫЙ");
+}
 
 /* ── §E1 · Theme preset thumbnail builder ────────────────── */
 function buildTPThumb(p) {
@@ -8543,15 +8991,21 @@ function showContextMenu(e, presetId) {
     setText("ctx-del-text", S.ctxDelete);
     var x = e.clientX || 0;
     var y = e.clientY || 0;
+    /* Measure at a known origin: stale left/top from a previous open would
+       corrupt offsetWidth/Height-driven clamping. */
+    menu.style.left = "0px";
+    menu.style.top = "0px";
     menu.style.display = "block";
-    menu.style.left = x + "px";
-    menu.style.top = y + "px";
     var mw = menu.offsetWidth || 160;
     var mh = menu.offsetHeight || 200;
-    var ww = document.documentElement.clientWidth || 420;
-    var wh = document.documentElement.clientHeight || 600;
-    if (x + mw > ww) menu.style.left = (ww - mw - 4) + "px";
-    if (y + mh > wh) menu.style.top = (wh - mh - 4) + "px";
+    var ww = window.innerWidth || document.documentElement.clientWidth || 420;
+    var wh = window.innerHeight || document.documentElement.clientHeight || 600;
+    if (x + mw > ww) x = Math.max(0, ww - mw - 4);
+    if (y + mh > wh) y = Math.max(0, wh - mh - 4);
+    if (y < 0) y = 0;
+    if (x < 0) x = 0;
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
 }
 
 function hideContextMenu() {
@@ -8562,6 +9016,14 @@ function hideContextMenu() {
 }
 
 function initContextMenu() {
+    /* The menu must live outside <body>: the launcher scales the body with a
+       CSS transform, which rescales every fixed-position child and pushed the
+       clamped menu off the bottom of the window. <html> has no transform, so
+       fixed coordinates stay true viewport coordinates. */
+    var menuEl = el("ctx-menu");
+    if (menuEl && menuEl.parentNode !== document.documentElement) {
+        document.documentElement.appendChild(menuEl);
+    }
     var S = STRINGS[currentLang] || STRINGS.ru;
     var items = [
         {id:"ctx-launch", fn:function(){ if(ctxActionId){loadPreset(ctxActionId); sendCmd("CMD:launch");} ctxActionId=null; }},
@@ -8842,22 +9304,19 @@ function openPresetColorPicker(id) {
     sendCmd("CMD:save_preset");
 }
 
-/* ── 10. Preset icon (emoji) ─────────────────────────────── */
+/* ── 10. Preset icon (SVG picker cycle) ──────────────────── */
 function openPresetIconEditor(id) {
     var p = findPreset(id);
     if (!p) return;
-    var S = STRINGS[currentLang] || STRINGS.ru;
-    /* Use a simple inline input in the row for now */
-    var icon = window.prompt ? null : null; /* IE11 may not have prompt in Shell.Explorer */
-    /* Use the color picker approach — cycle through common emojis */
-    var EMOJIS = ["🎮","🏆","⭐","🔥","💎","🎯","🚀","⚔️","🛡️","🏰","👑","🌟"];
-    var currentIcon = p.icon || "";
-    var idx = currentIcon ? EMOJIS.indexOf(currentIcon) : -1;
-    var nextIdx = (idx + 1) % (EMOJIS.length + 1);
-    if (nextIdx === EMOJIS.length) {
+    /* Cycle through the SVG icon set; an unknown legacy value starts over. */
+    var PRESET_ICONS = ["gamepad", "trophy", "fire", "gem", "target", "rocket", "sword", "shield", "castle", "crown", "sparkles", "zap", "gift"];
+    var currentIcon = (p.icon && PRESET_ICONS.indexOf(p.icon) >= 0) ? p.icon : "";
+    var idx = currentIcon ? PRESET_ICONS.indexOf(currentIcon) : -1;
+    var nextIdx = (idx + 1) % (PRESET_ICONS.length + 1);
+    if (nextIdx === PRESET_ICONS.length) {
         delete p.icon;
     } else {
-        p.icon = EMOJIS[nextIdx];
+        p.icon = PRESET_ICONS[nextIdx];
     }
     flushPresetsOut();
     renderPresets();
@@ -8995,11 +9454,12 @@ buildPresetRow = function(p, dispIdx, bucketItems, posInBucket) {
         row.insertBefore(cbar, row.firstChild);
     }
 
-    /* Add emoji icon if preset has icon */
-    if (p.icon) {
+    /* Add SVG icon if preset has one */
+    var presetIcon = presetIconSvg(p.icon);
+    if (presetIcon) {
         var emoji = document.createElement("span");
         emoji.className = "preset-emoji";
-        emoji.appendChild(document.createTextNode(p.icon));
+        emoji.innerHTML = presetIcon;
         var dot = row.querySelector(".preset-dot");
         if (dot && dot.nextSibling) {
             row.insertBefore(emoji, dot.nextSibling);
@@ -9088,11 +9548,12 @@ function rebuildRowForGrid(row, p) {
     dot.appendChild(document.createTextNode(String((p._dispIdx || 0) + 1)));
     row.appendChild(dot);
 
-    /* Emoji icon */
-    if (p.icon) {
+    /* SVG icon */
+    var gridIcon = presetIconSvg(p.icon);
+    if (gridIcon) {
         var emoji = document.createElement("span");
-        emoji.style.cssText = "width:14px;height:14px;font-size:10px;line-height:14px;margin-right:4px;display:inline-block;vertical-align:middle;";
-        emoji.appendChild(document.createTextNode(p.icon));
+        emoji.style.cssText = "width:14px;height:14px;margin-right:4px;display:inline-block;vertical-align:middle;";
+        emoji.innerHTML = gridIcon;
         row.appendChild(emoji);
     }
 
@@ -9395,7 +9856,13 @@ buildPresetRow = function (p, dispIdx, bucketItems, posInBucket) {
     dot.className = "pl-dot";
     var dotColor = p.color || DOT_COLORS[dispIdx % DOT_COLORS.length];
     dot.style.background = dotColor;
-    dot.appendChild(document.createTextNode(p.icon ? p.icon : String(dispIdx + 1)));
+    var rowIcon = presetIconSvg(p.icon);
+    if (rowIcon) {
+        dot.classList.add("pl-dot-icon");
+        dot.innerHTML = rowIcon;
+    } else {
+        dot.appendChild(document.createTextNode(String(dispIdx + 1)));
+    }
 
     var name = document.createElement("span");
     name.className = "pl-name";
@@ -9422,7 +9889,7 @@ buildPresetRow = function (p, dispIdx, bucketItems, posInBucket) {
     if (p.favorite) {
         var fav = document.createElement("span");
         fav.className = "pl-fav";
-        fav.innerHTML = "&#9733;";
+        fav.innerHTML = rvlSvgIcon("star");
         row.appendChild(fav);
     }
 
@@ -9492,12 +9959,13 @@ function renderDetailPanel(id) {
         else if (p.linkCode) pdThumbKey = "sc:" + p.linkCode;
     }
     var pdThumbSrc = pdThumbKey ? placeThumbSrc(pdThumbKey) : "";
-    if (p.icon) {
+    var pdPresetIcon = presetIconSvg(p.icon);
+    if (pdPresetIcon) {
         /* User-set icon wins over the game avatar */
-        pdIconEl.innerHTML = p.icon;
+        pdIconEl.innerHTML = pdPresetIcon;
         pdIconEl.style.background = pdDotColor + "33";
     } else if (pdThumbSrc) {
-        pdIconEl.innerHTML = '<img class="pd-icon-img" src="file:///' + pdThumbSrc.split("\\").join("/") + '">';
+        pdIconEl.innerHTML = '<img class="pd-icon-img" src="' + rvlLocalImageSrc(pdThumbSrc) + '">';
         pdIconEl.style.background = "transparent";
     } else {
         pdIconEl.innerHTML = String((p._dispIdx || 0) + 1);
@@ -9521,7 +9989,7 @@ function renderDetailPanel(id) {
     if (p.favorite) {
         var t2 = document.createElement("span");
         t2.className = "pd-tag pd-tag-fav";
-        t2.innerHTML = "&#9733; Избранный";
+        t2.innerHTML = rvlSvgIcon("star") + " Избранный";
         tags.appendChild(t2);
     }
     if (p.groupId) {
@@ -9575,6 +10043,7 @@ function renderDetailPanel(id) {
 
     /* §ui-custom: re-apply label overrides the render may have overwritten */
     applyInterfaceTexts();
+    if (typeof refreshRvlIcons === "function") refreshRvlIcons();
 }
 
 /* ── §game-icon: real place avatar in the detail panel ─────
@@ -9589,6 +10058,11 @@ function placeThumbSrc(placeId) {
     if (!avatarsEnabled) return "";
     var t = placeId ? __thumbCache[placeId] : null;
     return (t && t.state === "ok" && t.src) ? t.src : "";
+}
+function rvlLocalImageSrc(src) {
+    if (!src) return "";
+    if (/^file:\/\//i.test(src)) return src;
+    return "file:///" + String(src).split("\\").join("/");
 }
 /* Failed attempts retry after 90s, stalled "pending" after 20s — so one
    offline moment never freezes the avatar for the whole session. */
@@ -9611,12 +10085,13 @@ function requestPlaceThumb(key) {
 var __origApplyLanguage = applyLanguage;
 applyLanguage = function () {
     __origApplyLanguage();
-    var lb = el("btn-launch"); if (lb) lb.innerHTML = "&#9654; ЗАПУСТИТЬ";
-    var sb = el("btn-save");   if (sb) sb.innerHTML = "&#128190;";
+    var lb = el("btn-launch"); if (lb) lb.innerHTML = rvlSvgIcon("play") + (currentLang === "en" ? " LAUNCH" : " ЗАПУСТИТЬ");
+    var sb = el("btn-save");   if (sb) sb.innerHTML = rvlSvgIcon("save");
     var cb = el("btn-capture"); if (cb && !capturingKey) cb.innerHTML = '<span class="ir-hk-capture-ring"></span>';
     var ht = el("chk-txt-hotkey"); if (ht) ht.innerHTML = "HK";
     /* §ui-custom: re-apply overrides the language pass just overwrote */
     if (appInitialized) {
+        if (typeof refreshRvlIcons === "function") refreshRvlIcons();
         applyInterfaceSettings();
         if (el("ui-custom-list") && el("ui-custom-list").getAttribute("data-lang") !== currentLang) {
             uiCustomRenderList();
@@ -9676,6 +10151,21 @@ window.addEventListener("load", function () {
        in one pass — a single overwritten value lost all answers but the
        last when every preset resolved within one 350ms poll. */
     setInterval(function () {
+        /* §clear-avatars FIRST: the clear button only sets __avatars_cleared
+           (thumb_resp stays empty), so an early return on an empty
+           __thumb_resp used to swallow the reset and kept serving deleted
+           avatar paths until the next restart. */
+        var clearedEl = el("__avatars_cleared");
+        if (clearedEl && clearedEl.value) {
+            clearedEl.value = "";
+            __thumbCache = {};
+            if (typeof renderPresets === "function") renderPresets();
+            if (detailPresetId) renderDetailPanel(detailPresetId);
+            if (typeof showToast === "function") {
+                var SA = (STRINGS && STRINGS[currentLang]) || STRINGS.ru;
+                showToast(SA.avatarsCleared || "Все аватарки удалены", null, null, 2200);
+            }
+        }
         var r = el("__thumb_resp");
         if (!r) return;
         var v = r.value;
@@ -9706,20 +10196,6 @@ window.addEventListener("load", function () {
             }
             if (pp && ppKey && __thumbCache[ppKey] && __thumbCache[ppKey].state === "ok") {
                 renderDetailPanel(detailPresetId);
-            }
-        }
-        /* §clear-avatars: the host set __avatars_cleared (timestamp) after
-           wiping images\av. Drop every cached path and fall back to index
-           numbers until avatars are re-requested. */
-        var clearedEl = el("__avatars_cleared");
-        if (clearedEl && clearedEl.value) {
-            clearedEl.value = "";
-            __thumbCache = {};
-            if (typeof renderPresets === "function") renderPresets();
-            if (detailPresetId) renderDetailPanel(detailPresetId);
-            if (typeof showToast === "function") {
-                var SA = (STRINGS && STRINGS[currentLang]) || STRINGS.ru;
-                showToast(SA.avatarsCleared || "Все аватарки удалены", null, null, 2200);
             }
         }
     }, 350);
@@ -10094,7 +10570,7 @@ var __rvlInitApp = initApp;
 initApp = function (skipStartupPreset) {
     __rvlInitApp(skipStartupPreset);
     refreshUpdateLanguage();
-    if (!__rvlSettingsPopupMode) startStartupVersionCheck();
+    if (!__rvlSettingsPopupMode && !window.__rvlNativeWindow) startStartupVersionCheck();
 };
 
 /* Keep update labels in sync with the existing language switcher. */
