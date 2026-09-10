@@ -8298,15 +8298,22 @@ function updateEmptyState() {
     var empty = el("empty-state");
     var list = el("presets-list");
     if (!empty || !list) return;
+    /* When the list hides, .pdetail stretches to the full window width while
+       the 250px empty-state overlay keeps covering the left edge — the panel's
+       centered hint ended up half-hidden underneath it. Keep the panel offset
+       so its hint stays in the visible detail area. */
+    var pd = el("pdetail");
     if (presets.length === 0) {
         empty.style.display = "";
         list.style.display = "none";
+        if (pd) pd.style.marginLeft = "250px";
         setText("empty-state-title", S.emptyPresets);
         setText("empty-state-hint", S.emptyPresetsHint);
         setText("empty-state-hint2", S.emptyPresetsHint2);
     } else {
         empty.style.display = "none";
         list.style.display = "";
+        if (pd) pd.style.marginLeft = "";
     }
 }
 
