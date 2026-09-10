@@ -507,39 +507,77 @@
     </div>
   </div>
 
-  <!-- UPDATE SCREEN: stays inside RVL while the background worker downloads. -->
+  <!-- UPDATE SCREEN: setup-style full-screen takeover while the app updates. -->
   <div class="update-screen-overlay" id="update-screen-overlay" style="display:none;">
-    <div class="update-screen-glow update-screen-glow-one"></div>
-    <div class="update-screen-glow update-screen-glow-two"></div>
-    <div class="update-screen-card">
-      <div class="update-screen-header">
-        <div class="update-screen-brand"><span class="rvl-logo update-screen-brand-logo" aria-label="RVL"></span><span class="update-screen-version" id="update-screen-version">v1.15</span></div>
-        <div class="update-screen-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</div>
+    <div class="upd-bg">
+      <div class="upd-glow upd-glow-a"></div>
+      <div class="upd-glow upd-glow-b"></div>
+      <div class="upd-grid"></div>
+    </div>
+    <div class="upd-card">
+      <div class="upd-head">
+        <span class="rvl-logo upd-logo" aria-label="RVL"></span>
+        <span class="upd-badge" id="update-screen-badge">ОБНОВЛЕНИЕ</span>
+        <span class="upd-ver" id="update-screen-version">v2.0</span>
       </div>
-      <div class="update-screen-main">
-        <div class="update-ring-wrap">
-          <svg class="update-ring" viewBox="0 0 120 120" aria-hidden="true">
-            <circle class="update-ring-track" cx="60" cy="60" r="51"></circle>
-            <circle class="update-ring-fill" id="update-ring-fill" cx="60" cy="60" r="51"></circle>
+      <div class="upd-main">
+        <div class="upd-ring">
+          <svg class="upd-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
+            <defs>
+              <linearGradient id="updRingGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FFFFFF"/>
+                <stop offset="100%" stop-color="#9A9AA4"/>
+              </linearGradient>
+              <linearGradient id="updRingGradErr" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#FF6B6B"/>
+                <stop offset="100%" stop-color="#B33A3A"/>
+              </linearGradient>
+            </defs>
+            <circle class="upd-ring-track" cx="60" cy="60" r="51"/>
+            <circle id="update-ring-fill" cx="60" cy="60" r="51"/>
           </svg>
-          <div class="update-ring-center"><span id="update-screen-percent">0%</span><small class="rvl-logo update-ring-logo" aria-label="RVL"></small></div>
+          <div class="upd-ring-center">
+            <span class="upd-percent" id="update-screen-percent">0%</span>
+            <span class="rvl-logo upd-ring-logo" aria-label="RVL"></span>
+          </div>
         </div>
-        <div class="update-screen-copy">
-          <div class="update-screen-kicker">ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ</div>
-          <div class="update-screen-title" id="update-screen-title">Скачиваем новую версию</div>
-          <div class="update-screen-status" id="update-screen-status">Подключаемся к GitHub...</div>
-          <div class="update-screen-details"><span id="update-screen-size">Подготовка загрузки</span><span id="update-screen-speed">Не закрывайте окно</span></div>
+        <div class="upd-copy">
+          <div class="upd-title" id="update-screen-title">Скачиваем новую версию</div>
+          <div class="upd-status" id="update-screen-status">Подключаемся к GitHub...</div>
+          <div class="upd-meta">
+            <span id="update-screen-size">Подготовка загрузки</span>
+            <span class="upd-meta-sep"></span>
+            <span id="update-screen-speed">Идёт скачивание</span>
+          </div>
         </div>
       </div>
-      <div class="update-screen-steps">
-        <div class="update-screen-step active" id="update-step-download"><i>01</i><span>СКАЧИВАНИЕ</span></div>
-        <div class="update-screen-step" id="update-step-install"><i>02</i><span>УСТАНОВКА</span></div>
-        <div class="update-screen-step" id="update-step-restart"><i>03</i><span>ПЕРЕЗАПУСК</span></div>
+      <div class="upd-steps">
+        <div class="upd-line"><div class="upd-line-fill" id="update-screen-line-fill"></div></div>
+        <div class="update-screen-step upd-step" id="update-step-download">
+          <span class="upd-step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12m0 0 5-5m-5 5-5-5M5 20h14"/></svg>
+          </span>
+          <span class="upd-step-num">01</span>
+          <span class="upd-step-label">СКАЧИВАНИЕ</span>
+        </div>
+        <div class="update-screen-step upd-step" id="update-step-install">
+          <span class="upd-step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h12l2 2v14H5z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></svg>
+          </span>
+          <span class="upd-step-num">02</span>
+          <span class="upd-step-label">УСТАНОВКА</span>
+        </div>
+        <div class="update-screen-step upd-step" id="update-step-restart">
+          <span class="upd-step-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+          </span>
+          <span class="upd-step-num">03</span>
+          <span class="upd-step-label">ПЕРЕЗАПУСК</span>
+        </div>
       </div>
-      <div class="update-screen-line"><div id="update-screen-line-fill"></div></div>
-      <div class="update-screen-footer">
-        <span id="update-screen-footer-text">Файлы приложения обновляются безопасно</span>
-        <button id="update-screen-dismiss" onclick="retryUpdateFromScreen();" style="display:none;">ПОВТОРИТЬ</button>
+      <div class="upd-footer">
+        <span class="upd-footer-text" id="update-screen-footer-text">Не закрывайте окно</span>
+        <button class="upd-retry" id="update-screen-dismiss" style="display:none;" onclick="retryUpdateFromScreen();">ПОВТОРИТЬ</button>
       </div>
     </div>
   </div>

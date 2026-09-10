@@ -13553,3 +13553,253 @@ body.theme-light .ui-row-bg.on { background: #EAF0FB; color: #2A57A8; border-col
     scrollbar-darkshadow-color: #F4F5F7;
     scrollbar-shadow-color: #C8CCD3;
 }
+
+/* ============================================================
+   §upd-screen · Setup-style update window (v2 redesign)
+   JS contract unchanged: ids update-screen-* / update-ring-fill,
+   overlay modifiers .update-screen-error / .update-screen-installing,
+   steps toggle .active / .done on .update-screen-step.
+   ============================================================ */
+#update-screen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9800;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(120% 120% at 50% 0%, #17171C 0%, #0A0A0C 55%, #060608 100%);
+    overflow: hidden;
+}
+.upd-bg { position: absolute; inset: 0; overflow: hidden; }
+.upd-grid {
+    position: absolute;
+    inset: -1px;
+    background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(60% 60% at 50% 40%, #000 30%, transparent 100%);
+    mask-image: radial-gradient(60% 60% at 50% 40%, #000 30%, transparent 100%);
+}
+.upd-glow { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.14; }
+.upd-glow-a { width: 420px; height: 420px; left: -80px; top: -120px; background: #FFFFFF; animation: updFloat 14s ease-in-out infinite; }
+.upd-glow-b { width: 380px; height: 380px; right: -100px; bottom: -140px; background: #6E7686; animation: updFloat 18s ease-in-out infinite reverse; }
+@keyframes updFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(40px, 26px) scale(1.15); }
+}
+.upd-card {
+    position: relative;
+    width: 540px;
+    max-width: calc(100% - 48px);
+    border-radius: 22px;
+    background: linear-gradient(180deg, #15151A 0%, #0D0D10 100%);
+    border: 1px solid rgba(255,255,255,0.09);
+    box-shadow: 0 30px 90px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.05);
+    padding: 22px 26px 20px;
+    overflow: hidden;
+    animation: updCardIn 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+@keyframes updCardIn {
+    from { opacity: 0; transform: translateY(14px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.upd-card::before {
+    content: "";
+    position: absolute;
+    top: -70px;
+    left: 50%;
+    width: 380px;
+    height: 140px;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgba(255,255,255,0.09), transparent);
+    pointer-events: none;
+}
+.upd-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.upd-logo { width: 44px; height: 24px; }
+.upd-badge {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    color: #EDEDF2;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 20px;
+    padding: 4px 10px;
+}
+.upd-ver {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 700;
+    color: #8A8A94;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 4px 9px;
+}
+.upd-main {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 22px 4px 20px;
+}
+.upd-ring { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+.upd-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); filter: drop-shadow(0 0 8px rgba(255,255,255,0.18)); }
+.upd-ring-track { fill: none; stroke: #232329; stroke-width: 7; }
+#update-ring-fill {
+    fill: none;
+    stroke: url(#updRingGrad);
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 320.44;
+    transition: stroke-dashoffset 0.45s ease;
+}
+.upd-ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+.upd-percent {
+    font-size: 30px;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0 18px rgba(255,255,255,0.25);
+}
+.upd-ring-logo { width: 26px; height: 14px; opacity: 0.75; }
+.upd-copy { flex: 1 1 auto; min-width: 0; }
+.upd-title { font-size: 17px; font-weight: 800; color: #F2F2F5; margin-bottom: 6px; }
+.upd-status { font-size: 12px; color: #A0A0AA; line-height: 1.45; }
+.upd-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6E6E78;
+}
+.upd-meta-sep { width: 4px; height: 4px; border-radius: 50%; background: #3A3A42; }
+.upd-steps {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    padding: 18px 26px 14px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+.upd-line {
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    top: 37px;
+    height: 2px;
+    background: #232329;
+    border-radius: 2px;
+}
+.upd-line-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #55555E, #EDEDF2);
+    border-radius: 2px;
+    transition: width 0.45s ease;
+}
+.update-screen-step.upd-step {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 110px;
+    z-index: 1;
+    color: #77777F;
+    font-size: 8.5px;
+    font-weight: 700;
+    text-align: center;
+    background: none;
+    border: 0;
+}
+.upd-step-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #17171B;
+    border: 1px solid #2A2A31;
+    color: #8A8A94;
+    margin-bottom: 2px;
+    transition: all 0.25s ease;
+}
+.upd-step-icon svg { width: 17px; height: 17px; }
+.upd-step-num { font-size: 8px; font-weight: 800; letter-spacing: 0.18em; color: #55555E; }
+.upd-step-label { font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: #77777F; }
+.update-screen-step.active .upd-step-icon {
+    border-color: #F2F2F5;
+    color: #FFFFFF;
+    animation: updPulse 1.8s ease-in-out infinite;
+}
+.update-screen-step.active .upd-step-label { color: #E8E8EC; }
+.update-screen-step.done .upd-step-icon {
+    background: #F4F5F7;
+    border-color: #F4F5F7;
+    color: #0B0B0E;
+}
+.update-screen-step.done .upd-step-label { color: #C9C9D0; }
+@keyframes updPulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.05), 0 0 12px rgba(255,255,255,0.08); }
+    50% { box-shadow: 0 0 0 6px rgba(255,255,255,0.09), 0 0 26px rgba(255,255,255,0.18); }
+}
+.upd-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+}
+.upd-footer-text { font-size: 10px; color: #6E6E78; }
+.upd-retry {
+    background: #F4F5F7;
+    color: #0B0B0E;
+    border: 0;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    padding: 8px 16px;
+    cursor: pointer;
+}
+.upd-retry:hover { background: #FFFFFF; }
+#update-screen-overlay.update-screen-error .upd-badge {
+    color: #FF8B8B;
+    background: rgba(255,80,80,0.12);
+    border-color: rgba(255,90,90,0.35);
+}
+#update-screen-overlay.update-screen-error #update-ring-fill { stroke: url(#updRingGradErr); filter: drop-shadow(0 0 8px rgba(255,107,107,0.3)); }
+#update-screen-overlay.update-screen-error .upd-card { border-color: rgba(255,90,90,0.25); }
+#update-screen-overlay.update-screen-error .upd-card::before {
+    background: radial-gradient(closest-side, rgba(255,90,90,0.12), transparent);
+}
+#update-screen-overlay.update-screen-installing .upd-badge {
+    color: #7DFFB2;
+    background: rgba(60,220,130,0.12);
+    border-color: rgba(80,230,150,0.35);
+}
+#update-screen-overlay.update-screen-installing #update-ring-fill {
+    filter: drop-shadow(0 0 10px rgba(140,255,180,0.35));
+}
+#update-screen-overlay.update-screen-installing .upd-card { border-color: rgba(120,255,170,0.18); }
