@@ -10338,7 +10338,7 @@ function renderUpdateScreen(state, version, message, progress) {
 
     progress = Math.max(0, Math.min(100, parseInt(progress, 10) || 0));
     var ring = el("update-ring-fill");
-    if (ring) ring.setAttribute("stroke-dashoffset", String(320.44 * (1 - progress / 100)));
+    if (ring) ring.setAttribute("stroke-dashoffset", String(320.44 * (1 - (state === "error" ? 100 : progress) / 100)));
     var percent = el("update-screen-percent");
     if (percent) percent.innerHTML = progress + "%";
     var ver = el("update-screen-version");
@@ -10352,6 +10352,7 @@ function renderUpdateScreen(state, version, message, progress) {
     var speed = el("update-screen-speed");
     var dismiss = el("update-screen-dismiss");
     if (state === "error") {
+        if (percent) percent.innerHTML = "!";
         if (title) title.innerHTML = "Не удалось обновить " + rvlInlineLogo();
         if (badge) badge.innerHTML = "ОШИБКА";
         if (status) status.innerHTML = message || "Попробуйте повторить попытку";
@@ -10359,10 +10360,11 @@ function renderUpdateScreen(state, version, message, progress) {
         if (size) size.innerHTML = "Можно повторить обновление";
         if (speed) speed.innerHTML = "";
         if (dismiss) {
-            dismiss.innerHTML = "ПОВТОРИТЬ";
+            dismiss.innerHTML = "ПОВТОРИТЬ ЗАГРУЗКУ";
             dismiss.style.display = "block";
         }
     } else if (state === "installing") {
+        if (percent) percent.innerHTML = "100";
         if (title) title.innerHTML = "Перезапускаем " + rvlInlineLogo();
         if (badge) badge.innerHTML = "ГОТОВО";
         if (status) status.innerHTML = message || "Файлы готовы к установке...";
@@ -10371,6 +10373,7 @@ function renderUpdateScreen(state, version, message, progress) {
         if (speed) speed.innerHTML = "Почти готово";
         if (dismiss) dismiss.style.display = "none";
     } else {
+        if (percent) percent.innerHTML = progress + "%";
         if (title) title.innerHTML = progress > 3 ? "Скачиваем новую версию" : "Проверяем обновление";
         if (badge) badge.innerHTML = "ОБНОВЛЕНИЕ";
         if (status) status.innerHTML = message || "Подключаемся к GitHub...";
