@@ -507,55 +507,24 @@
     </div>
   </div>
 
-  <!-- UPDATE SCREEN: setup-style full-screen takeover while the app updates. -->
+  <!-- UPDATE SCREEN: styled exactly like the startup splash (same fonts/orbits) -->
   <div class="update-screen-overlay" id="update-screen-overlay" style="display:none;">
-    <div class="upd-bg">
-      <div class="upd-glow upd-glow-a"></div>
-      <div class="upd-glow upd-glow-b"></div>
-      <div class="upd-grid"></div>
-    </div>
-    <div class="upd-hero">
-      <div class="upd-logo-glow">
-        <span class="rvl-logo upd-logo-hero" aria-label="RVL"></span>
-      </div>
-      <div class="upd-versions">
-        <span class="upd-ver-chip" id="update-screen-ver-old">v2.0</span>
-        <span class="upd-ver-arrow">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15m-6-6 6 6-6 6"/></svg>
-        </span>
-        <span class="upd-ver-chip upd-ver-new" id="update-screen-version">v2.1</span>
-      </div>
-      <div class="upd-ring">
-        <svg class="upd-ring-svg" viewBox="0 0 120 120" aria-hidden="true">
-          <defs>
-            <linearGradient id="updRingGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#FFFFFF"/>
-              <stop offset="100%" stop-color="#A8ADB8"/>
-            </linearGradient>
-            <linearGradient id="updRingGradErr" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stop-color="#FF7B7B"/>
-              <stop offset="100%" stop-color="#C04848"/>
-            </linearGradient>
-          </defs>
-          <circle class="upd-ring-track" cx="60" cy="60" r="51"/>
-          <circle id="update-ring-fill" cx="60" cy="60" r="51"/>
-        </svg>
-        <div class="upd-ring-center">
-          <span class="upd-percent" id="update-screen-percent">0%</span>
-        </div>
-      </div>
-      <div class="upd-copy">
-        <div class="upd-title" id="update-screen-title">Скачиваем обновление</div>
-        <div class="upd-status" id="update-screen-status">Подключаемся к GitHub...</div>
-      </div>
+    <div class="startup-orbit startup-orbit-one"></div>
+    <div class="startup-orbit startup-orbit-two"></div>
+    <div class="startup-grid"></div>
+    <div class="startup-content upd-content">
+      <div class="startup-mark"><span class="rvl-logo startup-logo" aria-label="RVL"></span></div>
+      <div class="startup-kicker" id="update-screen-badge">ОБНОВЛЕНИЕ ПРИЛОЖЕНИЯ</div>
+      <div class="startup-title" id="update-screen-title">Скачиваем обновление</div>
+      <div class="startup-status" id="update-screen-status">Подключаемся к GitHub...</div>
+      <div class="upd-pct-row"><span class="upd-percent" id="update-screen-percent">0%</span></div>
+      <div class="startup-progress"><div class="upd-line-fill" id="update-screen-line-fill"></div></div>
       <div class="upd-meta">
         <span id="update-screen-size">Подготовка загрузки</span>
         <span class="upd-meta-sep"></span>
         <span id="update-screen-speed">Идёт скачивание</span>
       </div>
       <div class="upd-steps">
-        <div class="upd-steps-line"></div>
-        <div class="upd-steps-line-fill" id="update-screen-line-fill"></div>
         <div class="update-screen-step upd-step" id="update-step-download">
           <span class="upd-step-dot">1</span>
           <span class="upd-step-label">СКАЧИВАНИЕ</span>
@@ -569,8 +538,13 @@
           <span class="upd-step-label">ПЕРЕЗАПУСК</span>
         </div>
       </div>
-      <div class="upd-note" id="update-screen-footer-text">Не закрывайте окно — обновление установится автоматически</div>
+      <div class="startup-meta upd-meta-bottom">
+        <span class="rvl-logo startup-meta-logo" aria-label="RVL"></span>
+        <span class="startup-meta-dot">•</span>
+        <span class="upd-note" id="update-screen-footer-text">Не закрывайте окно</span>
+      </div>
       <button class="upd-retry" id="update-screen-dismiss" style="display:none;" onclick="retryUpdateFromScreen();">ПОВТОРИТЬ ЗАГРУЗКУ</button>
+      <span class="upd-version" id="update-screen-version">v2.0</span>
     </div>
   </div>
 
