@@ -412,7 +412,33 @@ var STRINGS = {
         previewLinkCode:"Link Code",
         previewLaunches:"Запусков",
         previewLast:"Последний",
-        noColor:"Без цвета"
+        noColor:"Без цвета",
+        /* Toolbar tooltips — previously hardcoded in HTML, so English mode
+           kept the Russian strings. */
+        tipHistory:      "История запусков",
+        tipDashboard:    "Статистика",
+        tipBackup:        "Резервное копирование",
+        tipBulk:         "Массовое редактирование",
+        tipList:         "Список",
+        tipGrid:         "Сетка",
+        tipSort:         "Сортировка",
+        tipClear:        "Очистить",
+        tipShow:         "Показать",
+        tipSearch:       "Поиск",
+        tipCapture:      "Захват клавиши",
+        tipKeyAssignHint:"Нажми ЗАХВАТ, чтобы назначить",
+        /* Capture buttons (main + settings) */
+        captureBtnShort: "ЗАХВАТ",
+        /* New-preset window placeholders — were hardcoded Russian */
+        npNamePh:        "Название пресета...",
+        npPlacePh:       "PLACE ID",
+        npLinkPh:        "LINK CODE / ссылка...",
+        npSharePh:       "SHARE CODE / ссылка...",
+        /* Inputs */
+        shareCodeLinkHint:"SHARE CODE / ссылка...",
+        linkCodeLinkHint: "LINK CODE / ссылка...",
+        /* Guide footer tip */
+        guideFooterTipHTML: "<b>СПОСОБ 1</b> — приватный сервер (Place ID + Link Code).<br><b>СПОСОБ 2</b> — share-код (Configure Private Servers → Regenerate). Можно вставить ссылку целиком — лишнее отрежется автоматически."
     },
     en: {
         /* Titlebar tooltips */
@@ -710,7 +736,33 @@ var STRINGS = {
         previewLinkCode:"Link Code",
         previewLaunches:"Launches",
         previewLast:"Last",
-        noColor:"No color"
+        noColor:"No color",
+        /* Toolbar tooltips — previously hardcoded in HTML, so English mode
+           kept the Russian strings. */
+        tipHistory:      "Launch history",
+        tipDashboard:    "Statistics",
+        tipBackup:        "Backup",
+        tipBulk:         "Bulk edit",
+        tipList:         "List",
+        tipGrid:         "Grid",
+        tipSort:         "Sort",
+        tipClear:        "Clear",
+        tipShow:         "Show",
+        tipSearch:       "Search",
+        tipCapture:      "Capture hotkey",
+        tipKeyAssignHint:"Click CAPTURE to assign",
+        /* Capture buttons (main + settings) */
+        captureBtnShort: "CAPTURE",
+        /* New-preset window placeholders — were hardcoded Russian */
+        npNamePh:        "Preset name...",
+        npPlacePh:       "PLACE ID",
+        npLinkPh:        "LINK CODE / link...",
+        npSharePh:       "SHARE CODE / link...",
+        /* Inputs */
+        shareCodeLinkHint:"SHARE CODE / link...",
+        linkCodeLinkHint: "LINK CODE / link...",
+        /* Guide footer tip */
+        guideFooterTipHTML: "<b>METHOD 1</b> — private server (Place ID + Link Code).<br><b>METHOD 2</b> — share code (Configure Private Servers → Regenerate). You can paste the full link — extra parts are trimmed automatically."
     }
 };
 
@@ -1025,6 +1077,12 @@ function initApp(skipStartupPreset) {
     applyCompactMode();
     syncColorPickers();
     applyLanguage();
+    /* Initialize the Roblox status baseline from the bridge state so a
+       launch-time "Roblox is running" doesn't fire a spurious toast the
+       first time the polling tick reads the same value. Only the main
+       window shows toasts (sub-windows are short-circuited above). */
+    var initRs = el("__roblox_status") ? el("__roblox_status").value : "0";
+    prevRobloxStatus = initRs;
     /* Initialization can touch input values and theme controls. The loaded
        configuration is the clean baseline, not an unsaved edit. */
     clearDirty();
@@ -3063,6 +3121,51 @@ function applyLanguage() {
     setTip("btn-export", S.tipExport);
     setTip("btn-import", S.tipImport);
     setTip("btn-groups", S.tipGroups);
+    /* Toolbar buttons that previously kept hardcoded Russian tooltips —
+       applyLanguage was never calling setTip for these, so the English
+       mode still showed "История запусков / Статистика / Резервное
+       копирование / Массовое редактирование" etc. */
+    setTip("btn-history",    S.tipHistory);
+    setTip("btn-dashboard", S.tipDashboard);
+    setTip("btn-backup",    S.tipBackup);
+    setTip("btn-bulk-edit", S.tipBulk);
+    setTip("view-list",     S.tipList);
+    setTip("view-grid",     S.tipGrid);
+    setTip("sort-show",     S.tipSort);
+    setTip("btn-capture",   S.tipCapture);
+    setTip("inp-key",       S.tipKeyAssignHint);
+    setTip("st-key-box",    S.tipKeyAssignHint);
+    setTip("sh-key-box",    S.tipKeyAssignHint);
+    setTip("st-btn-capture",S.tipCapture);
+    setTip("sh-btn-capture",S.tipCapture);
+    setTip("eye-place",     S.tipShow);
+    setTip("eye-link",      S.tipShow);
+    setTip("eye-share-code",S.tipShow);
+    setTip("search-inp",    S.tipSearch);
+    /* Roblox status initial tooltip — replaced later by updateRobloxStatus
+       once the host has answered, but the placeholder is in the user's
+       language now, not the HTML's hardcoded "Поиск Roblox...". */
+    var rsTip = el("roblox-status");
+    if (rsTip && !rsTip.getAttribute("data-tooltip-set")) {
+        rsTip.setAttribute("data-tooltip", S.robloxSearch || S.robloxOff);
+    }
+    /* Settings capture button text */
+    var stBtnCap = el("st-btn-capture");
+    if (stBtnCap && !capturingKey) stBtnCap.innerHTML = S.captureBtnShort || "ЗАХВАТ";
+    /* New-preset window placeholders */
+    var npName = el("np-name");    if (npName) npName.setAttribute("placeholder", S.npNamePh);
+    var npPlace = el("np-place");  if (npPlace) npPlace.setAttribute("placeholder", S.npPlacePh);
+    var npLink = el("np-link");    if (npLink) npLink.setAttribute("placeholder", S.npLinkPh);
+    var npShare = el("np-share");  if (npShare) npShare.setAttribute("placeholder", S.npSharePh);
+    /* Main-row input placeholders (the link field shows "/ ссылка..." in
+       Russian, "/ link..." in English — previously hardcoded Russian). */
+    var inpLink = el("inp-link");
+    if (inpLink) inpLink.setAttribute("placeholder", S.linkCodeLinkHint || S.labelLink);
+    var inpShare = el("inp-share-code");
+    if (inpShare) inpShare.setAttribute("placeholder", S.shareCodeLinkHint || "SHARE CODE / ссылка...");
+    /* Guide footer tip — translate the static HTML footer text. */
+    var gft = el("guide-footer-tip-text");
+    if (gft) gft.innerHTML = S.guideFooterTipHTML;
 
     var grpTitle = el("grp-title-text");
     if (grpTitle) grpTitle.textContent = S.groupsModalTitle;
@@ -4038,6 +4141,22 @@ function applyThemePreset(p) {
     syncColorPickers();
     /* Enhancement: immediately update active state in TP grid */
     renderTPGrid();
+    /* Persist immediately so the theme applies to ALL windows (main launcher
+       and any open sub-windows) — without this, clicking a chip in the
+       detached themes window only changed that window and the choice was
+       lost on close. The host's CMD:settings_live path applies the bridge
+       values to the config and then calls SyncAll which re-injects state
+       into every live window. */
+    if (el("__cfg_theme_mode"))      el("__cfg_theme_mode").value      = "custom";
+    if (el("__cfg_theme_bg"))        el("__cfg_theme_bg").value        = customTheme.bg;
+    if (el("__cfg_theme_surface"))   el("__cfg_theme_surface").value  = customTheme.surface;
+    if (el("__cfg_theme_text"))      el("__cfg_theme_text").value      = customTheme.text;
+    if (el("__cfg_theme_accent"))    el("__cfg_theme_accent").value    = customTheme.accent;
+    if (el("__cfg_theme_grad_en"))   el("__cfg_theme_grad_en").value   = customTheme.gradientEnabled ? "1" : "0";
+    if (el("__cfg_theme_grad_bg2"))  el("__cfg_theme_grad_bg2").value  = customTheme.gradientBg2 || customTheme.bg;
+    if (el("__cfg_theme_grad_angle")) el("__cfg_theme_grad_angle").value = (customTheme.gradientAngle || 135).toString();
+    if (el("__cfg_theme_grad_op"))   el("__cfg_theme_grad_op").value  = (customTheme.gradientOpacity || 100).toString();
+    sendCmd("CMD:settings_live");
 }
 
 function syncColorPickers() {
@@ -6048,7 +6167,10 @@ function stopCaptureExternal(keyName) {
     btn.innerHTML = '<span class="ir-hk-capture-ring"></span>';
     btn.className = "btn-capture ir-hk-capture";
     var stBtn = el("st-btn-capture");
-    if (stBtn) stBtn.innerHTML = "ЗАХВАТ";
+    if (stBtn) {
+        var Sx = STRINGS[currentLang] || STRINGS.ru;
+        stBtn.innerHTML = Sx.captureBtnShort || "ЗАХВАТ";
+    }
 
     if (keyName !== null && keyName !== "") {
         el("inp-key").value = keyName;
@@ -7643,8 +7765,12 @@ function buildBulkTable() {
         var tr = document.createElement("tr");
         tr.className = "bulk-row";
         tr.setAttribute("data-pid", p.id);
+        if ((p.method || 1) === 2) tr.className += " bulk-row-m2";
 
-        /* Name cell — readonly label */
+        /* Name cell — readonly label, prefixed with a method badge so the
+           user can tell at a glance which method each row uses. Method 1
+           rows have PLACE ID + LINK CODE columns; Method 2 rows have a
+           "SC" placeholder + SHARE CODE column. */
         var tdName = document.createElement("td");
         tdName.className = "bulk-td bulk-td-name";
         if (currentBulkTheme) tdName.style.background = currentBulkTheme.bgBase;
@@ -7652,11 +7778,16 @@ function buildBulkTable() {
         dot.className = "bulk-dot";
         dot.style.background = DOT_COLORS[i % DOT_COLORS.length];
         dot.appendChild(document.createTextNode(i + 1));
+        var methodBadge = document.createElement("span");
+        methodBadge.className = "bulk-method-badge" + ((p.method || 1) === 2 ? " bulk-method-m2" : "");
+        methodBadge.appendChild(document.createTextNode((p.method || 1) === 2 ? "СП 2" : "СП 1"));
+        methodBadge.title = (p.method || 1) === 2 ? "Share Code" : "Place ID + Link Code";
         var nameText = document.createElement("span");
         nameText.className = "bulk-name-text";
         nameText.appendChild(document.createTextNode(p.name || ""));
         if (currentBulkTheme) nameText.style.color = currentBulkTheme.textColor;
         tdName.appendChild(dot);
+        tdName.appendChild(methodBadge);
         tdName.appendChild(nameText);
         tr.appendChild(tdName);
 
@@ -7793,9 +7924,12 @@ function saveBulkEdit() {
 function applyBulkLanguage() {
     var S = STRINGS[currentLang] || STRINGS.ru;
     setText("bulk-title",      S.bulkEditTitle  || "Массовое редактирование");
+    /* Annotate each column with the method it applies to so the user can
+       tell which column holds Place ID vs Share Code without having to
+       look at every row's method badge. */
     setText("bulk-col-name",   S.bulkColName    || "Название");
-    setText("bulk-col-place",  S.bulkColPlace   || "Place ID");
-    setText("bulk-col-link",   S.bulkColLink    || "Link Code");
+    setText("bulk-col-place",  S.bulkColPlace   || "Place ID (СП 1)");
+    setText("bulk-col-link",   S.bulkColLink    || "Link / Share Code (СП 1 / СП 2)");
     setText("bulk-save",       S.bulkSaveBtn    || "Сохранить");
     setText("bulk-cancel",     S.bulkCancelBtn  || "Отмена");
     var bbtn = el("btn-bulk-edit");
@@ -8023,19 +8157,22 @@ function syncSortButtons() {
         btn.className = (sortMode === opts[i].val)
             ? "sort-opt sort-opt-active" : "sort-opt";
     }
-    /* Show sort bar when there are >1 presets. Respect the interface-customization
-       hide setting: if the user hid the sort bar / collapsed sort, force it off
-       regardless of the automatic visibility logic. */
+    /* Show sort bar when there are >1 presets AND the user has explicitly
+       expanded it (sortBarCollapsed === false). The collapsed mini-indicator
+       is intentionally NOT auto-shown — the СОРТ ▾ toolbar button already
+       communicates "sort is available", so a second label below the toolbar
+       is redundant noise. */
     var sb = el("sort-bar");
     var sc = el("sort-collapsed");
     if (sb) sb.style.display = uiHiddenState["sort-bar"] ? "none"
         : (presets.length > 1 && !sortBarCollapsed) ? "" : "none";
-    if (sc) sc.style.display = uiHiddenState["sort-collapsed"] ? "none"
-        : (presets.length > 1 && sortBarCollapsed) ? "" : "none";
+    if (sc) sc.style.display = "none";
 }
 
-/* Enhancement: collapse/expand sort bar to save space */
-var sortBarCollapsed = false;
+/* Enhancement: collapse/expand sort bar to save space.
+   Default is COLLAPSED (sortBarCollapsed=true) — sorting controls stay hidden
+   until the user clicks the СОРТ ▾ button. Keeps the toolbar clean. */
+var sortBarCollapsed = true;
 function toggleSortBar() {
     sortBarCollapsed = !sortBarCollapsed;
     syncSortButtons();
@@ -8734,7 +8871,8 @@ var SVG_ICONS = {
     sparkles: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8a2 2 0 0 0 1.3 1.3L21 12l-5.8 1.9a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.8a2 2 0 0 0-1.3-1.3L3 12l5.8-1.9a2 2 0 0 0 1.3-1.3L12 3Z"/></svg>',
     zap: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 13h6l-1 8l8-10h-6l1-8Z"/></svg>',
     gift: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="4" rx="1"/><path d="M6 13v7h12v-7M12 9v11"/><path d="M12 9a3 3 0 1 0-3-3c0 1.5 1 3 3 3ZM12 9a3 3 0 1 1 3-3c0 1.5-1 3-3 3Z"/></svg>',
-    palette: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.58 9 8c0 1.06-.47 2.07-1.5 2.07h-2.05a1.95 1.95 0 0 0-1.45 3.25c.18.21.5.55.5 1.18c0 1.27-1.13 1.5-2.5 1.5z"/><path d="M7.5 10.5v.01M12 7.5v.01M16.5 10.5v.01"/></svg>'
+    palette: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.58 9 8c0 1.06-.47 2.07-1.5 2.07h-2.05a1.95 1.95 0 0 0-1.45 3.25c.18.21.5.55.5 1.18c0 1.27-1.13 1.5-2.5 1.5z"/><path d="M7.5 10.5v.01M12 7.5v.01M16.5 10.5v.01"/></svg>',
+    folder: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H11l-2-2.5"/></svg>'
 };
 
 function rvlSvgIcon(name) {
@@ -8761,6 +8899,7 @@ function refreshRvlIcons() {
         "btn-history":"history", "btn-dashboard":"chart", "btn-backup":"backup",
         "btn-bulk-edit":"bulk", "btn-export":"upload", "btn-import":"download",
         "btn-guide":"help", "view-list":"list", "view-grid":"grid",
+        "btn-groups":"folder",
         "btn-tp-export":"upload", "btn-tp-import":"download", "pd-empty-icon":"list",
         "delay-minus":"minus", "delay-plus":"plus", "sort-toggle":"chevronUp",
         "pd-copy-place":"copy", "pd-copy-link":"copy", "pd-eye-link":"eye",
@@ -9380,6 +9519,14 @@ function toggleGridView() {
 /* ── 13. Roblox start/stop notifications ─────────────────── */
 function checkRobloxNotification() {
     var val = el("__roblox_status") ? el("__roblox_status").value : "0";
+    /* Suppress toasts in detached tool windows and the settings popup:
+       these windows are short-lived and would otherwise fire a spurious
+       "Roblox started" toast whenever they open (prevRobloxStatus starts
+       at "0" and the host immediately writes the live status). */
+    if (__rvlNativeWindow || __rvlSettingsPopupMode) {
+        prevRobloxStatus = val;
+        return;
+    }
     var S = STRINGS[currentLang] || STRINGS.ru;
     if (val === "1" && prevRobloxStatus !== "1") {
         showToast(S.robloxStarted, null, null, 3000);
@@ -9447,6 +9594,13 @@ function initV17Features() {
 var origBuildPresetRow = buildPresetRow;
 buildPresetRow = function(p, dispIdx, bucketItems, posInBucket) {
     var row = origBuildPresetRow(p, dispIdx, bucketItems, posInBucket);
+
+    /* Tag the row with its method (1 = Place ID + Link Code, 2 = Share Code)
+       so the grid-view CSS can color Method 2 rows differently and the
+       detail panel can show the right labels. */
+    if ((p.method || 1) === 2) {
+        row.className = row.className + " preset-method-2";
+    }
 
     /* Add selected state */
     if (selectedPresets[p.id]) {

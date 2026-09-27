@@ -473,6 +473,17 @@
         <!-- Page 2: Method 2 -->
         <div id="guide-page-2" style="display:none;"></div>
 
+        <!-- Footer tip — uses the empty space below the steps so the
+             760×380 guide window doesn't show a big blank gap. -->
+        <div class="guide-footer-tip" id="guide-footer-tip">
+          <span class="guide-footer-tip-icon">⌨</span>
+          <span class="guide-footer-tip-text" id="guide-footer-tip-text">
+            <b>СПОСОБ 1</b> — приватный сервер (Place ID + Link Code).<br>
+            <b>СПОСОБ 2</b> — share-код (Configure Private Servers → Regenerate).
+            Можно вставить ссылку целиком — лишнее отрежется автоматически.
+          </span>
+        </div>
+
       </div><!-- /guide-body -->
     </div>
   </div>
@@ -624,7 +635,7 @@
              placeholder="Поиск..." spellcheck="false" autocomplete="off">
     </div>
     <button class="sort-toggle tb-sort" id="sort-show" data-tooltip="Сортировка">СОРТ &#9662;</button>
-    <button class="btn-ghost tb-btn" id="btn-groups" data-tooltip="Группы">#</button>
+    <button class="btn-ghost tb-btn" id="btn-groups" data-tooltip="Группы"></button>
     <button class="btn-ghost tb-btn" id="btn-history" data-tooltip="История запусков"></button>
     <button class="btn-ghost tb-btn" id="btn-dashboard" data-tooltip="Статистика"></button>
     <button class="btn-ghost tb-btn" id="btn-backup" data-tooltip="Резервное копирование"></button>

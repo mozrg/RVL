@@ -585,8 +585,16 @@ public sealed class WebMainForm : Form
         var place = V(values, "inp-place", _config.Get("PlaceId"));
         var rawCode = method == "2" ? V(values, "inp-share-code", V(values, "inp-link", _config.Get("LinkCode"))) : V(values, "inp-link", _config.Get("LinkCode"));
         var code = RvlPreset.NormalizeShareCode(rawCode);
-        var appUri = method == "2" ? $"roblox://navigation/share_links?code={Uri.EscapeDataString(code)}" : $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}&linkCode={Uri.EscapeDataString(rawCode)}";
-        var webUri = method == "2" ? $"https://www.roblox.com/share?code={Uri.EscapeDataString(code)}" : $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/?linkCode={Uri.EscapeDataString(rawCode)}";
+        /* Roblox share links for private servers REQUIRE &type=Server — without it,
+           the app shows "This link doesn't exist". Old builds omitted it because the
+           web share path used to default to type=Server for short codes, but the
+           current Roblox client enforces the type parameter on both URLs. */
+        var appUri = method == "2"
+            ? $"roblox://navigation/share_links?code={Uri.EscapeDataString(code)}&type=Server"
+            : $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}&linkCode={Uri.EscapeDataString(rawCode)}";
+        var webUri = method == "2"
+            ? $"https://www.roblox.com/share?code={Uri.EscapeDataString(code)}&type=Server"
+            : $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/?linkCode={Uri.EscapeDataString(rawCode)}";
         var success = TryOpen(method == "2" || Registry.ClassesRoot.OpenSubKey("roblox") is not null ? appUri : webUri);
         if (!success) success = TryOpen(webUri);
 
@@ -688,6 +696,22 @@ public sealed class WebMainForm : Form
     private void BeginCapture(string kind)
     {
         _capturing = true; _captureKind = kind;
+        /* While capture mode is on, every globally-registered hotkey (main
+           F4, show/hide, per-preset) would intercept the key the user is
+           trying to assign BEFORE it reaches the WebView2 document — so
+           pressing the main F4 to bind it to a preset would instead trigger
+           the main launch. Unregister everything here; FinishCaptureAsync
+           re-registers from the bridge state once the JS side has stored
+           the new assignment. */
+        try
+        {
+            var host = MainHost;
+            UnregisterHotKey(host.Handle, MainHotKeyId);
+            UnregisterHotKey(host.Handle, ShowHideHotKeyId);
+            foreach (var id in host._registeredKeys.Values.Distinct())
+                UnregisterHotKey(host.Handle, id);
+        }
+        catch { /* best-effort — capture must still start even if a key is held */ }
     }
 
     protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -701,13 +725,27 @@ public sealed class WebMainForm : Form
         return base.ProcessCmdKey(ref msg, keyData);
     }
 
-    private void FinishCapture(string? key)
+    private async void FinishCapture(string? key)
     {
         _capturing = false;
         var escaped = key is null ? "null" : JsonSerializer.Serialize(key);
         var fn = _captureKind switch { "show-hide" => "stopShowHideCaptureExternal", "preset" => "finishPresetHKCapture", _ => "stopCaptureExternal" };
-        _ = ExecuteScriptAsync($"{fn}({escaped});");
         _captureKind = "";
+        try { await ExecuteScriptAsync($"{fn}({escaped});"); }
+        catch { /* page may be navigating */ }
+        /* Re-register all hotkeys using the now-updated bridge state. After
+           a preset assignment, finishPresetHKCapture wrote the new hotkey
+           into __preset_hk_map and sent CMD:save_preset; we still re-apply
+           here so the just-released key is captured as a global hotkey
+           immediately, without waiting for the next CMD:save_preset tick. */
+        try
+        {
+            var payload = await ReadBridgeAsync();
+            ApplyMainHotkey(payload);
+            ApplyShowHideHotkey(payload);
+            ApplyPresetHotkeys(payload);
+        }
+        catch { /* best-effort */ }
     }
 
     private void CopyToClipboard(Dictionary<string, string> values)
@@ -1144,7 +1182,10 @@ public sealed class WebMainForm : Form
 
     protected override void WndProc(ref Message m)
     {
-        if (m.Msg == WmHotKey)
+        /* While the user is capturing a hotkey, every registered global hotkey
+           has been unregistered (see BeginCapture) — but in case a stale
+           WM_HOTKEY is still in the queue, ignore it. */
+        if (m.Msg == WmHotKey && !_capturing)
         {
             var id = m.WParam.ToInt32();
             if (id == MainHotKeyId) LaunchFavorite();

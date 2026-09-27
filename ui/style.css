@@ -8828,6 +8828,46 @@ body.theme-light .btn-factory-reset:hover { background: rgba(200,0,0,0.06); bord
     min-width: 0;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+/* Per-row method badge: "СП 1" rows use Place ID + Link Code, "СП 2" rows
+   use the Share Code (the Place ID column shows an SC placeholder). The
+   badge color mirrors the method tabs so the user maps the badge to a
+   method at a glance. */
+.bulk-method-badge {
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 14px;
+    padding: 0 5px;
+    margin-right: 6px;
+    background: #1A2A1A;
+    border: 1px solid #2A4A2A;
+    color: #6BE36B;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    -ms-flex-negative: 0; flex-shrink: 0;
+    line-height: 1;
+    text-transform: uppercase;
+}
+.bulk-method-badge.bulk-method-m2 {
+    background: #1A1A2E;
+    border-color: #2E2E5A;
+    color: #8A8AE0;
+}
+body.theme-light .bulk-method-badge {
+    background: #EAF4EA; border-color: #B8D8B8; color: #2E7D32;
+}
+body.theme-light .bulk-method-badge.bulk-method-m2 {
+    background: #EAEAF6; border-color: #B8B8E0; color: #3A3A9E;
+}
+/* Subtle row tint so Method 2 rows stand apart from Method 1 rows
+   when both kinds share the table. */
+.bulk-row-m2 { background: rgba(120, 120, 220, 0.03); }
+.bulk-row-m2:hover { background: rgba(120, 120, 220, 0.07); }
 .bulk-inp {
     width: 100%; -ms-box-sizing: border-box; box-sizing: border-box;
     height: 26px; background: #111111; border: 1px solid #222222;
@@ -13704,3 +13744,248 @@ body.theme-light .ui-row-bg.on { background: #EAF0FB; color: #2A57A8; border-col
 }
 #update-screen-overlay.update-screen-installing .startup-title { color: #B8FFD4; }
 #update-screen-overlay.update-screen-installing .upd-line-fill { background: #7DFFB2; box-shadow: 0 0 10px rgba(125,255,178,0.35); }
+
+/* ============================================================
+   §rvl-fixes — Square corners, hover unification, grid view,
+   guide footer, bulk method badges. Appended last so the
+   cascade wins over earlier duplicates of the same selectors.
+   ============================================================ */
+
+/* ── §square-corners — kill every rounded corner in the UI ── */
+/* User-requested: "убрать закругления, сделать квадратным".
+   The universal selector with !important beats every per-element
+   border-radius declared above. Inputs, buttons, cards, modal
+   corners, scrollbars, color swatches — all become square. */
+*,
+*::before,
+*::after {
+    border-radius: 0 !important;
+}
+
+/* ── §hover-unification — every clickable settings button gets
+   a visible hover state. Previously .theme-option (used by the
+   language/theme/scale/opacity/angle option rows) had no :hover
+   rule, so half the settings buttons reacted to hover and half
+   didn't, which read as broken. ── */
+.theme-option:hover {
+    background: #1A1A1A;
+    border-color: #555555;
+    color: #DDDDDD;
+}
+.theme-option.active:hover {
+    background: #FFFFFF;
+    border-color: #FFFFFF;
+    color: #000000;
+}
+body.theme-light .theme-option:hover {
+    background: #EEF0F3;
+    border-color: #B9BFCA;
+    color: #2A2F3A;
+}
+body.theme-light .theme-option.active:hover {
+    background: #17181C;
+    border-color: #17181C;
+    color: #FFFFFF;
+}
+/* .angle-option inherits from .theme-option but sits in a smaller
+   row — give it the same hover treatment. */
+.angle-options .theme-option:hover {
+    background: #1A1A1A;
+    border-color: #555555;
+    color: #DDDDDD;
+}
+
+/* ── §grid-view — denser, sharper grid cards.
+   Old grid: 56px tall cards, big gaps, soft borders. New grid:
+   tighter 64px cards, 1px hairline borders, accent-colored active
+   state, hover lift. The result reads as "grid of cards" instead
+   of "two fat rows of stretched preset rows". ── */
+.presets-list.grid-view {
+    padding: 4px 4px 6px;
+    column-gap: 6px;
+    row-gap: 6px;
+}
+.grid-view .preset-row {
+    width: calc(50% - 4px);
+    margin: 0 !important;
+    height: 64px !important;
+    min-height: 64px;
+    max-height: 64px;
+    padding: 8px 10px 8px 12px;
+    border: 1px solid #232323;
+    background: #0F0F0F;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+    display: inline-block !important;
+    vertical-align: top;
+    transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.grid-view .preset-row:hover {
+    border-color: #3A3A3A;
+    background: #161616;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    transform: translateY(-1px);
+}
+.grid-view .preset-row-active {
+    border-color: #FFFFFF !important;
+    box-shadow: inset 3px 0 0 0 #FFFFFF, 0 2px 8px rgba(0,0,0,0.45) !important;
+    background: #1A1A1A !important;
+}
+/* Method-2 rows in grid view get a subtle indigo hairline so they
+   don't visually blend with Method-1 rows. */
+.grid-view .preset-row.preset-method-2 {
+    border-color: #2A2A4A;
+}
+.grid-view .preset-row.preset-method-2:hover {
+    border-color: #5A5A9A;
+}
+body.theme-light .grid-view .preset-row {
+    background: #FFFFFF;
+    border-color: #DADDE3;
+}
+body.theme-light .grid-view .preset-row:hover {
+    background: #F4F5F7;
+    border-color: #9099A8;
+}
+body.theme-light .grid-view .preset-row-active {
+    border-color: #17181C !important;
+    background: #E6E9EF !important;
+    box-shadow: inset 3px 0 0 0 #17181C, 0 2px 8px rgba(0,0,0,0.08) !important;
+}
+body.theme-light .grid-view .preset-row.preset-method-2 {
+    border-color: #B8B8E0;
+}
+
+/* ── §guide-footer-tip — fills the empty bottom area of the
+   760×380 guide window with a quick "which method when?" note. ── */
+.guide-footer-tip {
+    margin-top: 14px;
+    padding: 9px 11px;
+    background: #0C0C0C;
+    border: 1px solid #1E1E1E;
+    border-left: 2px solid #444444;
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: start;
+    align-items: flex-start;
+    gap: 8px;
+}
+.guide-footer-tip-icon {
+    flex: 0 0 auto;
+    color: #888888;
+    font-size: 11px;
+    line-height: 1.4;
+}
+.guide-footer-tip-text {
+    color: #999999;
+    font-size: 9.5px;
+    line-height: 1.55;
+}
+.guide-footer-tip-text b {
+    color: #DDDDDD;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+body.theme-light .guide-footer-tip {
+    background: #F4F5F7;
+    border-color: #DADDE3;
+    border-left-color: #9099A8;
+}
+body.theme-light .guide-footer-tip-icon { color: #6A7280; }
+body.theme-light .guide-footer-tip-text { color: #4A4F58; }
+body.theme-light .guide-footer-tip-text b { color: #2A2F3A; }
+
+/* ── §bulk-method-badge — per-row method indicator in the bulk
+   edit table. Replaces the ambiguous "SC" dash with a labeled
+   badge (СП 1 / СП 2) so the user can tell which column means
+   what at a glance. ── */
+.bulk-method-badge {
+    display: -ms-inline-flexbox;
+    display: inline-flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-pack: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 14px;
+    padding: 0 5px;
+    margin-right: 6px;
+    background: #1A2A1A;
+    border: 1px solid #2A4A2A;
+    color: #6BE36B;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    flex-shrink: 0;
+    line-height: 1;
+    text-transform: uppercase;
+}
+.bulk-method-badge.bulk-method-m2 {
+    background: #1A1A2E;
+    border-color: #2E2E5A;
+    color: #8A8AE0;
+}
+body.theme-light .bulk-method-badge {
+    background: #EAF4EA; border-color: #B8D8B8; color: #2E7D32;
+}
+body.theme-light .bulk-method-badge.bulk-method-m2 {
+    background: #EAEAF6; border-color: #B8B8E0; color: #3A3A9E;
+}
+.bulk-row-m2 { background: rgba(120, 120, 220, 0.03); }
+.bulk-row-m2:hover { background: rgba(120, 120, 220, 0.07); }
+
+/* ── §startup-font — replace the loading-screen font.
+   User-requested: "Шрифт на загрузке надо изменить". The default
+   Segoe UI body font felt too thick for the orbit/grid "booting"
+   aesthetic. Switch to a monospace stack for the brand mark, kicker
+   and version line — they're short text fragments that benefit from
+   monospace's even rhythm. The status line stays sans for readability
+   of the localized "Загрузка интерфейса..." string. */
+.startup-screen,
+.startup-content {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+}
+.startup-mark {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-shadow: 0 0 18px rgba(232,232,232,0.22), 0 0 4px rgba(232,232,232,0.4);
+}
+.startup-kicker {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: 0.34em;
+    font-weight: 700;
+    color: #9A9A9A;
+}
+.startup-title {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+.startup-meta {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    letter-spacing: 0.18em;
+}
+.startup-version {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+}
+/* Keep the status text in the regular sans font so localized messages
+   like "Загрузка интерфейса..." render naturally. */
+.startup-status {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+/* Same font treatment for the update-screen overlay — it shares the
+   startup-screen's orbits/grid base and should match. */
+.update-screen-overlay,
+.upd-content,
+.upd-content .startup-title,
+.upd-content .startup-kicker,
+.upd-content .upd-meta,
+.upd-content .upd-version,
+.upd-content .upd-step-label {
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+}
+.upd-content .startup-status {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
