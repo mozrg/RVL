@@ -170,6 +170,15 @@ var STRINGS = {
         /* Launch count */
         launchCount: function(n) { return "Запущен " + n + " раз"; },
         lastLabel:      "Последний",
+        /* Right preset panel (detail) — labels. HTML has Russian
+           placeholders; English mode never replaced them, so the
+           panel stayed Russian even after language switch. */
+        pdLaunchesLabel:"ЗАПУСКОВ",
+        pdLastLabel:    "ПОСЛЕДНИЙ",
+        pdHkLabel:      "ХОТКЕЙ",
+        pdEmptyText:    "Выбери пресет слева",
+        pdShareLabel:   "SHARE",
+        pdShareCodeLabel:"SHARE CODE",
         /* Time */
         justNow:        "Только что",
         minsAgo:  function(m) { return m + "м назад"; },
@@ -495,6 +504,13 @@ var STRINGS = {
         /* Launch count */
         launchCount: function(n) { return "Launched " + n + " time" + (n !== 1 ? "s" : ""); },
         lastLabel:      "Last",
+        /* Right preset panel (detail) — labels translated for English. */
+        pdLaunchesLabel:"LAUNCHES",
+        pdLastLabel:    "LAST",
+        pdHkLabel:      "HOTKEY",
+        pdEmptyText:    "Select a preset on the left",
+        pdShareLabel:   "SHARE",
+        pdShareCodeLabel:"SHARE CODE",
         /* Time */
         justNow:        "Just now",
         minsAgo:  function(m) { return m + "m ago"; },
@@ -3142,6 +3158,28 @@ function applyLanguage() {
     setTip("eye-link",      S.tipShow);
     setTip("eye-share-code",S.tipShow);
     setTip("search-inp",    S.tipSearch);
+    /* §pd-lang: the right preset-detail panel labels. Only update them
+       if the user hasn't overridden via the interface-customization panel
+       (data-ui-ovr==="1" means "user custom text in place"). Skipping
+       here would leave the HTML-default Russian text in English mode. */
+    function pdLabel(id, txt) {
+        var n = el(id);
+        if (!n) return;
+        if (n.getAttribute("data-ui-ovr") === "1") return;  /* user override */
+        n.innerHTML = txt;
+    }
+    pdLabel("pd-lbl-launches", S.pdLaunchesLabel || "ЗАПУСКОВ");
+    pdLabel("pd-lbl-last",     S.pdLastLabel     || "ПОСЛЕДНИЙ");
+    pdLabel("pd-lbl-hk",       S.pdHkLabel       || "ХОТКЕЙ");
+    /* pd-lbl-place / pd-lbl-link are also re-rendered by renderDetailPanel
+       using the same STRINGS keys (pdShareLabel/pdShareCodeLabel/labelPlace/
+       labelLink) — so they switch with method+language automatically once
+       that panel is shown. Set them once here so they read correctly even
+       before any preset is selected. */
+    pdLabel("pd-lbl-place",   S.labelPlace || "PLACE ID");
+    pdLabel("pd-lbl-link",    S.labelLink  || "LINK CODE");
+    var pe = el("pd-empty-text");
+    if (pe && pe.getAttribute("data-ui-ovr") !== "1") pe.innerHTML = S.pdEmptyText || "Выбери пресет слева";
     /* Roblox status initial tooltip — replaced later by updateRobloxStatus
        once the host has answered, but the placeholder is in the user's
        language now, not the HTML's hardcoded "Поиск Roblox...". */
@@ -4156,6 +4194,19 @@ function applyThemePreset(p) {
     if (el("__cfg_theme_grad_bg2"))  el("__cfg_theme_grad_bg2").value  = customTheme.gradientBg2 || customTheme.bg;
     if (el("__cfg_theme_grad_angle")) el("__cfg_theme_grad_angle").value = (customTheme.gradientAngle || 135).toString();
     if (el("__cfg_theme_grad_op"))   el("__cfg_theme_grad_op").value  = (customTheme.gradientOpacity || 100).toString();
+    /* Use CMD:settings_save (not _live) so the theme change is persisted to
+       disk via _config.SaveIni() AND every open window receives a fresh
+       InjectStateAsync(false) through SyncAll — including windows that
+       the live bridge would have missed (any non-settings sub-window
+       already had its themeMode/customTheme overwritten locally, but
+       the visual applyTheme() may have been skipped if the bridge poll
+       raced the user's next action). With _save the host does SaveBridge
+       → SyncAll → InjectState on main + settings + every child, so the
+       theme visibly updates in ALL open windows at once. */
+    sendCmd("CMD:settings_save");
+    /* Also send a live update for instant feedback on the launcher window
+       (CMD:settings_save triggers a re-init which is heavier than needed
+       for a pure theme tweak). */
     sendCmd("CMD:settings_live");
 }
 
@@ -6198,17 +6249,34 @@ function keyNameFromEvent(ev) {
     if (/^F([1-9]|1[0-9]|2[0-4])$/.test(key)) return key;
     var m = /^Key([A-Z])$/.exec(code);
     if (m) return m[1];
+    /* §keys-1: Top-row digit keys return the bare digit so the UI shows "1"
+       instead of "D1". The stored value still round-trips through C#
+       TryKey() because we add the D prefix back there when needed (see
+       presetHkToWinForms below in finishPresetHKCapture). */
     m = /^Digit([0-9])$/.exec(code);
-    if (m) return "D" + m[1];
+    if (m) return m[1];
+    /* §keys-numpad: Numpad digits, +, -, *, /, . — keep "Numpad" prefix so
+       the user can tell them apart from the main-row digits. */
     m = /^Numpad([0-9])$/.exec(code);
     if (m) return "Numpad" + m[1];
     m = /^Numpad(Add|Subtract|Multiply|Divide|Decimal)$/.exec(code);
     if (m) return "Numpad" + m[1];
+    /* §keys-extra: also accept punctuation-symbol keys (,. / ; ' [ ] - = \)
+       so the user can assign , . ; ' [ ] - = \ / as hotkeys. ev.key for
+       these is the literal symbol — returning it directly gives the user
+       a single-character name in the UI. */
+    if (key.length === 1 && /^[^\s]$/.test(key) && !/[A-Za-z0-9]/.test(key)) return key;
     var named = {
         ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right",
         Enter: "Enter", " ": "Space", Spacebar: "Space", Backspace: "Back",
         Delete: "Delete", Insert: "Insert", Home: "Home", End: "End",
-        PageUp: "PageUp", PageDown: "PageDown", Tab: "Tab"
+        PageUp: "PageUp", PageDown: "PageDown", Tab: "Tab",
+        /* §keys-extra2: function-key-adjacent keys that browsers do name
+           explicitly. CapsLock, ScrollLock, NumLock, Pause can all be
+           bound as global hotkeys in WinForms. */
+        CapsLock: "CapsLock", ScrollLock: "ScrollLock",
+        NumLock: "NumLock", Pause: "Pause", PrintScreen: "PrintScreen",
+        ContextMenu: "Menu", Escape: "Escape"
     };
     return named[key] || "";
 }
@@ -10164,13 +10232,18 @@ function renderDetailPanel(id) {
     }
 
     var isM2 = (p.method || 1) === 2;
-    el("pd-lbl-place").innerHTML = isM2 ? "SHARE" : "PLACE ID";
+    /* §pd-lang: the right-panel labels must switch with the language and
+       with the method. Previously hardcoded "PLACE ID"/"LINK CODE"/"SHARE
+       CODE"/"SHARE" — English users got Russian text and Method 2 rows
+       still read "PLACE ID" instead of "SHARE". */
+    var Sd = STRINGS[currentLang] || STRINGS.ru;
+    el("pd-lbl-place").innerHTML = isM2 ? (Sd.pdShareLabel || "SHARE") : (Sd.labelPlace || "PLACE ID");
     el("pd-val-place").innerHTML = "";
     el("pd-val-place").appendChild(document.createTextNode(isM2 ? "—" : (p.placeId || "—")));
     el("pd-copy-place").onclick = function () { copyFieldToClipboard(p.placeId || ""); };
     el("pd-copy-place").parentNode.parentNode.style.display = isM2 ? "none" : "";
 
-    el("pd-lbl-link").innerHTML = isM2 ? "SHARE CODE" : "LINK CODE";
+    el("pd-lbl-link").innerHTML = isM2 ? (Sd.pdShareCodeLabel || "SHARE CODE") : (Sd.labelLink || "LINK CODE");
     var linkVal = el("pd-val-link");
     linkVal.innerHTML = "";
     linkVal.appendChild(document.createTextNode(linkRevealed ? (p.linkCode || "—") : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"));

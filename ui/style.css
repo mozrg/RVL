@@ -11800,7 +11800,7 @@ html, body {
 .ir-field-wrap.field-input-wrap { -ms-flex-positive: 1; -ms-flex-negative: 1; -ms-flex-preferred-size: 0px; -ms-flex: 1 1 0px; flex: 1 1 0px; min-width: 0; margin: 0; position: relative; }
 .ir-field.field-input {
     height: 26px !important; background: #111111; border: 1px solid #222222;
-    border-radius: 6px !important; padding: 0 24px 0 8px !important; color: #DADAE0; font-size: 10px !important;
+    border-radius: 0 !important; padding: 0 24px 0 8px !important; color: #DADAE0; font-size: 10px !important;
 }
 .ir-field.field-input::-ms-input-placeholder,
 .ir-field.field-input::placeholder { color: #666666 !important; }
@@ -11809,7 +11809,7 @@ html, body {
 .ir-sep { width: 1px; height: 20px; background: #222222; -ms-flex-negative: 0; flex-shrink: 0; }
 .ir-hk-key.key-box {
     width: 34px !important; height: 26px !important; background: #111111 !important; border: 1px solid #222222 !important;
-    border-radius: 5px !important; text-align: center; font-size: 10px !important; font-weight: 700; color: #E8E8E8 !important; padding: 0 !important;
+    border-radius: 0 !important; text-align: center; font-size: 10px !important; font-weight: 700; color: #E8E8E8 !important; padding: 0 !important;
     -ms-flex-negative: 0; flex-shrink: 0;
 }
 .ir-hk-capture.btn-capture {
@@ -11848,7 +11848,7 @@ html, body {
 .tb-search-wrap.search-wrap { -ms-flex-positive: 1; -ms-flex-negative: 1; -ms-flex-preferred-size: 0px; -ms-flex: 1 1 0px; flex: 1 1 0px; min-width: 60px; margin: 0; display: block !important; }
 .tb-search.search-inp {
     width: 100%; height: 26px !important; background: #111111; border: 1px solid #222222;
-    border-radius: 7px !important; padding: 0 8px !important; color: #DADAE0; font-size: 10px !important;
+    border-radius: 0 !important; padding: 0 8px !important; color: #DADAE0; font-size: 10px !important;
 }
 .tb-search.search-inp::-ms-input-placeholder,
 .tb-search.search-inp::placeholder { color: #666666 !important; }
@@ -12004,7 +12004,7 @@ body.theme-light .sort-collapsed .sort-toggle { background: #FFFFFF; border-colo
 
 .pd-ftr { display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; padding-top: 8px; -ms-flex-negative: 0; flex-shrink: 0; }
 .btn-go.btn-primary {
-    -ms-flex-positive: 1; -ms-flex-negative: 1; -ms-flex-preferred-size: 0px; -ms-flex: 1 1 0px; flex: 1 1 0px; min-width: 0; height: 32px !important; border-radius: 8px !important; border: none !important;
+    -ms-flex-positive: 1; -ms-flex-negative: 1; -ms-flex-preferred-size: 0px; -ms-flex: 1 1 0px; flex: 1 1 0px; min-width: 0; height: 32px !important; border-radius: 0 !important; border: none !important;
     background: #E8E8E8; color: #0A0A0A; font-size: 10px !important; font-weight: 800; cursor: pointer;
     letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: 0 4px;
@@ -13045,7 +13045,7 @@ body.theme-light .rvl-logo {
 }
 .btn-go.btn-primary {
     height: 34px !important;
-    border-radius: 8px !important;
+    border-radius: 0 !important;
     background: #E7E9F2;
     color: #101116;
     box-shadow: 0 7px 18px rgba(0,0,0,0.30);
@@ -13988,4 +13988,126 @@ body.theme-light .bulk-method-badge.bulk-method-m2 {
 }
 .upd-content .startup-status {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ============================================================
+   §startup-redesign — replaces the loading-screen background
+   with a calmer, more deliberate composition:
+   1. A faint diagonal scanline texture for "console boot" feel.
+   2. A subtle radial vignette to focus the eye on the logo.
+   3. Two layered rotating "rings" — bigger, slimmer, with a
+      moving dot each (kept from old design but retuned).
+   4. A large faint "RVL" watermark behind the content for
+      depth, so the loading screen reads as branded even at a
+      glance.
+   5. The orbit grid (perspective grid floor) is GONE — it was
+      the source of the "messy corner pixels" look on light
+      themes and never matched the rest of the launcher's
+      flat-square aesthetic.
+   ============================================================ */
+
+/* Override the existing rules above with stronger specificity
+   (we are last in the cascade and use the same selector, so the
+   later rule wins). All old animations are reused; only the
+   visual composition changes. */
+
+.startup-screen {
+    background:
+        radial-gradient(circle at 50% 50%, #1A1A1A 0%, #0A0A0A 70%, #050505 100%),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px);
+    background-color: #0A0A0A;
+}
+
+/* §scanlines — subtle horizontal scanline texture overlaid on the
+   vignette. Two layers because IE11's multiple-background support is
+   flaky: stacking them as separate backgrounds on a pseudo-element is
+   the safe path. */
+.startup-screen::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(232,232,232,0.018) 0 1px, transparent 1px 3px);
+    z-index: 0;
+}
+
+/* §watermark — large faint "RVL" text behind everything. Sits behind
+   .startup-content (which has its own stacking via z-index: 2). The
+   watermark is intentionally BIG and OPACITY-LOW so it reads as a
+   silhouette, not as a competing element. */
+.startup-screen::after {
+    content: "RVL";
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 320px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: rgba(232,232,232,0.024);
+    z-index: 0;
+    pointer-events: none;
+    line-height: 1;
+    user-select: none;
+    -ms-user-select: none;
+    /* Slow breathing pulse so the watermark feels alive without being
+       distracting. */
+    -ms-animation: rvl-watermark-breath 6.5s ease-in-out infinite;
+    animation: rvl-watermark-breath 6.5s ease-in-out infinite;
+}
+
+@-ms-keyframes rvl-watermark-breath {
+    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
+}
+@keyframes rvl-watermark-breath {
+    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
+}
+
+/* Hide the old orbit grid (perspective grid floor). It caused messy
+   corner pixels and didn't match the new flat aesthetic. */
+.startup-grid {
+    display: none !important;
+}
+
+/* §orbits — keep the two rotating rings but retune them:
+   slimmer border, lower glow, slower rotation, square dpr-friendly
+   positioning. Two rings cross at different angles so the
+   silhouette reads as an atom/orbit icon. */
+.startup-orbit-one, .startup-orbit-two {
+    border-color: rgba(232,232,232,0.18);
+    box-shadow: 0 0 30px rgba(232,232,232,0.06), inset 0 0 24px rgba(232,232,232,0.02);
+    z-index: 1;
+}
+.startup-orbit-one {
+    -ms-animation: rvl-orbit-spin-1 14s linear infinite;
+    animation: rvl-orbit-spin-1 14s linear infinite;
+}
+.startup-orbit-two {
+    -ms-animation: rvl-orbit-spin-2 18s linear infinite reverse;
+    animation: rvl-orbit-spin-2 18s linear infinite reverse;
+}
+@-ms-keyframes rvl-orbit-spin-1 {
+    from { transform: rotate(-18deg); }
+    to   { transform: rotate(342deg); }
+}
+@keyframes rvl-orbit-spin-1 {
+    from { transform: rotate(-18deg); }
+    to   { transform: rotate(342deg); }
+}
+@-ms-keyframes rvl-orbit-spin-2 {
+    from { transform: rotate(24deg); }
+    to   { transform: rotate(-336deg); }
+}
+@keyframes rvl-orbit-spin-2 {
+    from { transform: rotate(24deg); }
+    to   { transform: rotate(-336deg); }
+}
+
+/* §content-stack — bring the brand text and progress bar above the
+   scanline + watermark layers. */
+.startup-content {
+    z-index: 2;
 }

@@ -315,7 +315,7 @@ public sealed class WebMainForm : Form
                 case "CMD:save_preset_groups": SaveBridge(payload); SyncAll(); break;
                 case "CMD:hotkey_update": SaveBridge(payload); ApplyMainHotkey(payload); break;
                 case "CMD:settings_save": SaveBridge(payload); SyncAll(); if (_isSettings) Close(); break;
-                case "CMD:settings_live": ApplyLiveBridge(payload); SyncAll(); break;
+                case "CMD:settings_live": ApplyLiveBridge(payload); RebuildTrayMenu(); SyncAll(); break;
                 case "CMD:set_opacity": ApplyOpacity(payload); break;
                 case "CMD:set_always_on_top": ApplyAlwaysOnTop(payload); break;
                 case "CMD:set_autostart": ApplyAutostart(payload); break;
@@ -354,7 +354,7 @@ public sealed class WebMainForm : Form
         if (_web.CoreWebView2 is null) return new Dictionary<string, string>();
         const string script = """
             (function(){
-              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req"];
+              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code"];
               var o={}; for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);o[ids[i]]=e?String(e.value||""):"";}
               var checks=["chk-enabled","chk-autostart","chk-always-on-top","chk-avatars","chk-compact-mode","chk-auto-minimize","chk-tooltips","chk-mask-inputs"];
               for(var j=0;j<checks.length;j++){var c=document.getElementById(checks[j]);if(c)o[checks[j]]=c.checked?"1":"0";}
@@ -688,6 +688,32 @@ public sealed class WebMainForm : Form
     {
         key = Keys.None;
         if (string.IsNullOrWhiteSpace(value)) return false;
+        value = value.Trim();
+        /* §keys-display: the JS layer and KeyToUiName now produce UI-friendly
+           names ("1", "Numpad5", ",", ";", "'", "[", "]", "-", "=", "/", "`",
+           "\\", etc.). Convert these back to WinForms Keys names so
+           Enum.TryParse succeeds. Top-row digits become D0..D9; punctuation
+           chars map to the Oem* Keys; numpad keys keep their "Numpad" prefix
+           (we strip it to "NumPad" which is what WinForms uses). */
+        if (value.Length == 1 && char.IsDigit(value[0])) value = "D" + value;
+        else if (value.Length == 1)
+        {
+            value = value switch
+            {
+                "," => "Oemcomma",
+                "." => "OemPeriod",
+                ";" => "OemSemicolon",
+                "'" => "OemQuotes",
+                "[" => "OemOpenBrackets",
+                "]" => "OemCloseBrackets",
+                "-" => "OemMinus",
+                "=" => "Oemplus",
+                "/" => "OemQuestion",
+                "`" => "Oemtilde",
+                "\\" => "OemBackslash",
+                _ => value
+            };
+        }
         value = value.Replace("Numpad", "NumPad", StringComparison.OrdinalIgnoreCase);
         if (value.Equals("NumpadEnter", StringComparison.OrdinalIgnoreCase)) value = "Enter";
         return Enum.TryParse(value, true, out key) && key != Keys.None && (key & Keys.KeyCode) != Keys.None;
@@ -719,10 +745,87 @@ public sealed class WebMainForm : Form
         if (_capturing)
         {
             if (keyData == Keys.Escape) FinishCapture(null);
-            else FinishCapture(keyData.ToString());
+            else FinishCapture(KeyToUiName(keyData));
             return true;
         }
         return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    /* §keys-display: WinForms Keys enum names a top-row digit as "D1", "D2"
+       etc. — that's a C# implementation detail, not what the user wants to
+       see in the UI. This helper maps every WinForms Keys value to the
+       short user-friendly name the JS layer would have produced on its own
+       (so the same name round-trips back through TryKey via the JS code
+       path). Only the modifiers-stripped key code is used — RegisterHotKey
+       doesn't support modifier+key combinations in the current build, so
+       we ignore Control/Shift/Alt here too. */
+    private static string KeyToUiName(Keys keyData)
+    {
+        var k = keyData & Keys.KeyCode;
+        switch (k)
+        {
+            case Keys.D0: return "0";
+            case Keys.D1: return "1";
+            case Keys.D2: return "2";
+            case Keys.D3: return "3";
+            case Keys.D4: return "4";
+            case Keys.D5: return "5";
+            case Keys.D6: return "6";
+            case Keys.D7: return "7";
+            case Keys.D8: return "8";
+            case Keys.D9: return "9";
+            case Keys.NumPad0: return "Numpad0";
+            case Keys.NumPad1: return "Numpad1";
+            case Keys.NumPad2: return "Numpad2";
+            case Keys.NumPad3: return "Numpad3";
+            case Keys.NumPad4: return "Numpad4";
+            case Keys.NumPad5: return "Numpad5";
+            case Keys.NumPad6: return "Numpad6";
+            case Keys.NumPad7: return "Numpad7";
+            case Keys.NumPad8: return "Numpad8";
+            case Keys.NumPad9: return "Numpad9";
+            case Keys.Add: return "NumpadAdd";
+            case Keys.Subtract: return "NumpadSubtract";
+            case Keys.Multiply: return "NumpadMultiply";
+            case Keys.Divide: return "NumpadDivide";
+            case Keys.Decimal: return "NumpadDecimal";
+            /* Oem* keys — map to the single character the user typed. */
+            case Keys.Oemcomma: return ",";
+            case Keys.OemPeriod: return ".";
+            case Keys.OemSemicolon: return ";";
+            case Keys.OemQuotes: return "'";
+            case Keys.OemOpenBrackets: return "[";
+            case Keys.OemCloseBrackets: return "]";
+            case Keys.OemMinus: return "-";
+            case Keys.Oemplus: return "=";
+            case Keys.OemQuestion: return "/";
+            case Keys.Oemtilde: return "`";
+            case Keys.OemBackslash: return "\\";
+            case Keys.Space: return "Space";
+            case Keys.Up: return "Up";
+            case Keys.Down: return "Down";
+            case Keys.Left: return "Left";
+            case Keys.Right: return "Right";
+            case Keys.Home: return "Home";
+            case Keys.End: return "End";
+            case Keys.PageUp: return "PageUp";
+            case Keys.PageDown: return "PageDown";
+            case Keys.Insert: return "Insert";
+            case Keys.Delete: return "Delete";
+            case Keys.Back: return "Back";
+            case Keys.Tab: return "Tab";
+            case Keys.CapsLock: return "CapsLock";
+            case Keys.Scroll: return "ScrollLock";
+            case Keys.NumLock: return "NumLock";
+            case Keys.Pause: return "Pause";
+            case Keys.PrintScreen: return "PrintScreen";
+            case Keys.Enter: return "Enter";
+            default:
+                /* F1..F24, A..Z, etc. map directly. ToString() returns "F1",
+                   "A", "B", etc. — already the JS-side convention. */
+                var name = k.ToString();
+                return string.IsNullOrEmpty(name) || name == "None" ? "" : name;
+        }
     }
 
     private async void FinishCapture(string? key)
@@ -890,7 +993,7 @@ public sealed class WebMainForm : Form
 
     private void CreateTray()
     {
-        _tray = new NotifyIcon { Visible = true, Text = "RVL", Icon = LoadIcon() };
+        _tray = new NotifyIcon { Visible = true, Text = "RVL — Private VIP Launcher", Icon = LoadIcon() };
         _tray.DoubleClick += (_, _) => ShowWindow();
         RebuildTrayMenu();
     }
@@ -908,20 +1011,151 @@ public sealed class WebMainForm : Form
         return SystemIcons.Application;
     }
 
+    /* §tray-theme: restyle the tray context menu so it visually matches the
+       RVL dark interface instead of the OS-default light-with-3D-borders
+       look. Renderer paints the surface, border, separator and item hover
+       by hand — overriding the system theme is the only way to keep the
+       tray menu consistent with the launcher window across all Windows
+       versions (Win10 light, Win10 dark-mode-not-applied-to-tray, Win11).
+       Colors mirror the launcher's dark palette (#0F0F0F surface, #1A1A1A
+       hover, #E8E8E8 text, #FFFFFF accent). The light theme is intentionally
+       NOT mirrored here because tray menus pop up against the desktop
+       wallpaper, where a sudden white strip would clash harder than the
+       standard dark tray. */
+    private class RvlTrayRenderer : ToolStripProfessionalRenderer
+    {
+        private static readonly Color Bg = Color.FromArgb(15, 15, 15);
+        private static readonly Color BgHover = Color.FromArgb(34, 34, 34);
+        private static readonly Color Border = Color.FromArgb(36, 36, 36);
+        private static readonly Color Text = Color.FromArgb(232, 232, 232);
+        private static readonly Color TextMuted = Color.FromArgb(140, 140, 140);
+        private static readonly Color Accent = Color.FromArgb(255, 255, 255);
+        private static readonly Color Sep = Color.FromArgb(34, 34, 34);
+
+        public RvlTrayRenderer() : base(new RvlColorTable()) { }
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            var rc = new Rectangle(Point.Empty, e.Item.Size);
+            var g = e.Graphics;
+            var hovered = e.Item.Selected;
+            using (var b = new SolidBrush(hovered ? BgHover : Bg)) g.FillRectangle(b, rc);
+            /* Left accent bar on hover — matches the preset-row-active indicator
+               in the launcher's preset list. */
+            if (hovered)
+            {
+                using (var b = new SolidBrush(Accent)) g.FillRectangle(b, 0, 0, 2, rc.Height);
+            }
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            /* Draw a 1px square border around the popup — no rounded corners
+               (matches the user-requested "all square" UI). */
+            var rc = e.AffectedBounds;
+            using (var p = new Pen(Border)) e.Graphics.DrawRectangle(p, 0, 0, rc.Width - 1, rc.Height - 1);
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+        {
+            var y = e.Item.ContentRectangle.Y + e.Item.ContentRectangle.Height / 2;
+            using (var p = new Pen(Sep)) e.Graphics.DrawLine(p, 8, y, e.Item.Width - 8, y);
+        }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            /* Section headers and disabled items use the muted color, normal
+               items use the bright one. The "header" items are tagged via
+               Font style (Bold). */
+            var f = e.Item.Font;
+            var isHeader = f is not null && f.Bold;
+            e.TextColor = isHeader ? TextMuted : Text;
+            base.OnRenderItemText(e);
+        }
+    }
+
+    /* RvlColorTable: replaces every ProfessionalColorTable field that the
+       default renderer reads. Without this, the system would still paint
+       menu drop-shadows and item selection rectangles in OS colors behind
+       our renderer. */
+    private sealed class RvlColorTable : ProfessionalColorTable
+    {
+        private static readonly Color Bg = Color.FromArgb(15, 15, 15);
+        private static readonly Color BgHover = Color.FromArgb(34, 34, 34);
+        private static readonly Color Border = Color.FromArgb(36, 36, 36);
+        private static readonly Color Sep = Color.FromArgb(34, 34, 34);
+        private static readonly Color Accent = Color.FromArgb(255, 255, 255);
+        public override Color ToolStripBorder => Border;
+        public override Color ToolStripDropDownBackground => Bg;
+        public override Color ToolStripGradientBegin => Bg;
+        public override Color ToolStripGradientMiddle => Bg;
+        public override Color ToolStripGradientEnd => Bg;
+        public override Color MenuBorder => Border;
+        public override Color MenuItemBorder => Border;
+        public override Color MenuItemSelected => BgHover;
+        public override Color MenuItemSelectedGradientBegin => BgHover;
+        public override Color MenuItemSelectedGradientEnd => BgHover;
+        public override Color MenuItemPressedGradientBegin => BgHover;
+        public override Color MenuItemPressedGradientEnd => BgHover;
+        public override Color MenuStripGradientBegin => Bg;
+        public override Color MenuStripGradientEnd => Bg;
+        public override Color SeparatorDark => Sep;
+        public override Color SeparatorLight => Sep;
+        public override Color CheckBackground => Accent;
+        public override Color CheckPressedBackground => BgHover;
+        public override Color CheckSelectedBackground => BgHover;
+        public override Color ButtonSelectedGradientBegin => BgHover;
+        public override Color ButtonSelectedGradientEnd => BgHover;
+        public override Color ButtonPressedGradientBegin => BgHover;
+        public override Color ButtonPressedGradientEnd => BgHover;
+        public override Color ButtonCheckedGradientBegin => BgHover;
+        public override Color ButtonCheckedGradientEnd => BgHover;
+        public override Color ImageMarginGradientBegin => Bg;
+        public override Color ImageMarginGradientMiddle => Bg;
+        public override Color ImageMarginGradientEnd => Bg;
+    }
+
     private void RebuildTrayMenu()
     {
         if (_tray is null) return;
-        var menu = new ContextMenuStrip();
-        menu.Items.Add("Показать RVL", null, (_, _) => ShowWindow());
-        menu.Items.Add("Запустить избранное", null, (_, _) => LaunchFavorite());
+        var isEn = _config.Get("Lang", "ru").Equals("en", StringComparison.OrdinalIgnoreCase);
+        var menu = new ContextMenuStrip
+        {
+            Renderer = new RvlTrayRenderer(),
+            ShowImageMargin = false,
+            Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular)
+        };
+        /* Header item — purely visual, clicking it does nothing. Bold + muted
+           color distinguishes it from real actions (the renderer uses
+           Font.Bold to switch to the muted text color). */
+        var header = new ToolStripMenuItem(isEn ? "RVL · PRIVATE VIP LAUNCHER" : "RVL · ПРИВАТНЫЙ ЛАУНЧЕР")
+        {
+            Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold),
+            Enabled = false,
+            Margin = new Padding(8, 4, 4, 4)
+        };
+        menu.Items.Add(header);
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(isEn ? "Show RVL" : "Показать RVL", null, (_, _) => ShowWindow());
+        menu.Items.Add(isEn ? "Launch favorite" : "Запустить избранное", null, (_, _) => LaunchFavorite());
         var presets = ParsePresets(_config.PresetsJson).Where(p => p.Favorite).ToList();
         if (presets.Count > 0)
         {
             menu.Items.Add(new ToolStripSeparator());
-            foreach (var preset in presets.Take(10)) menu.Items.Add(preset.Name, null, (_, _) => LaunchPreset(preset));
+            var favLabel = new ToolStripMenuItem(isEn ? "FAVORITES" : "ИЗБРАННОЕ")
+            {
+                Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold),
+                Enabled = false,
+                Margin = new Padding(8, 2, 4, 2)
+            };
+            menu.Items.Add(favLabel);
+            foreach (var preset in presets.Take(10))
+            {
+                menu.Items.Add(preset.Name, null, (_, _) => LaunchPreset(preset));
+            }
         }
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Выход", null, (_, _) => Close());
+        menu.Items.Add(isEn ? "Exit" : "Выход", null, (_, _) => Close());
         _tray.ContextMenuStrip = menu;
     }
 
