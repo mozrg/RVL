@@ -13973,7 +13973,13 @@ body.theme-light .bulk-method-badge.bulk-method-m2 {
 /* Keep the status text in the regular sans font so localized messages
    like "Загрузка интерфейса..." render naturally. */
 .startup-status {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* §startup-font-2: switched to the monospace stack so "Загрузка
+       интерфейса..." matches the brand mark, kicker and version label.
+       Was 'Segoe UI' (sans) which felt disconnected from the rest of
+       the boot screen. */
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
 }
 /* Same font treatment for the update-screen overlay — it shares the
    startup-screen's orbits/grid base and should match. */
@@ -13987,7 +13993,11 @@ body.theme-light .bulk-method-badge.bulk-method-m2 {
     font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
 }
 .upd-content .startup-status {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* §startup-font-2: monospace for the same reason as the startup-screen
+       status. */
+    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 9.5px;
+    letter-spacing: 0.08em;
 }
 
 /* ============================================================
@@ -14031,83 +14041,70 @@ body.theme-light .bulk-method-badge.bulk-method-m2 {
     z-index: 0;
 }
 
-/* §watermark — large faint "RVL" text behind everything. Sits behind
-   .startup-content (which has its own stacking via z-index: 2). The
-   watermark is intentionally BIG and OPACITY-LOW so it reads as a
-   silhouette, not as a competing element. */
-.startup-screen::after {
-    content: "RVL";
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    -ms-transform: translate(-50%, -50%);
-    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
-    font-size: 320px;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    color: rgba(232,232,232,0.024);
-    z-index: 0;
-    pointer-events: none;
-    line-height: 1;
-    user-select: none;
-    -ms-user-select: none;
-    /* Slow breathing pulse so the watermark feels alive without being
-       distracting. */
-    -ms-animation: rvl-watermark-breath 6.5s ease-in-out infinite;
-    animation: rvl-watermark-breath 6.5s ease-in-out infinite;
-}
-
-@-ms-keyframes rvl-watermark-breath {
-    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
-}
-@keyframes rvl-watermark-breath {
-    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
-}
-
-/* Hide the old orbit grid (perspective grid floor). It caused messy
-   corner pixels and didn't match the new flat aesthetic. */
-.startup-grid {
-    display: none !important;
-}
-
-/* §orbits — keep the two rotating rings but retune them:
-   slimmer border, lower glow, slower rotation, square dpr-friendly
-   positioning. Two rings cross at different angles so the
-   silhouette reads as an atom/orbit icon. */
-.startup-orbit-one, .startup-orbit-two {
-    border-color: rgba(232,232,232,0.18);
-    box-shadow: 0 0 30px rgba(232,232,232,0.06), inset 0 0 24px rgba(232,232,232,0.02);
-    z-index: 1;
-}
-.startup-orbit-one {
-    -ms-animation: rvl-orbit-spin-1 14s linear infinite;
-    animation: rvl-orbit-spin-1 14s linear infinite;
-}
-.startup-orbit-two {
-    -ms-animation: rvl-orbit-spin-2 18s linear infinite reverse;
-    animation: rvl-orbit-spin-2 18s linear infinite reverse;
-}
-@-ms-keyframes rvl-orbit-spin-1 {
-    from { transform: rotate(-18deg); }
-    to   { transform: rotate(342deg); }
-}
-@keyframes rvl-orbit-spin-1 {
-    from { transform: rotate(-18deg); }
-    to   { transform: rotate(342deg); }
-}
-@-ms-keyframes rvl-orbit-spin-2 {
-    from { transform: rotate(24deg); }
-    to   { transform: rotate(-336deg); }
-}
-@keyframes rvl-orbit-spin-2 {
-    from { transform: rotate(24deg); }
-    to   { transform: rotate(-336deg); }
-}
+/* §startup-redesign-2: per user feedback, removed the big "RVL" watermark,
+   the rotating square "orbits" and the moving dot at the end of each orbit.
+   The loading screen now shows just the radial-vignette background + scanline
+   overlay + the centered brand mark + progress bar — nothing else. */
+.startup-screen::after { content: none !important; }
+.startup-grid { display: none !important; }
+.startup-orbit-one, .startup-orbit-two { display: none !important; }
 
 /* §content-stack — bring the brand text and progress bar above the
    scanline + watermark layers. */
 .startup-content {
     z-index: 2;
+}
+
+/* §hk-toggle: on/off + clear buttons in the preset detail panel.
+   They reuse .pd-btn's base styling but add a colored state —
+   green when the hotkey is on, muted when off. The clear button
+   shows an "×" glyph via its SVG icon (set in refreshRvlIcons).
+   Keep these compact so the pd-actions row doesn't widen the
+   whole hotkey row. */
+.pd-btn.pd-hk-toggle {
+    min-width: 30px;
+    height: 20px;
+    padding: 0 6px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    line-height: 18px;
+    border-radius: 0;
+}
+.pd-btn.pd-hk-toggle.pd-hk-on {
+    background: rgba(34, 197, 94, 0.12);
+    border-color: rgba(34, 197, 94, 0.5);
+    color: #22C55E;
+}
+.pd-btn.pd-hk-toggle.pd-hk-on:hover {
+    background: rgba(34, 197, 94, 0.18);
+    border-color: #22C55E;
+}
+.pd-btn.pd-hk-toggle.pd-hk-off {
+    background: #1A1A1A;
+    border-color: #333333;
+    color: #888888;
+}
+.pd-btn.pd-hk-toggle.pd-hk-off:hover {
+    background: #222222;
+    color: #BBBBBB;
+}
+body.theme-light .pd-btn.pd-hk-toggle.pd-hk-on {
+    background: rgba(34, 197, 94, 0.16);
+    border-color: rgba(34, 197, 94, 0.6);
+    color: #1E8E3D;
+}
+body.theme-light .pd-btn.pd-hk-toggle.pd-hk-off {
+    background: #FFFFFF;
+    border-color: #DADDE3;
+    color: #6A7280;
+}
+/* The clear-× button: matches other pd-btn 20×20 squares. */
+.pd-btn.pd-hk-clear {
+    color: #888888;
+}
+.pd-btn.pd-hk-clear:hover {
+    color: #FF7777;
+    border-color: #5A2A2A;
+    background: rgba(255, 80, 80, 0.06);
 }

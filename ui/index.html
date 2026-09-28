@@ -729,6 +729,8 @@
             <span class="pd-val" id="pd-val-hk">—</span>
             <div class="pd-actions">
               <button class="pd-btn" id="pd-hk-assign" data-tooltip="Назначить"></button>
+              <button class="pd-btn" id="pd-hk-clear" data-tooltip="Сброс"></button>
+              <button class="pd-btn pd-hk-toggle" id="pd-hk-toggle" data-tooltip="Включить хоткей"></button>
             </div>
           </div>
         </div>
@@ -737,7 +739,10 @@
           <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать"></button>
           <button class="btn-tool" id="pd-fav" data-tooltip="Избранное"></button>
           <button class="btn-tool" id="pd-del" data-tooltip="Удалить"></button>
-          <button class="btn-tool" id="btn-save" data-tooltip="Сохранить &amp; закрыть"></button>
+          <!-- §no-save-close: removed the "Save & close" button from the
+               preset panel footer per user request. The panel's data is
+               already auto-persisted (CMD:save_preset fires on every
+               rename/hotkey/favorite change), so the button was redundant. -->
         </div>
       </div>
     </div>

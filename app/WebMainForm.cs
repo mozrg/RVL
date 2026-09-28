@@ -119,6 +119,7 @@ public sealed class WebMainForm : Form
         "groups" => "Группы",
         "themes" => "Цветовые пресеты",
         "new" => "Новый пресет",
+        "edit" => "Редактировать пресет",
         _ => "Окно"
     };
 
@@ -184,6 +185,7 @@ public sealed class WebMainForm : Form
         "export" => new Size(760, 560),
         "guide" => new Size(760, 380),
         "new" => new Size(520, 430),
+        "edit" => new Size(540, 540),  /* §edit-window: dedicated preset-edit window */
         _ => new Size(760, 620)
     };
 
@@ -302,6 +304,7 @@ public sealed class WebMainForm : Form
                 case "CMD:open_window guide": OpenNativeWindow("guide"); break;
                 case "CMD:open_window groups": OpenNativeWindow("groups"); break;
                 case "CMD:open_window themes": OpenNativeWindow("themes"); break;
+                case "CMD:open_window edit": OpenNativeWindow("edit"); break;
                 case "CMD:close_window": if (_windowKind != "main") Close(); break;
                 case "CMD:close_settings": _owner?._settingsForm?.Close(); break;
                 case "CMD:drag_start": DragWindow(); break;

@@ -1,0 +1,414 @@
+diff --git a/app/WebMainForm.cs b/app/WebMainForm.cs
+index 0000000..1111111 100644
+@@ -119,6 +119,7 @@
+         "groups" => "Группы",
+         "themes" => "Цветовые пресеты",
+         "new" => "Новый пресет",
++        "edit" => "Редактировать пресет",
+         _ => "Окно"
+     };
+ 
+@@ -184,6 +185,7 @@
+         "export" => new Size(760, 560),
+         "guide" => new Size(760, 380),
+         "new" => new Size(520, 430),
++        "edit" => new Size(540, 540),  /* §edit-window: dedicated preset-edit window */
+         _ => new Size(760, 620)
+     };
+ 
+@@ -302,6 +304,7 @@
+                 case "CMD:open_window guide": OpenNativeWindow("guide"); break;
+                 case "CMD:open_window groups": OpenNativeWindow("groups"); break;
+                 case "CMD:open_window themes": OpenNativeWindow("themes"); break;
++                case "CMD:open_window edit": OpenNativeWindow("edit"); break;
+                 case "CMD:close_window": if (_windowKind != "main") Close(); break;
+                 case "CMD:close_settings": _owner?._settingsForm?.Close(); break;
+                 case "CMD:drag_start": DragWindow(); break;
+diff --git a/ui/app.js b/ui/app.js
+index 0000000..1111111 100644
+@@ -179,6 +179,26 @@
+         pdEmptyText:    "Выбери пресет слева",
+         pdShareLabel:   "SHARE",
+         pdShareCodeLabel:"SHARE CODE",
++        /* §pd-lang2: detail-panel footer buttons + tag labels + the favorite
++           tag text were hardcoded Russian in renderDetailPanel + the HTML
++           data-tooltip attributes. Add the strings here so applyLanguage can
++           localize them in English mode. */
++        pdCopyTip:      "Копировать",
++        pdShowTip:      "Показать",
++        pdHideTip:      "Скрыть",
++        pdAssignTip:    "Назначить",
++        pdClearHkTip:   "Убрать хоткей",
++        pdEditTip:      "Редактировать",
++        pdFavTip:       "Избранное",
++        pdFavUnsetTip:  "Убрать из избранного",
++        pdDelTip:       "Удалить",
++        pdFavTag:       "Избранный",
++        pdHkEnabledTip: "Хоткей включён",
++        pdHkDisabledTip:"Хоткей выключен",
++        pdHkOn:         "ВКЛ",
++        pdHkOff:        "ВЫКЛ",
++        pdHkClear:      "СБРОС",
++        pdHkNeedAssign: "Сначала назначьте клавишу",
+         /* Time */
+         justNow:        "Только что",
+         minsAgo:  function(m) { return m + "м назад"; },
+@@ -511,6 +531,24 @@
+         pdEmptyText:    "Select a preset on the left",
+         pdShareLabel:   "SHARE",
+         pdShareCodeLabel:"SHARE CODE",
++        /* §pd-lang2: English translations of the detail-panel footer
++           buttons + tag labels. */
++        pdCopyTip:      "Copy",
++        pdShowTip:      "Show",
++        pdHideTip:      "Hide",
++        pdAssignTip:    "Assign",
++        pdClearHkTip:   "Remove hotkey",
++        pdEditTip:      "Edit",
++        pdFavTip:       "Favorite",
++        pdFavUnsetTip:  "Remove from favorites",
++        pdDelTip:       "Delete",
++        pdFavTag:       "Favorite",
++        pdHkEnabledTip: "Hotkey enabled",
++        pdHkDisabledTip:"Hotkey disabled",
++        pdHkOn:         "ON",
++        pdHkOff:        "OFF",
++        pdHkClear:      "CLEAR",
++        pdHkNeedAssign: "Assign a key first",
+         /* Time */
+         justNow:        "Just now",
+         minsAgo:  function(m) { return m + "m ago"; },
+@@ -1155,7 +1193,11 @@
+     el("btn-close").onclick         = function () { requestExit(); };
+     el("btn-settings").onclick      = openSettings;
+     el("btn-launch").onclick        = onLaunch;
+-    el("btn-save").onclick          = onSaveClose;
++    /* §no-save-close: the "Save & close" footer button was removed; the
++       onSaveClose() helper is still wired to the tray icon and Ctrl-S
++       keyboard shortcut paths so it remains callable for those. */
++    var btnSaveBtn = el("btn-save");
++    if (btnSaveBtn) btnSaveBtn.onclick = onSaveClose;
+     el("btn-capture").onclick       = function () { startCapture(); return false; };
+     el("btn-add-preset").onclick    = requestNewPresetWindow;
+     el("btn-preset-ok").onclick     = confirmNewPreset;
+@@ -5722,7 +5764,13 @@
+     var parts = [];
+     for (var i = 0; i < presets.length; i++) {
+         var p = presets[i];
+-        if (p.hotkey) parts.push(p.hotkey + "|" + p.placeId + "|" + p.linkCode + "|" + (p.method || 1) + "|" + p.id);
++        if (p.hotkey && p.hkEnabled !== false) {
++            /* §hk-toggle: only register the hotkey with the host when the
++               preset's hkEnabled flag is true. The map is read by C#
++               ApplyPresetHotkeys which calls RegisterHotKey for every
++               "id|placeId|linkCode|method|id" entry. */
++            parts.push(p.hotkey + "|" + p.placeId + "|" + p.linkCode + "|" + (p.method || 1) + "|" + p.id);
++        }
+     }
+     el("__preset_hk_map").value = parts.join(";");
+ }
+@@ -5745,6 +5793,10 @@
+     for (var i = 0; i < presets.length; i++) {
+         if (presets[i].id === id) {
+             presets[i].hotkey = keyName || "";
++            /* §hk-toggle: assigning a hotkey (re-)enables it — the user
++               just pressed a key, intent is to make it work. They can
++               toggle it off afterwards if needed. */
++            if (keyName) presets[i].hkEnabled = true;
+             break;
+         }
+     }
+@@ -5757,12 +5809,44 @@
+ 
+ function clearPresetHK(id) {
+     for (var i = 0; i < presets.length; i++) {
+-        if (presets[i].id === id) { presets[i].hotkey = ""; break; }
++        if (presets[i].id === id) {
++            presets[i].hotkey = "";
++            /* §hk-toggle: clearing the hotkey also disables it — a hotkey
++               with no key has nothing to enable. The next "Назначить"
++               press re-enables it automatically. */
++            presets[i].hkEnabled = false;
++            break;
++        }
+     }
+     flushPresetHKMap();
+     renderPresets();
+     flushPresetsOut();
+     sendCmd("CMD:update_preset_hk");
++    if (detailPresetId === id) renderDetailPanel(id);
++}
++
++/* §hk-toggle: enable/disable the preset hotkey without clearing the
++   binding itself — the user can flip it on/off without losing the key. */
++function togglePresetHK(id) {
++    for (var i = 0; i < presets.length; i++) {
++        if (presets[i].id === id) {
++            presets[i].hkEnabled = !(presets[i].hkEnabled);
++            /* No hotkey assigned? Can't enable — flip back to off and
++               show a hint so the user understands why nothing happened. */
++            if (!presets[i].hotkey && presets[i].hkEnabled) {
++                presets[i].hkEnabled = false;
++                var S = STRINGS[currentLang] || STRINGS.ru;
++                showToast(S.pdHkNeedAssign || "Сначала назначьте клавишу", null, null, 2200);
++            }
++            break;
++        }
++    }
++    flushPresetHKMap();
++    renderPresets();
++    flushPresetsOut();
++    setDirty();
++    sendCmd("CMD:save_preset");
++    if (detailPresetId === id) renderDetailPanel(id);
+ }
+ 
+ function makeMover(id, dir) {
+@@ -10218,7 +10302,11 @@
+     if (p.favorite) {
+         var t2 = document.createElement("span");
+         t2.className = "pd-tag pd-tag-fav";
+-        t2.innerHTML = rvlSvgIcon("star") + " Избранный";
++        /* §pd-lang2: use STRINGS.pdFavTag so the favorite tag reads
++           "Избранный" in Russian and "Favorite" in English, not the
++           hardcoded Russian. */
++        var STag = STRINGS[currentLang] || STRINGS.ru;
++        t2.innerHTML = rvlSvgIcon("star") + " " + (STag.pdFavTag || "Избранный");
+         tags.appendChild(t2);
+     }
+     if (p.groupId) {
+@@ -10263,6 +10351,37 @@
+     if (hkRow) hkRow.style.display = "";
+     el("pd-hk-assign").onclick = function () { startPresetHKCapture(id); };
+ 
++    /* §hk-toggle: add a "clear hotkey" button + an on/off toggle so the
++       user can manage the hotkey entirely from the preset panel without
++       going to the global settings. */
++    var hkEnabled = p.hkEnabled !== false;  /* default = true for presets without the flag */
++    var hkClearBtn = el("pd-hk-clear");
++    if (hkClearBtn) {
++        hkClearBtn.style.display = p.hotkey ? "" : "none";
++        hkClearBtn.onclick = function () { clearPresetHK(id); };
++    }
++    var hkToggleBtn = el("pd-hk-toggle");
++    if (hkToggleBtn) {
++        hkToggleBtn.style.display = p.hotkey ? "" : "none";
++        hkToggleBtn.className = "pd-btn pd-hk-toggle" + (hkEnabled ? " pd-hk-on" : " pd-hk-off");
++        hkToggleBtn.innerHTML = hkEnabled ? (Sd.pdHkOn || "ВКЛ") : (Sd.pdHkOff || "ВЫКЛ");
++        hkToggleBtn.setAttribute("data-tooltip", hkEnabled ? (Sd.pdHkEnabledTip || "Хоткей включён") : (Sd.pdHkDisabledTip || "Хоткей выключен"));
++        hkToggleBtn.onclick = function () { togglePresetHK(id); };
++    }
++
++    /* §pd-lang2: localize the footer buttons' tooltips on every render —
++       previously only the HTML data-tooltip attributes set at page load
++       were shown, so English users got "Копировать / Показать /
++       Назначить / Редактировать / Избранное / Удалить" forever. */
++    setTip("pd-copy-place", Sd.pdCopyTip || "Копировать");
++    setTip("pd-copy-link",  Sd.pdCopyTip || "Копировать");
++    setTip("pd-eye-link",   linkRevealed ? (Sd.pdHideTip || "Скрыть") : (Sd.pdShowTip || "Показать"));
++    setTip("pd-hk-assign",  Sd.pdAssignTip || "Назначить");
++    if (hkClearBtn) setTip("pd-hk-clear", Sd.pdClearHkTip || "Убрать хоткей");
++    setTip("pd-edit",       Sd.pdEditTip || "Редактировать");
++    setTip("pd-fav",        p.favorite ? (Sd.pdFavUnsetTip || "Убрать из избранного") : (Sd.pdFavTip || "Избранное"));
++    setTip("pd-del",        Sd.pdDelTip || "Удалить");
++
+     /* Footer actions */
+     var favBtn = el("pd-fav");
+     favBtn.className = "btn-tool" + (p.favorite ? " pd-fav-on" : "");
+diff --git a/ui/index.html b/ui/index.html
+index 0000000..1111111 100644
+@@ -729,6 +729,8 @@
+             <span class="pd-val" id="pd-val-hk">—</span>
+             <div class="pd-actions">
+               <button class="pd-btn" id="pd-hk-assign" data-tooltip="Назначить"></button>
++              <button class="pd-btn" id="pd-hk-clear" data-tooltip="Сброс"></button>
++              <button class="pd-btn pd-hk-toggle" id="pd-hk-toggle" data-tooltip="Включить хоткей"></button>
+             </div>
+           </div>
+         </div>
+@@ -737,7 +739,10 @@
+           <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать"></button>
+           <button class="btn-tool" id="pd-fav" data-tooltip="Избранное"></button>
+           <button class="btn-tool" id="pd-del" data-tooltip="Удалить"></button>
+-          <button class="btn-tool" id="btn-save" data-tooltip="Сохранить &amp; закрыть"></button>
++          <!-- §no-save-close: removed the "Save & close" button from the
++               preset panel footer per user request. The panel's data is
++               already auto-persisted (CMD:save_preset fires on every
++               rename/hotkey/favorite change), so the button was redundant. -->
+         </div>
+       </div>
+     </div>
+diff --git a/ui/style.css b/ui/style.css
+index 0000000..1111111 100644
+@@ -13973,7 +13973,13 @@
+ /* Keep the status text in the regular sans font so localized messages
+    like "Загрузка интерфейса..." render naturally. */
+ .startup-status {
+-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    /* §startup-font-2: switched to the monospace stack so "Загрузка
++       интерфейса..." matches the brand mark, kicker and version label.
++       Was 'Segoe UI' (sans) which felt disconnected from the rest of
++       the boot screen. */
++    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
++    font-size: 9.5px;
++    letter-spacing: 0.08em;
+ }
+ /* Same font treatment for the update-screen overlay — it shares the
+    startup-screen's orbits/grid base and should match. */
+@@ -13987,7 +13993,11 @@
+     font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+ }
+ .upd-content .startup-status {
+-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
++    /* §startup-font-2: monospace for the same reason as the startup-screen
++       status. */
++    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
++    font-size: 9.5px;
++    letter-spacing: 0.08em;
+ }
+ 
+ /* ============================================================
+@@ -14031,83 +14041,70 @@
+     z-index: 0;
+ }
+ 
+-/* §watermark — large faint "RVL" text behind everything. Sits behind
+-   .startup-content (which has its own stacking via z-index: 2). The
+-   watermark is intentionally BIG and OPACITY-LOW so it reads as a
+-   silhouette, not as a competing element. */
+-.startup-screen::after {
+-    content: "RVL";
+-    position: absolute;
+-    top: 50%; left: 50%;
+-    transform: translate(-50%, -50%);
+-    -ms-transform: translate(-50%, -50%);
+-    font-family: 'Consolas', 'SF Mono', 'JetBrains Mono', 'Courier New', monospace;
+-    font-size: 320px;
+-    font-weight: 800;
+-    letter-spacing: 0.1em;
+-    color: rgba(232,232,232,0.024);
+-    z-index: 0;
+-    pointer-events: none;
+-    line-height: 1;
+-    user-select: none;
+-    -ms-user-select: none;
+-    /* Slow breathing pulse so the watermark feels alive without being
+-       distracting. */
+-    -ms-animation: rvl-watermark-breath 6.5s ease-in-out infinite;
+-    animation: rvl-watermark-breath 6.5s ease-in-out infinite;
+-}
+-
+-@-ms-keyframes rvl-watermark-breath {
+-    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+-    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
+-}
+-@keyframes rvl-watermark-breath {
+-    0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+-    50%      { opacity: 0.85; transform: translate(-50%, -50%) scale(1.02); }
+-}
+-
+-/* Hide the old orbit grid (perspective grid floor). It caused messy
+-   corner pixels and didn't match the new flat aesthetic. */
+-.startup-grid {
+-    display: none !important;
+-}
+-
+-/* §orbits — keep the two rotating rings but retune them:
+-   slimmer border, lower glow, slower rotation, square dpr-friendly
+-   positioning. Two rings cross at different angles so the
+-   silhouette reads as an atom/orbit icon. */
+-.startup-orbit-one, .startup-orbit-two {
+-    border-color: rgba(232,232,232,0.18);
+-    box-shadow: 0 0 30px rgba(232,232,232,0.06), inset 0 0 24px rgba(232,232,232,0.02);
+-    z-index: 1;
+-}
+-.startup-orbit-one {
+-    -ms-animation: rvl-orbit-spin-1 14s linear infinite;
+-    animation: rvl-orbit-spin-1 14s linear infinite;
+-}
+-.startup-orbit-two {
+-    -ms-animation: rvl-orbit-spin-2 18s linear infinite reverse;
+-    animation: rvl-orbit-spin-2 18s linear infinite reverse;
+-}
+-@-ms-keyframes rvl-orbit-spin-1 {
+-    from { transform: rotate(-18deg); }
+-    to   { transform: rotate(342deg); }
+-}
+-@keyframes rvl-orbit-spin-1 {
+-    from { transform: rotate(-18deg); }
+-    to   { transform: rotate(342deg); }
+-}
+-@-ms-keyframes rvl-orbit-spin-2 {
+-    from { transform: rotate(24deg); }
+-    to   { transform: rotate(-336deg); }
+-}
+-@keyframes rvl-orbit-spin-2 {
+-    from { transform: rotate(24deg); }
+-    to   { transform: rotate(-336deg); }
+-}
++/* §startup-redesign-2: per user feedback, removed the big "RVL" watermark,
++   the rotating square "orbits" and the moving dot at the end of each orbit.
++   The loading screen now shows just the radial-vignette background + scanline
++   overlay + the centered brand mark + progress bar — nothing else. */
++.startup-screen::after { content: none !important; }
++.startup-grid { display: none !important; }
++.startup-orbit-one, .startup-orbit-two { display: none !important; }
+ 
+ /* §content-stack — bring the brand text and progress bar above the
+    scanline + watermark layers. */
+ .startup-content {
+     z-index: 2;
+ }
++
++/* §hk-toggle: on/off + clear buttons in the preset detail panel.
++   They reuse .pd-btn's base styling but add a colored state —
++   green when the hotkey is on, muted when off. The clear button
++   shows an "×" glyph via its SVG icon (set in refreshRvlIcons).
++   Keep these compact so the pd-actions row doesn't widen the
++   whole hotkey row. */
++.pd-btn.pd-hk-toggle {
++    min-width: 30px;
++    height: 20px;
++    padding: 0 6px;
++    font-size: 8px;
++    font-weight: 700;
++    letter-spacing: 0.06em;
++    line-height: 18px;
++    border-radius: 0;
++}
++.pd-btn.pd-hk-toggle.pd-hk-on {
++    background: rgba(34, 197, 94, 0.12);
++    border-color: rgba(34, 197, 94, 0.5);
++    color: #22C55E;
++}
++.pd-btn.pd-hk-toggle.pd-hk-on:hover {
++    background: rgba(34, 197, 94, 0.18);
++    border-color: #22C55E;
++}
++.pd-btn.pd-hk-toggle.pd-hk-off {
++    background: #1A1A1A;
++    border-color: #333333;
++    color: #888888;
++}
++.pd-btn.pd-hk-toggle.pd-hk-off:hover {
++    background: #222222;
++    color: #BBBBBB;
++}
++body.theme-light .pd-btn.pd-hk-toggle.pd-hk-on {
++    background: rgba(34, 197, 94, 0.16);
++    border-color: rgba(34, 197, 94, 0.6);
++    color: #1E8E3D;
++}
++body.theme-light .pd-btn.pd-hk-toggle.pd-hk-off {
++    background: #FFFFFF;
++    border-color: #DADDE3;
++    color: #6A7280;
++}
++/* The clear-× button: matches other pd-btn 20×20 squares. */
++.pd-btn.pd-hk-clear {
++    color: #888888;
++}
++.pd-btn.pd-hk-clear:hover {
++    color: #FF7777;
++    border-color: #5A2A2A;
++    background: rgba(255, 80, 80, 0.06);
++}

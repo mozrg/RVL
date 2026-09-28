@@ -179,6 +179,26 @@ var STRINGS = {
         pdEmptyText:    "Выбери пресет слева",
         pdShareLabel:   "SHARE",
         pdShareCodeLabel:"SHARE CODE",
+        /* §pd-lang2: detail-panel footer buttons + tag labels + the favorite
+           tag text were hardcoded Russian in renderDetailPanel + the HTML
+           data-tooltip attributes. Add the strings here so applyLanguage can
+           localize them in English mode. */
+        pdCopyTip:      "Копировать",
+        pdShowTip:      "Показать",
+        pdHideTip:      "Скрыть",
+        pdAssignTip:    "Назначить",
+        pdClearHkTip:   "Убрать хоткей",
+        pdEditTip:      "Редактировать",
+        pdFavTip:       "Избранное",
+        pdFavUnsetTip:  "Убрать из избранного",
+        pdDelTip:       "Удалить",
+        pdFavTag:       "Избранный",
+        pdHkEnabledTip: "Хоткей включён",
+        pdHkDisabledTip:"Хоткей выключен",
+        pdHkOn:         "ВКЛ",
+        pdHkOff:        "ВЫКЛ",
+        pdHkClear:      "СБРОС",
+        pdHkNeedAssign: "Сначала назначьте клавишу",
         /* Time */
         justNow:        "Только что",
         minsAgo:  function(m) { return m + "м назад"; },
@@ -511,6 +531,24 @@ var STRINGS = {
         pdEmptyText:    "Select a preset on the left",
         pdShareLabel:   "SHARE",
         pdShareCodeLabel:"SHARE CODE",
+        /* §pd-lang2: English translations of the detail-panel footer
+           buttons + tag labels. */
+        pdCopyTip:      "Copy",
+        pdShowTip:      "Show",
+        pdHideTip:      "Hide",
+        pdAssignTip:    "Assign",
+        pdClearHkTip:   "Remove hotkey",
+        pdEditTip:      "Edit",
+        pdFavTip:       "Favorite",
+        pdFavUnsetTip:  "Remove from favorites",
+        pdDelTip:       "Delete",
+        pdFavTag:       "Favorite",
+        pdHkEnabledTip: "Hotkey enabled",
+        pdHkDisabledTip:"Hotkey disabled",
+        pdHkOn:         "ON",
+        pdHkOff:        "OFF",
+        pdHkClear:      "CLEAR",
+        pdHkNeedAssign: "Assign a key first",
         /* Time */
         justNow:        "Just now",
         minsAgo:  function(m) { return m + "m ago"; },
@@ -1155,7 +1193,11 @@ function bootRvlUi() {
     el("btn-close").onclick         = function () { requestExit(); };
     el("btn-settings").onclick      = openSettings;
     el("btn-launch").onclick        = onLaunch;
-    el("btn-save").onclick          = onSaveClose;
+    /* §no-save-close: the "Save & close" footer button was removed; the
+       onSaveClose() helper is still wired to the tray icon and Ctrl-S
+       keyboard shortcut paths so it remains callable for those. */
+    var btnSaveBtn = el("btn-save");
+    if (btnSaveBtn) btnSaveBtn.onclick = onSaveClose;
     el("btn-capture").onclick       = function () { startCapture(); return false; };
     el("btn-add-preset").onclick    = requestNewPresetWindow;
     el("btn-preset-ok").onclick     = confirmNewPreset;
@@ -5722,7 +5764,13 @@ function flushPresetHKMap() {
     var parts = [];
     for (var i = 0; i < presets.length; i++) {
         var p = presets[i];
-        if (p.hotkey) parts.push(p.hotkey + "|" + p.placeId + "|" + p.linkCode + "|" + (p.method || 1) + "|" + p.id);
+        if (p.hotkey && p.hkEnabled !== false) {
+            /* §hk-toggle: only register the hotkey with the host when the
+               preset's hkEnabled flag is true. The map is read by C#
+               ApplyPresetHotkeys which calls RegisterHotKey for every
+               "id|placeId|linkCode|method|id" entry. */
+            parts.push(p.hotkey + "|" + p.placeId + "|" + p.linkCode + "|" + (p.method || 1) + "|" + p.id);
+        }
     }
     el("__preset_hk_map").value = parts.join(";");
 }
@@ -5745,6 +5793,10 @@ function finishPresetHKCapture(keyName) {
     for (var i = 0; i < presets.length; i++) {
         if (presets[i].id === id) {
             presets[i].hotkey = keyName || "";
+            /* §hk-toggle: assigning a hotkey (re-)enables it — the user
+               just pressed a key, intent is to make it work. They can
+               toggle it off afterwards if needed. */
+            if (keyName) presets[i].hkEnabled = true;
             break;
         }
     }
@@ -5757,12 +5809,44 @@ function finishPresetHKCapture(keyName) {
 
 function clearPresetHK(id) {
     for (var i = 0; i < presets.length; i++) {
-        if (presets[i].id === id) { presets[i].hotkey = ""; break; }
+        if (presets[i].id === id) {
+            presets[i].hotkey = "";
+            /* §hk-toggle: clearing the hotkey also disables it — a hotkey
+               with no key has nothing to enable. The next "Назначить"
+               press re-enables it automatically. */
+            presets[i].hkEnabled = false;
+            break;
+        }
     }
     flushPresetHKMap();
     renderPresets();
     flushPresetsOut();
     sendCmd("CMD:update_preset_hk");
+    if (detailPresetId === id) renderDetailPanel(id);
+}
+
+/* §hk-toggle: enable/disable the preset hotkey without clearing the
+   binding itself — the user can flip it on/off without losing the key. */
+function togglePresetHK(id) {
+    for (var i = 0; i < presets.length; i++) {
+        if (presets[i].id === id) {
+            presets[i].hkEnabled = !(presets[i].hkEnabled);
+            /* No hotkey assigned? Can't enable — flip back to off and
+               show a hint so the user understands why nothing happened. */
+            if (!presets[i].hotkey && presets[i].hkEnabled) {
+                presets[i].hkEnabled = false;
+                var S = STRINGS[currentLang] || STRINGS.ru;
+                showToast(S.pdHkNeedAssign || "Сначала назначьте клавишу", null, null, 2200);
+            }
+            break;
+        }
+    }
+    flushPresetHKMap();
+    renderPresets();
+    flushPresetsOut();
+    setDirty();
+    sendCmd("CMD:save_preset");
+    if (detailPresetId === id) renderDetailPanel(id);
 }
 
 function makeMover(id, dir) {
@@ -10218,7 +10302,11 @@ function renderDetailPanel(id) {
     if (p.favorite) {
         var t2 = document.createElement("span");
         t2.className = "pd-tag pd-tag-fav";
-        t2.innerHTML = rvlSvgIcon("star") + " Избранный";
+        /* §pd-lang2: use STRINGS.pdFavTag so the favorite tag reads
+           "Избранный" in Russian and "Favorite" in English, not the
+           hardcoded Russian. */
+        var STag = STRINGS[currentLang] || STRINGS.ru;
+        t2.innerHTML = rvlSvgIcon("star") + " " + (STag.pdFavTag || "Избранный");
         tags.appendChild(t2);
     }
     if (p.groupId) {
@@ -10262,6 +10350,37 @@ function renderDetailPanel(id) {
     hkVal.appendChild(document.createTextNode(p.hotkey || "\u2014"));
     if (hkRow) hkRow.style.display = "";
     el("pd-hk-assign").onclick = function () { startPresetHKCapture(id); };
+
+    /* §hk-toggle: add a "clear hotkey" button + an on/off toggle so the
+       user can manage the hotkey entirely from the preset panel without
+       going to the global settings. */
+    var hkEnabled = p.hkEnabled !== false;  /* default = true for presets without the flag */
+    var hkClearBtn = el("pd-hk-clear");
+    if (hkClearBtn) {
+        hkClearBtn.style.display = p.hotkey ? "" : "none";
+        hkClearBtn.onclick = function () { clearPresetHK(id); };
+    }
+    var hkToggleBtn = el("pd-hk-toggle");
+    if (hkToggleBtn) {
+        hkToggleBtn.style.display = p.hotkey ? "" : "none";
+        hkToggleBtn.className = "pd-btn pd-hk-toggle" + (hkEnabled ? " pd-hk-on" : " pd-hk-off");
+        hkToggleBtn.innerHTML = hkEnabled ? (Sd.pdHkOn || "ВКЛ") : (Sd.pdHkOff || "ВЫКЛ");
+        hkToggleBtn.setAttribute("data-tooltip", hkEnabled ? (Sd.pdHkEnabledTip || "Хоткей включён") : (Sd.pdHkDisabledTip || "Хоткей выключен"));
+        hkToggleBtn.onclick = function () { togglePresetHK(id); };
+    }
+
+    /* §pd-lang2: localize the footer buttons' tooltips on every render —
+       previously only the HTML data-tooltip attributes set at page load
+       were shown, so English users got "Копировать / Показать /
+       Назначить / Редактировать / Избранное / Удалить" forever. */
+    setTip("pd-copy-place", Sd.pdCopyTip || "Копировать");
+    setTip("pd-copy-link",  Sd.pdCopyTip || "Копировать");
+    setTip("pd-eye-link",   linkRevealed ? (Sd.pdHideTip || "Скрыть") : (Sd.pdShowTip || "Показать"));
+    setTip("pd-hk-assign",  Sd.pdAssignTip || "Назначить");
+    if (hkClearBtn) setTip("pd-hk-clear", Sd.pdClearHkTip || "Убрать хоткей");
+    setTip("pd-edit",       Sd.pdEditTip || "Редактировать");
+    setTip("pd-fav",        p.favorite ? (Sd.pdFavUnsetTip || "Убрать из избранного") : (Sd.pdFavTip || "Избранное"));
+    setTip("pd-del",        Sd.pdDelTip || "Удалить");
 
     /* Footer actions */
     var favBtn = el("pd-fav");
