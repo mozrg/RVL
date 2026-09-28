@@ -1,0 +1,104 @@
+diff --git a/ui/app.js b/ui/app.js
+index 0000000..1111111 100644
+--- a/ui/app.js
++++ b/ui/app.js
+@@ -7013,13 +7013,21 @@
+ function bindNativeWindowDrag(kind) {
+     var overlayId = { history: "history-overlay", dashboard: "dashboard-overlay",
+         backup: "backup-overlay", bulk: "bulk-overlay", export: "export-overlay",
+-        guide: "guide-overlay", groups: "grp-overlay", themes: "tp-overlay", new: "np-overlay" }[kind] || (kind + "-overlay");
++        guide: "guide-overlay", groups: "grp-overlay", themes: "tp-overlay", new: "np-overlay",
++        edit: "preset-edit-overlay" }[kind] || (kind + "-overlay");
+     var overlay = el(overlayId);
+     if (!overlay) return;
+     var header = overlay.querySelector("[class*='-header']");
+     if (!header) return;
+     var titleIconMap = { history: "history", dashboard: "chart", backup: "backup",
+-        bulk: "bulk", export: "upload", guide: "help", groups: "list", themes: "palette", new: "plus" };
++        bulk: "bulk", export: "upload", guide: "help", groups: "list", themes: "palette", new: "plus",
++        edit: "edit" };
+     var iconEl = header.querySelector(".rvl-title-icon");
+     if (!iconEl && !header.__rvlIconBound) {
+         var titleEl = header.querySelector("[class*='-title']");
+@@ -7451,10 +7459,36 @@
+     modal.className = "preset-edit-modal";
+     applyStyleObj(modal, TH.modal);
+ 
++    var header = document.createElement("div");
++    header.className = "preset-edit-header";
++    applyStyleObj(header, TH.title);
+     var title = document.createElement("div");
+     title.className = "preset-edit-title";
+     applyStyleObj(title, TH.title);
+     title.appendChild(document.createTextNode(S.editPresetTitle || "Редактировать пресет"));
++    var closeBtn = document.createElement("span");
++    closeBtn.className = "preset-edit-close";
++    closeBtn.innerHTML = "&#215;";
++    closeBtn.style.cssText = "cursor:pointer;float:right;color:inherit;font-size:14px;line-height:1;padding:0 4px;opacity:0.7;";
++    closeBtn.onmousedown = function (e) { e = e || window.event; cancelEv(e); };
++    closeBtn.onclick = function (e) {
++        e = e || window.event; cancelEv(e);
++        closePresetEditModal();
++        if (window.__rvlNativeWindow === "edit") {
++            sendCmd("CMD:close_window");
++        }
++        return false;
++    };
++    header.appendChild(title);
++    header.appendChild(closeBtn);
+ 
+     var placeLabel = document.createElement("div");
+     placeLabel.className = "preset-edit-label";
+@@ -7591,7 +7625,7 @@
+     btnRow.appendChild(saveBtn);
+     btnRow.appendChild(cancelBtn);
+ 
+-    modal.appendChild(title);
++    modal.appendChild(header);
+ 
+     if ((p.method || 1) === 2) {
+         var scLabel = document.createElement("div");
+@@ -7617,7 +7651,7 @@
+             if (k === 27) closePresetEditModal();
+         };
+ 
+-        modal.appendChild(title);
++        modal.appendChild(header);
+         modal.appendChild(nameLabel);
+         modal.appendChild(nameInp);
+         modal.appendChild(scLabel);
+@@ -7642,7 +7676,7 @@
+             if (k === 27) closePresetEditModal();
+         };
+ 
+-        modal.appendChild(title);
++        modal.appendChild(header);
+         modal.appendChild(nameLabel);
+         modal.appendChild(nameInp);
+         modal.appendChild(placeLabel);
+@@ -7662,14 +7696,38 @@
+     }
+ 
+     overlay.onclick = function (e) {
+-        if ((e || window.event).target === overlay) closePresetEditModal();
++        if ((e || window.event).target === overlay) {
++            closePresetEditModal();
++            if (window.__rvlNativeWindow === "edit") sendCmd("CMD:close_window");
++        }
+     };
++
++    if (typeof bindNativeWindowDrag === "function") {
++        bindNativeWindowDrag("edit");
++    }
+ }
+ 
+ function closePresetEditModal() {
+     var ov = el("preset-edit-overlay");
+     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+     editingPresetId = null;
++    if (window.__rvlNativeWindow === "edit") {
++        try { sendCmd("CMD:close_window"); } catch (e) {}
++    }
+ }
+ 
+ function renderPresetEditGroupChips(container, p) {
