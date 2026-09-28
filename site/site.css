@@ -111,6 +111,7 @@ a { color: inherit; }
 .release-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 16px; }
 .release-card { min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 9px; padding: 16px; border: 1px solid var(--line); border-radius: 5px; background: #111111; color: #deded8; text-align: left; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
 .release-card:hover { border-color: #55554D; background: #151613; transform: translateY(-2px); }
+.release-card:active { transform: translateY(0) scale(.985); }
 .release-card-version { font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
 .release-card-date, .release-entry-date { color: var(--muted); font-size: 11px; }
 .release-detail { padding: 0 0 24px; }

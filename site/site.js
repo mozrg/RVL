@@ -192,10 +192,62 @@
         card.append(dateLabel);
       }
       card.setAttribute('aria-label', `Открыть версию ${cardVersion.textContent}`);
-      card.onclick = () => renderReleaseDetails(release, published);
+      card.onclick = () => animateReleaseView(
+        () => renderReleaseDetails(release, published),
+        'forward'
+      );
       grid.append(card);
     });
     releaseList.append(grid);
+    animateReleaseCards(grid);
+  }
+
+  function prefersReducedMotion() {
+    return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function animateReleaseCards(grid) {
+    if (prefersReducedMotion() || !grid || !grid.animate) return;
+    Array.from(grid.children).forEach((card, index) => {
+      card.animate(
+        [
+          { opacity: 0, transform: 'translateY(10px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ],
+        { duration: 240, delay: Math.min(index * 35, 210), easing: 'cubic-bezier(.2,.75,.25,1)' }
+      );
+    });
+  }
+
+  function animateReleaseView(renderNext, direction) {
+    const current = releaseList.firstElementChild;
+    if (!current || prefersReducedMotion() || !current.animate) {
+      renderNext();
+      return;
+    }
+
+    const exitX = direction === 'back' ? 14 : -14;
+    const enterX = direction === 'back' ? -14 : 14;
+    const fadeOut = current.animate(
+      [
+        { opacity: 1, transform: 'translateX(0)' },
+        { opacity: 0, transform: `translateX(${exitX}px)` }
+      ],
+      { duration: 130, easing: 'ease-in', fill: 'forwards' }
+    );
+    fadeOut.onfinish = () => {
+      renderNext();
+      const next = releaseList.firstElementChild;
+      if (!next || !next.animate) return;
+      next.animate(
+        [
+          { opacity: 0, transform: `translateX(${enterX}px)` },
+          { opacity: 1, transform: 'translateX(0)' }
+        ],
+        { duration: 210, easing: 'cubic-bezier(.2,.75,.25,1)' }
+      );
+      if (direction === 'back') animateReleaseCards(next);
+    };
   }
 
   function renderReleaseDetails(release, releases) {
@@ -207,7 +259,10 @@
     back.type = 'button';
     back.className = 'release-back';
     back.textContent = '← Все версии';
-    back.onclick = () => renderReleaseHistory(releases);
+    back.onclick = () => animateReleaseView(
+      () => renderReleaseHistory(releases),
+      'back'
+    );
     detail.append(back);
 
     const heading = document.createElement('div');
