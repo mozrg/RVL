@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  color-scheme: dark;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+  background: #101010;
+  color: #f3f3f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --muted: #858581;
+  --line: #292927;
+  --accent: #e8ff5b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: radial-gradient(ellipse at 50% 31%, #1b1c16 0, #101010 51%);
+}
+
+a { color: inherit; }
+
+.topbar, .footer {
+  width: min(100% - 64px, 1120px);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar { height: 80px; border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: .18em; }
+.brand img { object-fit: contain; }
+.github-link, .all-releases { color: #c0c0b9; text-decoration: none; font-size: 12px; }
+.github-link:hover, .all-releases:hover { color: var(--accent); }
+
+.hero { width: min(100% - 40px, 640px); margin: 100px auto 0; text-align: center; }
+.eyebrow, .release-label, .feature-index {
+  color: var(--muted);
+  font: 500 10px/1.4 'DM Mono', monospace;
+  letter-spacing: .16em;
+}
+.eyebrow { display: inline-flex; align-items: center; gap: 9px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px #e8ff5b70; }
+
+h1 { margin: 25px 0 16px; font-size: clamp(46px, 8vw, 76px); line-height: .99; font-weight: 700; letter-spacing: -.075em; }
+h1 span { color: #8b8d7e; }
+.intro { max-width: 430px; margin: 0 auto; color: #a2a29c; font-size: 14px; line-height: 1.8; }
+
+.download-card {
+  margin: 39px auto 0;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 16px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid #35362f;
+  border-radius: 8px;
+  background: #161713;
+  box-shadow: 0 20px 70px #0006;
+}
+.release-info { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-left: 5px; }
+.version { font-size: 22px; font-weight: 700; letter-spacing: -.04em; }
+.release-date { color: var(--muted); font-size: 11px; }
+.download-button {
+  min-height: 62px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 12px 50px 12px 16px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: #11120b;
+  text-decoration: none;
+  transition: transform .15s ease, background .15s ease;
+}
+.download-button:not(.is-loading):hover { transform: translateY(-2px); background: #f0ff91; }
+.download-button[aria-disabled="true"] { opacity: .68; cursor: wait; }
+.button-main { font-size: 13px; font-weight: 800; }
+.button-meta { opacity: .68; font: 10px 'DM Mono', monospace; }
+.download-icon { position: absolute; right: 17px; top: 50%; transform: translateY(-50%); font-size: 22px; }
+.download-note { grid-column: 1 / -1; margin: -3px 5px 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+.all-releases { display: inline-block; margin-top: 19px; }
+
+.features {
+  width: min(100% - 64px, 900px);
+  margin: 112px auto 95px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.feature { padding: 26px 24px 29px; }
+.feature + .feature { border-left: 1px solid var(--line); }
+.feature-index { color: var(--accent); }
+.feature h2 { margin: 24px 0 8px; font-size: 14px; letter-spacing: -.02em; }
+.feature p { max-width: 230px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.8; }
+.footer { min-height: 66px; border-top: 1px solid var(--line); color: #777772; font: 10px 'DM Mono', monospace; }
+
+@media (max-width: 600px) {
+  .topbar, .footer { width: calc(100% - 36px); }
+  .hero { margin-top: 74px; }
+  .download-card { grid-template-columns: 1fr; padding: 15px; }
+  .release-info { padding: 2px 3px 5px; }
+  .download-note { grid-column: auto; }
+  .features { width: calc(100% - 36px); margin: 76px auto 60px; grid-template-columns: 1fr; }
+  .feature { padding: 22px 4px; }
+  .feature + .feature { border-left: 0; border-top: 1px solid var(--line); }
+  .feature h2 { margin-top: 12px; }
+  .feature p { max-width: 100%; }
+  .footer { gap: 15px; font-size: 9px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}

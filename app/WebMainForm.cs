@@ -1490,8 +1490,6 @@ public sealed class WebMainForm : Form
             Remove-Item -LiteralPath (Split-Path $Source -Parent) -Recurse -Force
         } catch {
             Write-UpdateLog ("Update failed: " + $_.Exception.Message)
-            Add-Type -AssemblyName System.Windows.Forms
-            [void][System.Windows.Forms.MessageBox]::Show("RVL не запустился после обновления. Подробности: $log")
         }
         """;
 
