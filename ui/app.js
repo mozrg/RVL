@@ -6979,31 +6979,28 @@ function initNativeWindow(kind) {
     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
         groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
-        /* §edit-window-v9: the edit tool window shows a "loading" state
-           immediately when it opens, so the user never sees a black
-           window. When C# PassEditPresetIdAsync finishes (after the
-           child WebView's first render + 120ms) it calls
-           window.openEditPresetFromBridge() which replaces the
-           loading message with the actual preset edit modal. If the
-           bridge call never arrives (e.g. launcher WebView closed),
-           the user can still close the window via the X in the
-           header — the loading message is just a placeholder, not a
-           modal. */
+        /* §edit-window-v10: when the edit tool window opens, the C# host
+           has ALREADY written the preset id into __edit_preset_id (via
+           BuildBridgeState + _editPresetId field). Read it immediately,
+           clear the field, and open the edit modal. No waiting for a
+           callback. If the id is empty, show a helpful error instead of
+           leaving the user on a black window. */
         edit: function () {
-            var loadingEl = document.createElement("div");
-            loadingEl.id = "edit-window-loading";
-            loadingEl.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;letter-spacing:0.06em;text-align:center;";
-            loadingEl.innerHTML = "Загрузка редактора…";
-            document.body.appendChild(loadingEl);
-            /* Safety timeout — if C# never calls openEditPresetFromBridge,
-               show a helpful message after 8s instead of leaving the
-               user stuck on a black window. */
-            setTimeout(function () {
-                if (el("edit-window-loading")) {
-                    loadingEl.innerHTML = "Не удалось открыть редактор.<br>Закройте это окно и попробуйте снова.";
-                    loadingEl.style.color = "#FF7777";
-                }
-            }, 8000);
+            var eid = el("__edit_preset_id");
+            var pid = eid ? eid.value : "";
+            if (eid) eid.value = "";
+            if (pid && findPreset(pid)) {
+                /* Defer one tick so initNativeWindow finishes its DOM
+                   prep (hiding app-shell etc.) before the modal builds. */
+                setTimeout(function () { openPresetEditModal(pid); }, 30);
+            } else {
+                /* No preset id — show an error so the user isn't stuck. */
+                var err = document.createElement("div");
+                err.id = "edit-window-error";
+                err.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#FF7777;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;text-align:center;";
+                err.innerHTML = "Не удалось открыть редактор.<br>Закройте это окно и попробуйте снова.";
+                document.body.appendChild(err);
+            }
         } }[kind];
     if (typeof fn === "function") fn();
     bindNativeWindowDrag(kind);
@@ -7436,21 +7433,10 @@ function openPresetEditModal(id) {
     setTimeout(function () { buildPresetEditModal(id, p); }, 0);
 }
 
-/* §edit-window-v9: global hook the C# host calls after it has copied the
-   launcher's __edit_preset_id value into this child window's DOM. It
-   removes the "loading…" placeholder, reads the value, clears the
-   field, then opens the edit modal for that preset. */
-window.openEditPresetFromBridge = function () {
-    /* Remove the loading placeholder initNativeWindow("edit") showed. */
-    var loadingEl = el("edit-window-loading");
-    if (loadingEl && loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
-    var eid = el("__edit_preset_id");
-    var pid = eid ? eid.value : "";
-    if (eid) eid.value = "";
-    if (pid && findPreset(pid)) {
-        setTimeout(function () { openPresetEditModal(pid); }, 30);
-    }
-};
+/* §edit-window-v10: removed the window.openEditPresetFromBridge hook —
+   no longer needed. The C# host now passes the preset id through
+   _editPresetId → BuildBridgeState → __edit_preset_id bridge input,
+   which is already populated when initNativeWindow("edit") runs. */
 
 function buildPresetEditModal(id, p) {
     if (editingPresetId !== id) return; /* superseded by a newer open/close before this tick ran */

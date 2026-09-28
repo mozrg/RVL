@@ -305,7 +305,7 @@ public sealed class WebMainForm : Form
                 case "CMD:open_window guide": OpenNativeWindow("guide"); break;
                 case "CMD:open_window groups": OpenNativeWindow("groups"); break;
                 case "CMD:open_window themes": OpenNativeWindow("themes"); break;
-                case "CMD:open_window edit": OpenNativeWindow("edit"); break;
+                case "CMD:open_window edit": await OpenEditWindowAsync(payload); break;
                 case "CMD:close_window": if (_windowKind != "main") Close(); break;
                 case "CMD:close_settings": _owner?._settingsForm?.Close(); break;
                 case "CMD:drag_start": DragWindow(); break;
@@ -445,15 +445,17 @@ public sealed class WebMainForm : Form
             ["__thumb_resp"] = "",
             ["__avatars_cleared"] = ""
         };
-        /* §edit-window-v8: do NOT use a synchronous ExecuteScriptAsync here.
-           BuildBridgeState is called on the UI thread during window load
-           (InjectStateAsync(true) → BuildBridgeState), and calling
-           GetAwaiter().GetResult() on a script-async that itself needs the
-           UI thread to dispatch the script will deadlock the launcher.
-           The preset id for the edit window is instead passed through a
-           dedicated bridge input written by the JS layer (see
-           __edit_preset_id in HTML) and read on demand by the new
-           edit window's initNativeWindow("edit") handler. */
+        /* §edit-window-v10: pass the preset id the launcher wrote to
+           __edit_preset_id into the child edit window's bridge state.
+           _editPresetId is set by OpenEditWindowAsync BEFORE the child
+           is created, so this read is purely synchronous — no
+           ExecuteScriptAsync, no deadlock. The child's
+           initNativeWindow("edit") handler reads __edit_preset_id from
+           the bridge and opens the edit modal for that preset. */
+        if (_windowKind == "edit" && !string.IsNullOrEmpty(_editPresetId))
+        {
+            d["__edit_preset_id"] = _editPresetId;
+        }
         return d;
     }
 
@@ -501,6 +503,8 @@ public sealed class WebMainForm : Form
     }
 
     private WebMainForm? _settingsForm;
+    private WebMainForm? _editForm;
+    private string _editPresetId = "";
     private WebMainForm MainHost => _owner ?? this;
 
     private void OpenSettings()
@@ -524,68 +528,60 @@ public sealed class WebMainForm : Form
         var child = new WebMainForm(host._config, kind, host) { Owner = host };
         host._childWindows[kind] = child;
         child.FormClosed += (_, _) => host._childWindows.Remove(kind);
-        /* §edit-window-v8: for the edit tool window, we need to pass the
-           preset id the launcher wrote to __edit_preset_id BEFORE its
-           bridge state is built. We can't do this synchronously in
-           BuildBridgeState (deadlock), so we do it once here, BEFORE the
-           child WebView is initialized — the value will be read by the
-           child's initNativeWindow("edit") handler right after its
-           first render. Use a fire-and-forget await so we never block
-           the UI thread. */
-        if (kind == "edit" && !ReferenceEquals(host, this) && host._web.CoreWebView2 is not null)
-        {
-            _ = PassEditPresetIdAsync(host, child);
-        }
         child.ShowDeferred(host);
     }
 
-    private async Task PassEditPresetIdAsync(WebMainForm host, WebMainForm child)
+    /* §edit-window-v10: dedicated opener for the preset-edit window.
+       Pattern is identical to OpenSettings — keep a single _editForm
+       reference, reuse it if still alive, otherwise create a new one.
+       The preset id is read FROM the launcher WebView (the JS layer
+       wrote it to __edit_preset_id just before sending CMD:open_window
+       edit), then passed to the child via a constructor-style field
+       _editPresetId. The child reads it from BuildBridgeState — no
+       async roundtrip needed after creation. */
+    private async Task OpenEditWindowAsync(Dictionary<string, string> payload)
     {
-        try
+        var host = MainHost;
+        /* Reuse an existing edit window if it's still alive. */
+        if (host._editForm is { IsDisposed: false })
         {
-            /* §edit-window-v9: wait for the child WebView's first render
-               to complete (NavigationCompleted fires after the HTML + JS
-               are loaded and the body is rendered). Without this wait the
-               child's DOM might not yet have the __edit_preset_id input
-               we're trying to write to, and the openEditPresetFromBridge
-               helper wouldn't be defined yet either. */
-            if (child._firstRender is not null)
+            host._editForm.Show();
+            host._editForm.Activate();
+            return;
+        }
+        /* Read the preset id the launcher wrote to __edit_preset_id
+           before sending CMD:open_window edit. payload contains the
+           bridge state already (read by ReadBridgeAsync before
+           HandleCommandAsync), so we can read it synchronously. */
+        var presetId = V(payload, "__edit_preset_id");
+        if (string.IsNullOrEmpty(presetId))
+        {
+            /* Fallback: try the launcher WebView's live DOM in case
+               the bridge state lagged. */
+            try
             {
-                try { await child._firstRender.Task; } catch { }
-            }
-            /* The first render fires before the page's window-level
-               scripts have necessarily finished — give them one extra
-               frame so window.openEditPresetFromBridge is assigned. */
-            await Task.Delay(120);
-            var rawId = await host._web.CoreWebView2.ExecuteScriptAsync(
-                "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
-            );
-            if (!string.IsNullOrEmpty(rawId))
-            {
-                var unquoted = JsonSerializer.Deserialize<string>(rawId);
-                if (!string.IsNullOrEmpty(unquoted))
+                if (host._web.CoreWebView2 is not null)
                 {
-                    /* Push the id into the child's DOM directly, then call
-                       a small JS helper to open the edit modal for that
-                       preset. The helper lives in the child's window.
-                       Retry once if the helper isn't defined yet — the
-                       script that defines it (window.openEditPresetFromBridge
-                       = ...) runs at script-eval time, which is async-ish. */
-                    for (var attempt = 0; attempt < 3; attempt++)
-                    {
-                        var probe = await child._web.CoreWebView2.ExecuteScriptAsync(
-                            "(typeof window.openEditPresetFromBridge==='function')"
-                        );
-                        if (probe == "true") break;
-                        await Task.Delay(80);
-                    }
-                    await child._web.CoreWebView2.ExecuteScriptAsync(
-                        $"(function(){{var e=document.getElementById('__edit_preset_id');if(e)e.value={JsonSerializer.Serialize(unquoted)};if(typeof window.openEditPresetFromBridge==='function')window.openEditPresetFromBridge();}})();"
+                    var raw = await host._web.CoreWebView2.ExecuteScriptAsync(
+                        "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
                     );
+                    if (!string.IsNullOrEmpty(raw))
+                    {
+                        var unquoted = JsonSerializer.Deserialize<string>(raw);
+                        if (!string.IsNullOrEmpty(unquoted)) presetId = unquoted;
+                    }
                 }
             }
+            catch { /* best-effort */ }
         }
-        catch { /* best-effort — opening the edit window is non-fatal */ }
+        /* Create the child window with the preset id stashed on the
+           host so BuildBridgeState (called for the child) can pick it
+           up and pass it through the bridge. */
+        host._editPresetId = presetId ?? "";
+        var child = new WebMainForm(host._config, "edit", host) { Owner = host };
+        host._editForm = child;
+        child.FormClosed += (_, _) => { host._editForm = null; host._editPresetId = ""; };
+        child.ShowDeferred(host);
     }
 
     private void CloseSettingsAndMain()
