@@ -32,6 +32,7 @@ a { color: inherit; }
 }
 
 .topbar { height: 80px; justify-content: flex-end; border-bottom: 1px solid var(--line); }
+.topbar-links { display: flex; align-items: center; gap: 24px; }
 .github-link, .all-releases { color: #c0c0b9; text-decoration: none; font-size: 12px; }
 .github-link:hover, .all-releases:hover { color: var(--accent); }
 
