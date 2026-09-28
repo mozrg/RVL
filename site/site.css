@@ -108,15 +108,17 @@ a { color: inherit; }
 .section-heading h2 { margin: 9px 0 0; font-size: 25px; letter-spacing: -.05em; }
 .section-heading .all-releases { margin: 0 0 3px; }
 .release-list { border-top: 1px solid var(--line); }
-.release-entry { padding: 22px 0 25px; border-bottom: 1px solid var(--line); }
-.release-entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
-.release-entry-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-.release-entry-title h3 { margin: 0; font-size: 16px; letter-spacing: -.03em; }
-.release-toggle { display: inline-flex; align-items: center; gap: 10px; border: 0; padding: 0; background: transparent; color: #deded8; font: inherit; letter-spacing: inherit; cursor: pointer; text-align: left; }
-.release-toggle:hover { color: #FFFFFF; }
-.release-toggle-indicator { width: 8px; height: 8px; border-right: 1px solid var(--muted); border-bottom: 1px solid var(--muted); transform: rotate(45deg) translateY(-2px); transition: transform .16s ease; }
-.release-toggle[aria-expanded="true"] .release-toggle-indicator { transform: rotate(225deg) translate(-2px,-1px); }
-.release-entry-date { color: var(--muted); font-size: 11px; }
+.release-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding-top: 16px; }
+.release-card { min-height: 92px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 9px; padding: 16px; border: 1px solid var(--line); border-radius: 5px; background: #111111; color: #deded8; text-align: left; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+.release-card:hover { border-color: #55554D; background: #151613; transform: translateY(-2px); }
+.release-card-version { font-size: 16px; font-weight: 700; letter-spacing: -.03em; }
+.release-card-date, .release-entry-date { color: var(--muted); font-size: 11px; }
+.release-detail { padding: 0 0 24px; }
+.release-back { margin: 0 0 24px; padding: 0; border: 0; background: transparent; color: var(--muted); font: 11px 'DM Mono', monospace; cursor: pointer; }
+.release-back:hover { color: var(--accent); }
+.release-detail-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.release-detail-heading h3 { margin: 0; font-size: 22px; letter-spacing: -.04em; }
+.release-detail > .release-download { display: inline-block; margin-top: 18px; }
 .prerelease-label { padding: 4px 7px; border: 1px solid #4A4A4A; border-radius: 3px; color: #D0D0D0; font: 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .release-download { flex: 0 0 auto; color: var(--accent); text-decoration: none; font-size: 11px; }
 .release-download:hover { text-decoration: underline; }
@@ -143,7 +145,8 @@ a { color: inherit; }
 .requirement span { color: var(--muted); font: 9px 'DM Mono', monospace; letter-spacing: .12em; }
 .requirement strong { font-size: 12px; font-weight: 600; }
 .requirement small { color: var(--muted); font-size: 10px; }
-.requirement-link { width: fit-content; margin-top: 3px; color: var(--accent); font-size: 10px; text-decoration: none; }
+.requirement-links { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 3px; }
+.requirement-link { color: var(--accent); font-size: 10px; text-decoration: none; }
 .requirement-link:hover { text-decoration: underline; }
 .faq-list { margin-top: 20px; border-top: 1px solid var(--line); }
 .faq-item { border-bottom: 1px solid var(--line); }
@@ -174,7 +177,9 @@ a { color: inherit; }
   .requirement + .requirement { border-left: 0; border-top: 1px solid var(--line); }
   .section-heading h2 { font-size: 22px; }
   .section-heading .all-releases { font-size: 10px; }
-  .release-entry-header { flex-direction: column; gap: 10px; }
+  .release-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .release-card { min-height: 82px; padding: 12px; }
+  .release-detail-heading h3 { font-size: 19px; }
   .footer { gap: 15px; font-size: 9px; }
 }
 

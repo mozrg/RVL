@@ -168,71 +168,88 @@
       return;
     }
 
+    const grid = document.createElement('div');
+    grid.className = 'release-grid';
     published.forEach((release) => {
-      const entry = document.createElement('article');
-      entry.className = 'release-entry';
-
-      const header = document.createElement('div');
-      header.className = 'release-entry-header';
-      const info = document.createElement('div');
-      const title = document.createElement('div');
-      title.className = 'release-entry-title';
-
-      const heading = document.createElement('h3');
-      const toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'release-toggle';
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.append(document.createTextNode(release.name || release.tag_name || 'Релиз RVL'));
-      const indicator = document.createElement('span');
-      indicator.className = 'release-toggle-indicator';
-      indicator.setAttribute('aria-hidden', 'true');
-      toggle.append(indicator);
-      heading.append(toggle);
-      title.append(heading);
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'release-card';
+      const cardVersion = document.createElement('span');
+      cardVersion.className = 'release-card-version';
+      cardVersion.textContent = release.tag_name || release.name || 'Релиз RVL';
+      card.append(cardVersion);
       if (release.prerelease) {
         const badge = document.createElement('span');
         badge.className = 'prerelease-label';
         badge.textContent = 'Тестовая';
-        title.append(badge);
+        card.append(badge);
       }
-      info.append(title);
-
       const releaseDate = release.published_at || release.created_at;
       if (releaseDate) {
         const dateLabel = document.createElement('div');
-        dateLabel.className = 'release-entry-date';
+        dateLabel.className = 'release-card-date';
         dateLabel.textContent = formatDate(releaseDate);
-        info.append(dateLabel);
+        card.append(dateLabel);
       }
-      header.append(info);
-
-      const asset = findZip(release);
-      if (asset) {
-        const assetLink = document.createElement('a');
-        assetLink.className = 'release-download';
-        assetLink.href = asset.browser_download_url;
-        assetLink.setAttribute('download', asset.name);
-        assetLink.textContent = 'Скачать ZIP ↓';
-        header.append(assetLink);
-      }
-      entry.append(header);
-
-      const body = document.createElement('div');
-      body.className = 'release-body';
-      body.hidden = true;
-      if (release.body && release.body.trim()) {
-        renderMarkdown(body, release.body);
-      } else {
-        body.textContent = 'Описание изменений для этой версии не добавлено.';
-      }
-      toggle.onclick = () => {
-        body.hidden = !body.hidden;
-        toggle.setAttribute('aria-expanded', String(!body.hidden));
-      };
-      entry.append(body);
-      releaseList.append(entry);
+      card.setAttribute('aria-label', `Открыть версию ${cardVersion.textContent}`);
+      card.onclick = () => renderReleaseDetails(release, published);
+      grid.append(card);
     });
+    releaseList.append(grid);
+  }
+
+  function renderReleaseDetails(release, releases) {
+    releaseList.replaceChildren();
+    const detail = document.createElement('article');
+    detail.className = 'release-detail';
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'release-back';
+    back.textContent = '← Все версии';
+    back.onclick = () => renderReleaseHistory(releases);
+    detail.append(back);
+
+    const heading = document.createElement('div');
+    heading.className = 'release-detail-heading';
+    const title = document.createElement('h3');
+    title.textContent = release.tag_name || release.name || 'Релиз RVL';
+    heading.append(title);
+    if (release.prerelease) {
+      const badge = document.createElement('span');
+      badge.className = 'prerelease-label';
+      badge.textContent = 'Тестовая';
+      heading.append(badge);
+    }
+    detail.append(heading);
+
+    const releaseDate = release.published_at || release.created_at;
+    if (releaseDate) {
+      const date = document.createElement('div');
+      date.className = 'release-entry-date';
+      date.textContent = formatDate(releaseDate);
+      detail.append(date);
+    }
+
+    const asset = findZip(release);
+    if (asset) {
+      const assetLink = document.createElement('a');
+      assetLink.className = 'release-download';
+      assetLink.href = asset.browser_download_url;
+      assetLink.setAttribute('download', asset.name);
+      assetLink.textContent = 'Скачать ZIP ↓';
+      detail.append(assetLink);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'release-body';
+    if (release.body && release.body.trim()) {
+      renderMarkdown(body, release.body);
+    } else {
+      body.textContent = 'Описание изменений для этой версии не добавлено.';
+    }
+    detail.append(body);
+    releaseList.append(detail);
   }
 
   fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
