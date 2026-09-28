@@ -14205,3 +14205,63 @@ body.theme-light .pd-btn.pd-hk-toggle.pd-hk-off {
     0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
     50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
 }
+
+/* ============================================================
+   §startup-logo-v8 — calmer animations + outline-draw effect.
+   Per user feedback: the v7 breathe was too strong and the glow
+   was too thick. This block:
+   1. Reduces the breathe: opacity 0.94→1.00 (was 0.88→1.00),
+      scale 1.00→1.02 (was 1.00→1.04). Subtle, almost imperceptible.
+   2. Reduces the glow: drop-shadow 4px 12px at 0.18+0.08 (was
+      6px 16px at 0.30+0.15). Thinner halo.
+   3. Adds an "outline draw" effect — a thin white stroke slowly
+      traces the logo every 5s. Implemented as a CSS animation
+      on a -webkit-text-stroke (works in Edge WebView2). The
+      stroke fades in, holds, then fades out — no actual SVG
+      path animation needed.
+   ============================================================ */
+
+/* Override v7's stronger animations with calmer ones. */
+.startup-mark .startup-logo,
+.startup-mark .rvl-logo.startup-logo {
+    width: 200px !important;
+    height: 72px !important;
+    -ms-animation: rvl-logo-float-v8 4s ease-in-out infinite,
+                   rvl-logo-breathe-v8 3s ease-in-out infinite,
+                   rvl-logo-stroke-v8 5s ease-in-out infinite;
+    animation: rvl-logo-float-v8 4s ease-in-out infinite,
+               rvl-logo-breathe-v8 3s ease-in-out infinite,
+               rvl-logo-stroke-v8 5s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px rgba(232,232,232,0.18))
+            drop-shadow(0 0 12px rgba(232,232,232,0.08));
+    -webkit-filter: drop-shadow(0 0 4px rgba(232,232,232,0.18))
+                    drop-shadow(0 0 12px rgba(232,232,232,0.08));
+}
+@keyframes rvl-logo-float-v8 {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+}
+@-ms-keyframes rvl-logo-float-v8 {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+}
+@keyframes rvl-logo-breathe-v8 {
+    0%, 100% { opacity: 0.94; transform: translateY(0) scale(1); }
+    50%      { opacity: 1.00; transform: translateY(-3px) scale(1.02); }
+}
+@-ms-keyframes rvl-logo-breathe-v8 {
+    0%, 100% { opacity: 0.94; transform: translateY(0) scale(1); }
+    50%      { opacity: 1.00; transform: translateY(-3px) scale(1.02); }
+}
+/* §outline-draw — the stroke fades in (0→0.7), holds, fades out.
+   Reads as "the outline is being drawn around the logo", every 5s.
+   -webkit-text-stroke works in Edge/Chromium (WebView2) — gives a
+   thin white outline that the opacity animation makes appear and
+   disappear. Older browsers without text-stroke just see no
+   change (graceful fallback). */
+@keyframes rvl-logo-stroke-v8 {
+    0%, 100% { -webkit-text-stroke: 0 transparent; }
+    20%      { -webkit-text-stroke: 0.5px rgba(232,232,232,0.45); }
+    50%      { -webkit-text-stroke: 1.0px rgba(232,232,232,0.7); }
+    80%      { -webkit-text-stroke: 0.5px rgba(232,232,232,0.45); }
+}

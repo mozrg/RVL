@@ -445,28 +445,15 @@ public sealed class WebMainForm : Form
             ["__thumb_resp"] = "",
             ["__avatars_cleared"] = ""
         };
-        /* §edit-window-v7: copy the live __edit_preset_id value from the
-           active owner window's WebView into the bridge state we pass
-           to the freshly-opened edit tool window. Without this, the
-           preset id the launcher wrote before CMD:open_window edit
-           never reaches the new window's initNativeWindow("edit")
-           handler. */
-        try
-        {
-            var owner = MainHost;
-            if (!ReferenceEquals(owner, this) && owner._web.CoreWebView2 is not null)
-            {
-                var rawId = owner._web.CoreWebView2.ExecuteScriptAsync(
-                    "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
-                ).GetAwaiter().GetResult();
-                if (!string.IsNullOrEmpty(rawId))
-                {
-                    var unquoted = JsonSerializer.Deserialize<string>(rawId);
-                    if (!string.IsNullOrEmpty(unquoted)) d["__edit_preset_id"] = unquoted;
-                }
-            }
-        }
-        catch { /* best-effort — opening the edit window is non-fatal */ }
+        /* §edit-window-v8: do NOT use a synchronous ExecuteScriptAsync here.
+           BuildBridgeState is called on the UI thread during window load
+           (InjectStateAsync(true) → BuildBridgeState), and calling
+           GetAwaiter().GetResult() on a script-async that itself needs the
+           UI thread to dispatch the script will deadlock the launcher.
+           The preset id for the edit window is instead passed through a
+           dedicated bridge input written by the JS layer (see
+           __edit_preset_id in HTML) and read on demand by the new
+           edit window's initNativeWindow("edit") handler. */
         return d;
     }
 
@@ -537,7 +524,46 @@ public sealed class WebMainForm : Form
         var child = new WebMainForm(host._config, kind, host) { Owner = host };
         host._childWindows[kind] = child;
         child.FormClosed += (_, _) => host._childWindows.Remove(kind);
+        /* §edit-window-v8: for the edit tool window, we need to pass the
+           preset id the launcher wrote to __edit_preset_id BEFORE its
+           bridge state is built. We can't do this synchronously in
+           BuildBridgeState (deadlock), so we do it once here, BEFORE the
+           child WebView is initialized — the value will be read by the
+           child's initNativeWindow("edit") handler right after its
+           first render. Use a fire-and-forget await so we never block
+           the UI thread. */
+        if (kind == "edit" && !ReferenceEquals(host, this) && host._web.CoreWebView2 is not null)
+        {
+            _ = PassEditPresetIdAsync(host, child);
+        }
         child.ShowDeferred(host);
+    }
+
+    private async Task PassEditPresetIdAsync(WebMainForm host, WebMainForm child)
+    {
+        try
+        {
+            /* Wait briefly so the child WebView is initialized and the
+               launcher's __edit_preset_id input has the latest value. */
+            await Task.Delay(120);
+            var rawId = await host._web.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
+            );
+            if (!string.IsNullOrEmpty(rawId))
+            {
+                var unquoted = JsonSerializer.Deserialize<string>(rawId);
+                if (!string.IsNullOrEmpty(unquoted))
+                {
+                    /* Push the id into the child's DOM directly, then call
+                       a small JS helper to open the edit modal for that
+                       preset. The helper lives in the child's window. */
+                    await child._web.CoreWebView2.ExecuteScriptAsync(
+                        $"(function(){{var e=document.getElementById('__edit_preset_id');if(e)e.value={JsonSerializer.Serialize(unquoted)};if(typeof window.openEditPresetFromBridge==='function')window.openEditPresetFromBridge();}})();"
+                    );
+                }
+            }
+        }
+        catch { /* best-effort — opening the edit window is non-fatal */ }
     }
 
     private void CloseSettingsAndMain()

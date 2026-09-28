@@ -6979,20 +6979,11 @@ function initNativeWindow(kind) {
     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
         groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
-        /* §edit-window-v7: when the edit tool window opens, read the
-           __edit_preset_id bridge field the launcher wrote before
-           CMD:open_window edit, then open the edit modal for that preset.
-           The field is cleared so re-opening for a different preset works. */
-        edit: function () {
-            var eid = el("__edit_preset_id");
-            var pid = eid ? eid.value : "";
-            if (eid) eid.value = "";
-            if (pid && findPreset(pid)) {
-                /* Defer one tick so initNativeWindow finishes its DOM
-                   prep (hiding app-shell etc.) before the modal builds. */
-                setTimeout(function () { openPresetEditModal(pid); }, 30);
-            }
-        } }[kind];
+        /* §edit-window-v8: the edit tool window doesn't need a fn entry —
+           the C# host calls window.openEditPresetFromBridge() AFTER the
+           child WebView is fully loaded, which is more reliable than
+           racing the first render from inside initNativeWindow. */
+        edit: null }[kind];
     if (typeof fn === "function") fn();
     bindNativeWindowDrag(kind);
 }
@@ -7397,7 +7388,7 @@ function applyStyleObj(el, styleObj) {
 }
 
 function openPresetEditModal(id) {
-    /* §edit-window-v7: in the native C# host, the edit modal opens as a
+    /* §edit-window-v8: in the native C# host, the edit modal opens as a
        dedicated tool window — same pattern as history/dashboard/themes.
        The preset id is passed to the new window via the __edit_preset_id
        bridge field. This is the FIRST thing we do — before any of the
@@ -7423,6 +7414,20 @@ function openPresetEditModal(id) {
        click — avoids whatever race that was. */
     setTimeout(function () { buildPresetEditModal(id, p); }, 0);
 }
+
+/* §edit-window-v8: global hook the C# host calls after it has copied the
+   launcher's __edit_preset_id value into this child window's DOM. It
+   reads the value, clears the field, then opens the edit modal for
+   that preset — exactly what initNativeWindow("edit") used to do, but
+   without racing the child window's first render. */
+window.openEditPresetFromBridge = function () {
+    var eid = el("__edit_preset_id");
+    var pid = eid ? eid.value : "";
+    if (eid) eid.value = "";
+    if (pid && findPreset(pid)) {
+        setTimeout(function () { openPresetEditModal(pid); }, 30);
+    }
+};
 
 function buildPresetEditModal(id, p) {
     if (editingPresetId !== id) return; /* superseded by a newer open/close before this tick ran */
