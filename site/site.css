@@ -143,6 +143,8 @@ a { color: inherit; }
 .requirement span { color: var(--muted); font: 9px 'DM Mono', monospace; letter-spacing: .12em; }
 .requirement strong { font-size: 12px; font-weight: 600; }
 .requirement small { color: var(--muted); font-size: 10px; }
+.requirement-link { width: fit-content; margin-top: 3px; color: var(--accent); font-size: 10px; text-decoration: none; }
+.requirement-link:hover { text-decoration: underline; }
 .faq-list { margin-top: 20px; border-top: 1px solid var(--line); }
 .faq-item { border-bottom: 1px solid var(--line); }
 .faq-item summary { position: relative; padding: 16px 30px 16px 0; cursor: pointer; list-style: none; color: #deded8; font-size: 12px; }

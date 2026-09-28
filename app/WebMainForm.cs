@@ -186,7 +186,7 @@ public sealed class WebMainForm : Form
         "export" => new Size(760, 560),
         "guide" => new Size(760, 380),
         "new" => new Size(520, 430),
-        "edit" => new Size(540, 460),  /* Fits the editor controls without the unused lower strip. */
+        "edit" => new Size(560, 560),  /* Fits the note field and action buttons without scrolling. */
         _ => new Size(760, 620)
     };
 
