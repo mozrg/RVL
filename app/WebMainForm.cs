@@ -53,7 +53,6 @@ public sealed class WebMainForm : Form
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
-    [DllImport("kernel32.dll", ExactSpelling = true)] private static extern uint GetCurrentProcessId();
     [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterHotKey(nint hWnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool UnregisterHotKey(nint hWnd, int id);
 
@@ -1441,9 +1440,7 @@ public sealed class WebMainForm : Form
             var helper = Path.Combine(temp, "install.ps1");
             await File.WriteAllTextAsync(helper, NativeUpdateScript, new UTF8Encoding(true));
             var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
-            var currentProcessId = GetCurrentProcessId();
-            if (currentProcessId == 0) throw new InvalidOperationException("Windows не вернула PID текущего процесса RVL.");
-            psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + QuoteArg(helper) + " -Source " + QuoteArg(extract) + " -Target " + QuoteArg(AppContext.BaseDirectory) + " -WaitPid " + currentProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) + " -Restart " + QuoteArg(Application.ExecutablePath);
+            psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + QuoteArg(helper) + " -Source " + QuoteArg(extract) + " -Target " + QuoteArg(AppContext.BaseDirectory) + " -Restart " + QuoteArg(Application.ExecutablePath);
             Process.Start(psi);
             SetStatus("installing", "Файлы готовы. Перезапускаем RVL…", 100);
             await Task.Delay(500);
@@ -1453,19 +1450,23 @@ public sealed class WebMainForm : Form
     }
 
     private const string NativeUpdateScript = """
-        param([string]$Source,[string]$Target,[int]$WaitPid,[string]$Restart)
+        param([string]$Source,[string]$Target,[string]$Restart)
         $ErrorActionPreference = 'Stop'
         $log = Join-Path (Split-Path $Source -Parent) 'install.log'
         function Write-UpdateLog([string]$message) {
             Add-Content -LiteralPath $log -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $message)
         }
         try {
-            if ($WaitPid -le 0) { throw "Invalid RVL process ID: $WaitPid" }
-            Write-UpdateLog "Waiting for RVL process $WaitPid to exit."
-            try {
-                $oldProcess = [System.Diagnostics.Process]::GetProcessById($WaitPid)
-                if (-not $oldProcess.WaitForExit(60000)) { throw 'Timed out waiting for RVL to close.' }
-            } catch [System.ArgumentException] { }
+            $restartPath = [System.IO.Path]::GetFullPath($Restart)
+            $deadline = [DateTime]::UtcNow.AddSeconds(60)
+            Write-UpdateLog "Waiting for RVL to exit from $restartPath."
+            do {
+                $running = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'RVL.exe'" |
+                    Where-Object { $_.ExecutablePath -and [string]::Equals([System.IO.Path]::GetFullPath($_.ExecutablePath), $restartPath, [System.StringComparison]::OrdinalIgnoreCase) })
+                if ($running.Count -eq 0) { break }
+                if ([DateTime]::UtcNow -ge $deadline) { throw 'Timed out waiting for RVL to close.' }
+                Start-Sleep -Milliseconds 200
+            } while ($true)
 
             $root = $Source
             if (-not (Test-Path (Join-Path $root 'RVL.exe'))) {
