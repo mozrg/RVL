@@ -292,6 +292,11 @@ public sealed class WebMainForm : Form
                 _ = FetchThumbnailAsync(command[14..].Trim());
                 return;
             }
+            if (command.StartsWith("CMD:auto_backup_", StringComparison.Ordinal))
+            {
+                TryCreateAutomaticBackup(command["CMD:auto_backup_".Length..]);
+                return;
+            }
 
             switch (command)
             {
@@ -342,7 +347,7 @@ public sealed class WebMainForm : Form
                 case "CMD:reload_state": ReloadState(); break;
                 case "CMD:export_stats": ExportStats(payload); break;
                 case "CMD:save_window_pos": SaveWindowPosition(); break;
-                case "CMD:factory_reset": FactoryReset(); break;
+                case "CMD:factory_reset": if (TryCreateAutomaticBackup("factory-reset")) FactoryReset(); break;
                 case "CMD:check_update": await CheckUpdateAsync(); break;
                 case "CMD:install_update": await InstallUpdateAsync(); break;
             }
@@ -658,11 +663,23 @@ public sealed class WebMainForm : Form
 
     private async Task LaunchFromBridgeAsync(Dictionary<string, string> values)
     {
-        SaveBridge(values);
         var method = V(values, "__cfg_method", "1");
-        var place = V(values, "inp-place", _config.Get("PlaceId"));
-        var rawCode = method == "2" ? V(values, "inp-share-code", V(values, "inp-link", _config.Get("LinkCode"))) : V(values, "inp-link", _config.Get("LinkCode"));
+        var place = values.TryGetValue("inp-place", out var placeValue) ? placeValue.Trim() : _config.Get("PlaceId");
+        var rawCode = method == "2"
+            ? values.TryGetValue("inp-share-code", out var shareValue) ? shareValue.Trim() : values.TryGetValue("inp-link", out var shareFallback) ? shareFallback.Trim() : _config.Get("LinkCode")
+            : values.TryGetValue("inp-link", out var linkValue) ? linkValue.Trim() : _config.Get("LinkCode");
         var code = RvlPreset.NormalizeShareCode(rawCode);
+        var invalidReason = method == "2"
+            ? Regex.IsMatch(code, @"^[A-Za-z0-9]+$") ? "" : "share"
+            : !Regex.IsMatch(place, @"^\d{1,20}$") ? "place"
+            : string.IsNullOrWhiteSpace(rawCode) ? "link" : "";
+        if (invalidReason.Length > 0)
+        {
+            var host = MainHost;
+            await host.ExecuteScriptAsync($"if(window.showLaunchValidationError)showLaunchValidationError({JsonSerializer.Serialize(invalidReason)});");
+            return;
+        }
+        SaveBridge(values);
         /* Roblox share links for private servers REQUIRE &type=Server — without it,
            the app shows "This link doesn't exist". Old builds omitted it because the
            web share path used to default to type=Server for short codes, but the
@@ -956,10 +973,26 @@ public sealed class WebMainForm : Form
         if (dialog.ShowDialog(this) == DialogResult.OK) _config.CreateBackup(dialog.FileName, V(values, "__presets_out", _config.PresetsJson), V(values, "__theme_presets_out", _config.ThemePresetsJson), V(values, "__preset_groups_out", _config.GroupsJson));
     }
 
+    private bool TryCreateAutomaticBackup(string reason)
+    {
+        try
+        {
+            _config.CreateAutomaticBackup(reason);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(MainHost, "Не удалось создать автоматическую резервную копию. Массовое редактирование может продолжиться без неё; импорт, сброс и восстановление будут отменены.\n\n" + ex.Message,
+                "RVL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return false;
+        }
+    }
+
     private void BackupRestore()
     {
-        using var dialog = new OpenFileDialog { Filter = "RVL backup (*.rvlbackup)|*.rvlbackup|Все файлы (*.*)|*.*" };
-        if (dialog.ShowDialog(this) == DialogResult.OK) { _config.RestoreBackup(dialog.FileName); ReloadState(); }
+        var autoBackupDirectory = Path.Combine(Storage.DataDirectory, "backups");
+        using var dialog = new OpenFileDialog { Filter = "RVL backup (*.rvlbackup)|*.rvlbackup|Все файлы (*.*)|*.*", InitialDirectory = Directory.Exists(autoBackupDirectory) ? autoBackupDirectory : Storage.DataDirectory };
+        if (dialog.ShowDialog(this) == DialogResult.OK && TryCreateAutomaticBackup("before-restore")) { _config.RestoreBackup(dialog.FileName); ReloadState(); }
     }
 
     private void ReloadState()
@@ -994,6 +1027,14 @@ public sealed class WebMainForm : Form
         using var dialog = new OpenFileDialog { Filter = "JSON пресеты (*.json)|*.json|Все файлы (*.*)|*.*" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         var data = await File.ReadAllTextAsync(dialog.FileName);
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() == 0) return;
+        }
+        catch { return; }
+        if (!TryCreateAutomaticBackup("import-presets")) return;
+        await ExecuteScriptAsync("window.__rvlImportBackupDone=true;");
         await SetValueAsync("__import_data", data);
         await ExecuteScriptAsync("importPresetsFromAHK();");
     }
@@ -1003,6 +1044,14 @@ public sealed class WebMainForm : Form
         using var dialog = new OpenFileDialog { Filter = "Цветовые пресеты (*.json)|*.json|Все файлы (*.*)|*.*" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         var data = await File.ReadAllTextAsync(dialog.FileName);
+        try
+        {
+            using var document = JsonDocument.Parse(data);
+            if (document.RootElement.ValueKind != JsonValueKind.Array) return;
+        }
+        catch { return; }
+        if (!TryCreateAutomaticBackup("import-themes")) return;
+        await ExecuteScriptAsync("window.__rvlImportBackupDone=true;");
         await SetValueAsync("__import_theme_data", data);
         await ExecuteScriptAsync("importThemePresetsFromAHK();");
     }

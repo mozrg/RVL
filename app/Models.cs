@@ -6,6 +6,7 @@ public sealed class RvlPreset
 {
     [JsonPropertyName("id")] public string Id { get; set; } = Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
     [JsonPropertyName("name")] public string Name { get; set; } = "Новый пресет";
+    [JsonPropertyName("note")] public string Note { get; set; } = "";
     [JsonPropertyName("placeId")] public string PlaceId { get; set; } = "";
     [JsonPropertyName("linkCode")] public string LinkCode { get; set; } = "";
     [JsonPropertyName("method")] public int Method { get; set; } = 1;

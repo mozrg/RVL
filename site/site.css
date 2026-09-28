@@ -112,11 +112,16 @@ a { color: inherit; }
 .release-entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .release-entry-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .release-entry-title h3 { margin: 0; font-size: 16px; letter-spacing: -.03em; }
+.release-toggle { display: inline-flex; align-items: center; gap: 10px; border: 0; padding: 0; background: transparent; color: #deded8; font: inherit; letter-spacing: inherit; cursor: pointer; text-align: left; }
+.release-toggle:hover { color: #FFFFFF; }
+.release-toggle-indicator { width: 8px; height: 8px; border-right: 1px solid var(--muted); border-bottom: 1px solid var(--muted); transform: rotate(45deg) translateY(-2px); transition: transform .16s ease; }
+.release-toggle[aria-expanded="true"] .release-toggle-indicator { transform: rotate(225deg) translate(-2px,-1px); }
 .release-entry-date { color: var(--muted); font-size: 11px; }
 .prerelease-label { padding: 4px 7px; border: 1px solid #4A4A4A; border-radius: 3px; color: #D0D0D0; font: 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .release-download { flex: 0 0 auto; color: var(--accent); text-decoration: none; font-size: 11px; }
 .release-download:hover { text-decoration: underline; }
 .release-body { max-width: 760px; margin-top: 16px; color: #a2a29c; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.release-body[hidden] { display: none; }
 .release-body > :first-child { margin-top: 0; }
 .release-body > :last-child { margin-bottom: 0; }
 .release-body p { margin: 9px 0; }
@@ -131,6 +136,20 @@ a { color: inherit; }
 .release-body hr { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
 .release-body a { color: var(--accent); text-underline-offset: 3px; }
 .history-state { margin: 0; padding: 22px 0; color: var(--muted); font-size: 12px; }
+.install-guide { width: min(100% - 64px, 900px); margin: 0 auto 90px; }
+.requirements { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.requirement { min-height: 105px; padding: 17px 20px; display: flex; flex-direction: column; gap: 7px; }
+.requirement + .requirement { border-left: 1px solid var(--line); }
+.requirement span { color: var(--muted); font: 9px 'DM Mono', monospace; letter-spacing: .12em; }
+.requirement strong { font-size: 12px; font-weight: 600; }
+.requirement small { color: var(--muted); font-size: 10px; }
+.faq-list { margin-top: 20px; border-top: 1px solid var(--line); }
+.faq-item { border-bottom: 1px solid var(--line); }
+.faq-item summary { position: relative; padding: 16px 30px 16px 0; cursor: pointer; list-style: none; color: #deded8; font-size: 12px; }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after { content: "+"; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); color: var(--muted); font: 18px 'DM Mono', monospace; }
+.faq-item[open] summary::after { content: "−"; color: var(--accent); }
+.faq-item p { max-width: 700px; margin: -3px 0 17px; color: var(--muted); font-size: 11px; line-height: 1.8; }
 .footer { min-height: 66px; border-top: 1px solid var(--line); color: #777772; font: 10px 'DM Mono', monospace; }
 
 @media (max-width: 600px) {
@@ -147,6 +166,10 @@ a { color: inherit; }
   .feature h2 { margin-top: 12px; }
   .feature p { max-width: 100%; }
   .release-history { width: calc(100% - 36px); margin-bottom: 65px; }
+  .install-guide { width: calc(100% - 36px); margin-bottom: 65px; }
+  .requirements { grid-template-columns: 1fr; }
+  .requirement { min-height: 0; padding: 16px 5px; }
+  .requirement + .requirement { border-left: 0; border-top: 1px solid var(--line); }
   .section-heading h2 { font-size: 22px; }
   .section-heading .all-releases { font-size: 10px; }
   .release-entry-header { flex-direction: column; gap: 10px; }

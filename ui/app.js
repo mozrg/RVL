@@ -344,11 +344,15 @@ var STRINGS = {
         },
         launchDelayLabel:"Задержка запуска",launchDelayUnit:"с",
         launchCountdown:function(n){return "ЗАПУСК "+n+"с...";},
+        launchInvalidPlaceId:"Place ID должен содержать только цифры.",
+        launchMissingLinkCode:"Введи Link Code приватного сервера.",
+        launchInvalidShareCode:"Проверь Share Code или ссылку на сервер.",
         dupTip:"Дублировать пресет",
         dupIndicatorTip:function(n){return "\u26A0 "+n+" пресета с одинаковым кодом";},
         editPresetTip:"Редактировать Place ID, Link/Share Code и группу",
         editPresetTitle:"Редактировать пресет",editPlaceLabel:"PLACE ID",
-        editLinkLabel:"LINK CODE",editSaveBtn:"Сохранить",editCancelBtn:"Отмена",
+        editLinkLabel:"LINK CODE",editNoteLabel:"ЗАМЕТКА",pdNoteLabel:"ЗАМЕТКА",
+        editSaveBtn:"Сохранить",editCancelBtn:"Отмена",
         factoryResetLabel:"СБРОС",factoryResetBtn:"Сбросить к заводским",
         factoryResetConfirm:"Сбросить всё к заводским настройкам?",
         factoryResetConfirmBtn:"Да, сбросить",
@@ -386,6 +390,7 @@ var STRINGS = {
         backupCreate:"Создать резервную копию",
         backupRestore:"Восстановить из копии",
         backupDone:"Резервная копия создана",
+        backupAutoHint:"Автокопии перед импортом, восстановлением, сбросом и массовым редактированием сохраняются автоматически (последние 20). Их можно выбрать кнопкой восстановления выше.",
         backupRestoreDone:"Состояние восстановлено",
         backupRestoreConfirm:"Восстановление заменит все текущие данные. Продолжить?",
         historyTitle:"ИСТОРИЯ ЗАПУСКОВ",
@@ -694,11 +699,15 @@ var STRINGS = {
         },
         launchDelayLabel:"Launch delay",launchDelayUnit:"s",
         launchCountdown:function(n){return "LAUNCH "+n+"s...";},
+        launchInvalidPlaceId:"Place ID must contain digits only.",
+        launchMissingLinkCode:"Enter the private server Link Code.",
+        launchInvalidShareCode:"Check the Share Code or server link.",
         dupTip:"Duplicate preset",
         dupIndicatorTip:function(n){return "\u26A0 "+n+" presets with same code";},
         editPresetTip:"Edit Place ID, Link/Share Code and group",
         editPresetTitle:"Edit preset",editPlaceLabel:"PLACE ID",
-        editLinkLabel:"LINK CODE",editSaveBtn:"Save",editCancelBtn:"Cancel",
+        editLinkLabel:"LINK CODE",editNoteLabel:"NOTE",pdNoteLabel:"NOTE",
+        editSaveBtn:"Save",editCancelBtn:"Cancel",
         factoryResetLabel:"RESET",factoryResetBtn:"Factory reset",
         factoryResetConfirm:"Reset everything to factory defaults?",
         factoryResetConfirmBtn:"Yes, reset",
@@ -736,6 +745,7 @@ var STRINGS = {
         backupCreate:"Create backup",
         backupRestore:"Restore from backup",
         backupDone:"Backup created",
+        backupAutoHint:"Snapshots before import, restore, reset and bulk edits are saved automatically (latest 20). Restore one using the button above.",
         backupRestoreDone:"State restored",
         backupRestoreConfirm:"Restoring will replace all current data. Continue?",
         historyTitle:"LAUNCH HISTORY",
@@ -2522,18 +2532,21 @@ function onLaunch() {
         btn0.className = "btn-primary";
         return;
     }
-    isLaunching = true;
     var placeId, linkCode;
     if (currentMethod === 2) {
         placeId  = "";
         linkCode = trim(el("inp-share-code").value);
-        /* Strip full URL if user pasted it — extract code value */
-        var m2 = linkCode.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
+        /* Accept a share code or a full Roblox share URL. */
+        var m2 = linkCode.match(/[?&]code=([A-Za-z0-9]+)/i);
         if (m2) linkCode = m2[1];
+        if (!/^[A-Za-z0-9]+$/.test(linkCode)) { showLaunchValidationError("share"); return; }
     } else {
         placeId  = trim(el("inp-place").value);
         linkCode = trim(el("inp-link").value);
+        if (!/^\d{1,20}$/.test(placeId)) { showLaunchValidationError("place"); return; }
+        if (!linkCode) { showLaunchValidationError("link"); return; }
     }
+    isLaunching = true;
     /* Also sync the hidden bridge inputs so AHK ReadDom gets the right values */
     if (el("inp-place"))      el("inp-place").value = placeId;
     if (el("inp-link"))       el("inp-link").value  = linkCode;
@@ -2573,6 +2586,14 @@ function onLaunch() {
         if (remaining <= 0) { clearInterval(countdownTimer); doLaunch(); }
         else { btn.innerHTML = S.launchCountdown(remaining); }
     }, 1000);
+}
+
+function showLaunchValidationError(reason) {
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    var message = reason === "place" ? S.launchInvalidPlaceId
+        : reason === "link" ? S.launchMissingLinkCode
+        : S.launchInvalidShareCode;
+    showToast(message || "Проверь данные сервера.", null, null, 2600);
 }
 
 
@@ -3212,6 +3233,7 @@ function applyLanguage() {
     }
     pdLabel("pd-lbl-launches", S.pdLaunchesLabel || "ЗАПУСКОВ");
     pdLabel("pd-lbl-last",     S.pdLastLabel     || "ПОСЛЕДНИЙ");
+    pdLabel("pd-lbl-note",     S.pdNoteLabel     || "ЗАМЕТКА");
     pdLabel("pd-lbl-hk",       S.pdHkLabel       || "ХОТКЕЙ");
     /* pd-lbl-place / pd-lbl-link are also re-rendered by renderDetailPanel
        using the same STRINGS keys (pdShareLabel/pdShareCodeLabel/labelPlace/
@@ -4336,6 +4358,7 @@ var UI_ELEMENTS = [
     {id:"pd-lbl-link",     g:"list", t:1},
     {id:"pd-lbl-launches", g:"list", t:1},
     {id:"pd-lbl-last",     g:"list", t:1},
+    {id:"pd-row-note",     g:"list", t:1},
     {id:"pd-lbl-hk",       g:"list", t:1},
     {id:"btn-launch",      g:"list", t:1},
     {id:"pd-edit",         g:"list", t:1},
@@ -6018,6 +6041,8 @@ function importPresetsFromAHK() {
     try {
         var imported = JSON.parse(raw);
         if (!isArray(imported) || !imported.length) return;
+        if (window.__rvlNativeHost && !window.__rvlImportBackupDone) sendCmd("CMD:auto_backup_import-presets");
+        window.__rvlImportBackupDone = false;
         presets = imported;
         flushPresetHKMap();
         renderPresets();
@@ -6034,6 +6059,8 @@ function importThemePresetsFromAHK() {
     try {
         var imported = JSON.parse(raw);
         if (!isArray(imported)) return;
+        if (window.__rvlNativeHost && !window.__rvlImportBackupDone) sendCmd("CMD:auto_backup_import-themes");
+        window.__rvlImportBackupDone = false;
         userThemePresets = imported;
         renderTPGrid();
         flushThemePresetsOut();
@@ -7573,6 +7600,20 @@ function buildPresetEditModal(id, p) {
     nameInp.spellcheck = false;
     applyStyleObj(nameInp, TH.inp);
 
+    var noteLabel = document.createElement("div");
+    noteLabel.className = "preset-edit-label";
+    applyStyleObj(noteLabel, TH.label);
+    noteLabel.appendChild(document.createTextNode(S.editNoteLabel || "ЗАМЕТКА"));
+
+    var noteInp = document.createElement("textarea");
+    noteInp.id = "preset-edit-note";
+    noteInp.className = "field-input preset-edit-inp preset-edit-note";
+    noteInp.value = p.note || "";
+    noteInp.maxLength = 300;
+    noteInp.rows = 2;
+    noteInp.spellcheck = true;
+    applyStyleObj(noteInp, TH.inp);
+
     /* Enhancement: Icon selector — SVG icon set (no emoji anywhere) */
     var iconLabel = document.createElement("div");
     iconLabel.className = "preset-edit-label";
@@ -7679,6 +7720,8 @@ function buildPresetEditModal(id, p) {
         modal.appendChild(header);
         modal.appendChild(nameLabel);
         modal.appendChild(nameInp);
+        modal.appendChild(noteLabel);
+        modal.appendChild(noteInp);
         modal.appendChild(scLabel);
         modal.appendChild(scInp);
         modal.appendChild(iconLabel);
@@ -7704,6 +7747,8 @@ function buildPresetEditModal(id, p) {
         modal.appendChild(header);
         modal.appendChild(nameLabel);
         modal.appendChild(nameInp);
+        modal.appendChild(noteLabel);
+        modal.appendChild(noteInp);
         modal.appendChild(placeLabel);
         modal.appendChild(placeInp);
         modal.appendChild(linkLabel);
@@ -7791,6 +7836,8 @@ function confirmPresetEdit(id, placeInp, linkInp) {
     var newPlace = trim(placeInp.value);
     var newLink  = trim(linkInp.value);
     if (!newPlace || !newLink) return;
+    var noteEl = el("preset-edit-note");
+    var newNote = noteEl ? trim(noteEl.value) : "";
     /* Get name, icon, color from edit modal */
     var newName = "";
     var nameEl = el("preset-edit-name");
@@ -7801,6 +7848,7 @@ function confirmPresetEdit(id, placeInp, linkInp) {
         if (presets[i].id === id) {
             presets[i].placeId  = newPlace;
             presets[i].linkCode = newLink;
+            presets[i].note = newNote;
             if (newName) presets[i].name = newName;
             if (newIcon) presets[i].icon = newIcon; else delete presets[i].icon;
             if (newColor) presets[i].color = newColor; else delete presets[i].color;
@@ -7818,6 +7866,8 @@ function confirmPresetEdit(id, placeInp, linkInp) {
 function confirmPresetEditM2(id, scInp) {
     var newSC = trim(scInp.value);
     if (!newSC) return;
+    var noteEl = el("preset-edit-note");
+    var newNote = noteEl ? trim(noteEl.value) : "";
     /* Strip full URL if pasted */
     var m = newSC.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
     if (m) newSC = m[1];
@@ -7831,6 +7881,7 @@ function confirmPresetEditM2(id, scInp) {
         if (presets[i].id === id) {
             presets[i].linkCode = newSC;
             presets[i].placeId  = "";
+            presets[i].note = newNote;
             if (newName) presets[i].name = newName;
             if (newIcon) presets[i].icon = newIcon; else delete presets[i].icon;
             if (newColor) presets[i].color = newColor; else delete presets[i].color;
@@ -8191,6 +8242,7 @@ function saveBulkEdit() {
     }
     closeBulkEdit();
     if (changed > 0) {
+        sendCmd("CMD:auto_backup_bulk-edit");
         flushPresetsOut();
         renderPresets();
         setDirty();
@@ -9372,6 +9424,7 @@ function applyEnhancementLanguage() {
     setText("backup-title-text", S.backupTitle);
     setText("btn-backup-create", S.backupCreate);
     setText("btn-backup-restore", S.backupRestore);
+    setText("backup-auto-hint", S.backupAutoHint || "Автокопии сохраняются автоматически перед изменениями; их можно выбрать кнопкой восстановления.");
 
     /* Search placeholder */
     var si = el("search-inp");
@@ -10468,6 +10521,15 @@ function renderDetailPanel(id) {
 
     el("pd-val-last").innerHTML = "";
     el("pd-val-last").appendChild(document.createTextNode(p.lastLaunch ? formatRelativeTime(p.lastLaunch) : "\u2014"));
+
+    var noteRow = el("pd-row-note");
+    var noteValue = el("pd-val-note");
+    if (noteRow && noteValue) {
+        noteRow.style.display = p.note ? "flex" : "none";
+        noteValue.innerHTML = "";
+        noteValue.appendChild(document.createTextNode(p.note || ""));
+        el("pd-lbl-note").innerHTML = Sd.pdNoteLabel || "ЗАМЕТКА";
+    }
 
     var hkRow = el("pd-row-hk");
     var hkVal = el("pd-val-hk");

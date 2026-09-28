@@ -109,6 +109,24 @@ internal sealed class NativeConfig
         File.WriteAllText(path, JsonSerializer.Serialize(backup), new UTF8Encoding(false));
     }
 
+    public string CreateAutomaticBackup(string reason, int keepCount = 20)
+    {
+        var directory = Path.Combine(Storage.DataDirectory, "backups");
+        Directory.CreateDirectory(directory);
+        var safeReason = new string((reason ?? "change").Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').Take(32).ToArray());
+        if (string.IsNullOrWhiteSpace(safeReason)) safeReason = "change";
+        var path = Path.Combine(directory, $"auto_{DateTime.Now:yyyyMMdd_HHmmss_fff}_{safeReason}.rvlbackup");
+        CreateBackup(path, PresetsJson, ThemePresetsJson, GroupsJson);
+
+        foreach (var oldBackup in Directory.EnumerateFiles(directory, "auto_*.rvlbackup")
+                     .OrderByDescending(File.GetLastWriteTimeUtc)
+                     .Skip(Math.Clamp(keepCount, 1, 100)))
+        {
+            try { File.Delete(oldBackup); } catch { }
+        }
+        return path;
+    }
+
     public void RestoreBackup(string path)
     {
         using var document = JsonDocument.Parse(File.ReadAllText(path, Encoding.UTF8));

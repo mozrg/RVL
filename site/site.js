@@ -179,7 +179,16 @@
       title.className = 'release-entry-title';
 
       const heading = document.createElement('h3');
-      heading.textContent = release.name || release.tag_name || 'Релиз RVL';
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'release-toggle';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.append(document.createTextNode(release.name || release.tag_name || 'Релиз RVL'));
+      const indicator = document.createElement('span');
+      indicator.className = 'release-toggle-indicator';
+      indicator.setAttribute('aria-hidden', 'true');
+      toggle.append(indicator);
+      heading.append(toggle);
       title.append(heading);
       if (release.prerelease) {
         const badge = document.createElement('span');
@@ -211,11 +220,16 @@
 
       const body = document.createElement('div');
       body.className = 'release-body';
+      body.hidden = true;
       if (release.body && release.body.trim()) {
         renderMarkdown(body, release.body);
       } else {
         body.textContent = 'Описание изменений для этой версии не добавлено.';
       }
+      toggle.onclick = () => {
+        body.hidden = !body.hidden;
+        toggle.setAttribute('aria-expanded', String(!body.hidden));
+      };
       entry.append(body);
       releaseList.append(entry);
     });

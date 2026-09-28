@@ -13049,6 +13049,9 @@ body.theme-light .rvl-logo {
 .pd-name { font-size: 16px; color: #F0F1F5; }
 .pd-tag { padding: 2px 6px; background: #1B1E27; color: #AEB3C0; }
 .pd-info { padding-right: 1px; }
+.pd-note-row { -ms-flex-align: start !important; align-items: flex-start !important; }
+.pd-note-val { white-space: pre-wrap !important; overflow: visible !important; text-overflow: clip !important; overflow-wrap: anywhere; line-height: 1.5; font-family: inherit !important; }
+.preset-edit-note { min-height: 52px; padding-top: 7px; padding-bottom: 7px; resize: vertical; white-space: pre-wrap; }
 .pd-row {
     padding: 8px 0;
     border-bottom-color: #20232B;
