@@ -14108,3 +14108,114 @@ body.theme-light .pd-btn.pd-hk-toggle.pd-hk-off {
     border-color: #5A2A2A;
     background: rgba(255, 80, 80, 0.06);
 }
+
+/* ============================================================
+   §startup-animations-v4 — re-add subtle but visible animations
+   to the loading screen per user feedback. Replaces the deleted
+   watermark + orbit grid with:
+   1. A faint floating-glow "aurora" — three slowly drifting radial
+      gradients in the brand color. Barely visible but adds depth.
+   2. A pulsing accent ring around the central brand mark — visible
+      enough to read as "the app is loading" without being noisy.
+   3. A slow horizontal "scan line" sweeping top-to-bottom — 6s cycle,
+      reads as a boot-time activity indicator.
+   All animations use the GPU-friendly opacity+transform only so
+   the WebView2 surface stays at 60fps even on low-end machines.
+   ============================================================ */
+
+/* §aurora — three drifting radial gradients as background layers. */
+.startup-screen {
+    background:
+        radial-gradient(circle at 20% 30%, rgba(232,232,232,0.045) 0%, transparent 28%),
+        radial-gradient(circle at 80% 70%, rgba(232,232,232,0.038) 0%, transparent 32%),
+        radial-gradient(circle at 50% 50%, #1A1A1A 0%, #0A0A0A 70%, #050505 100%),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 4px);
+    background-color: #0A0A0A;
+}
+
+/* Wrap the aurora in a dedicated layer so it can animate without
+   re-rendering the rest of the background. */
+.startup-screen::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(circle at var(--rvl-aurora-1, 25%) 30%, rgba(232,232,232,0.06) 0%, transparent 26%),
+        radial-gradient(circle at var(--rvl-aurora-2, 70%) 70%, rgba(232,232,232,0.05) 0%, transparent 28%),
+        radial-gradient(circle at 50% var(--rvl-aurora-3, 40%), rgba(232,232,232,0.04) 0%, transparent 32%);
+    -ms-animation: rvl-aurora-drift 12s ease-in-out infinite;
+    animation: rvl-aurora-drift 12s ease-in-out infinite;
+}
+@keyframes rvl-aurora-drift {
+    0%, 100% { --rvl-aurora-1: 25%; --rvl-aurora-2: 70%; --rvl-aurora-3: 40%; opacity: 0.85; }
+    33%      { --rvl-aurora-1: 60%; --rvl-aurora-2: 40%; --rvl-aurora-3: 60%; opacity: 1; }
+    66%      { --rvl-aurora-1: 35%; --rvl-aurora-2: 75%; --rvl-aurora-3: 30%; opacity: 0.7; }
+}
+/* IE11 fallback — keyframes without custom-property interpolation just
+   fade the layer. The animation still runs, just no position drift. */
+@-ms-keyframes rvl-aurora-drift {
+    0%, 100% { opacity: 0.85; }
+    50%      { opacity: 1; }
+}
+
+/* §scan-line — a 1px horizontal line sweeping top-to-bottom across the
+   loading screen. Only visible during the boot. */
+.startup-screen .rvl-scanline {
+    position: absolute;
+    left: 0; right: 0;
+    top: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(232,232,232,0.45), transparent);
+    box-shadow: 0 0 8px rgba(232,232,232,0.35);
+    pointer-events: none;
+    z-index: 1;
+    -ms-animation: rvl-scanline-sweep 6s ease-in-out infinite;
+    animation: rvl-scanline-sweep 6s ease-in-out infinite;
+}
+@keyframes rvl-scanline-sweep {
+    0%   { top: 0%;   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+@-ms-keyframes rvl-scanline-sweep {
+    0%   { top: 0%;   opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+}
+
+/* §brand-pulse — slow glow around the RVL brand mark. Visible
+   "breathing" so the user can tell the app is alive. */
+.startup-mark {
+    position: relative;
+    -ms-animation: rvl-brand-pulse 2.6s ease-in-out infinite;
+    animation: rvl-brand-pulse 2.6s ease-in-out infinite;
+}
+@keyframes rvl-brand-pulse {
+    0%, 100% { text-shadow: 0 0 18px rgba(232,232,232,0.18), 0 0 4px rgba(232,232,232,0.3); }
+    50%      { text-shadow: 0 0 28px rgba(232,232,232,0.32), 0 0 8px rgba(232,232,232,0.5); }
+}
+@-ms-keyframes rvl-brand-pulse {
+    0%, 100% { text-shadow: 0 0 18px rgba(232,232,232,0.18), 0 0 4px rgba(232,232,232,0.3); }
+    50%      { text-shadow: 0 0 28px rgba(232,232,232,0.32), 0 0 8px rgba(232,232,232,0.5); }
+}
+
+/* §progress-brighten — keep the existing indeterminate fill animation,
+   but add a pulsing glow so the bar reads as "active". */
+.startup-progress-fill {
+    -ms-animation: startup-progress 1.65s ease-in-out infinite,
+                   rvl-progress-glow 1.8s ease-in-out infinite;
+    animation: startup-progress 1.65s ease-in-out infinite,
+               rvl-progress-glow 1.8s ease-in-out infinite;
+}
+@keyframes rvl-progress-glow {
+    0%, 100% { box-shadow: 0 0 8px  rgba(232,232,232,0.25); }
+    50%      { box-shadow: 0 0 18px rgba(232,232,232,0.55); }
+}
+@-ms-keyframes rvl-progress-glow {
+    0%, 100% { box-shadow: 0 0 8px  rgba(232,232,232,0.25); }
+    50%      { box-shadow: 0 0 18px rgba(232,232,232,0.55); }
+}
