@@ -1,13 +1,17 @@
 diff --git a/ui/app.js b/ui/app.js
 index 0000000..1111111 100644
---- a/ui/app.js
-+++ b/ui/app.js
 @@ -7013,13 +7013,21 @@
  function bindNativeWindowDrag(kind) {
      var overlayId = { history: "history-overlay", dashboard: "dashboard-overlay",
          backup: "backup-overlay", bulk: "bulk-overlay", export: "export-overlay",
 -        guide: "guide-overlay", groups: "grp-overlay", themes: "tp-overlay", new: "np-overlay" }[kind] || (kind + "-overlay");
 +        guide: "guide-overlay", groups: "grp-overlay", themes: "tp-overlay", new: "np-overlay",
++        /* edit-window-v13: the edit tool window uses the same
++           preset-edit-overlay that the in-launcher modal uses -
++           buildPresetEditModal creates it dynamically with id
++           "preset-edit-overlay". The header inside it has class
++           "preset-edit-header" so the querySelector([class*='-header'])
++           below finds it and binds drag + close. */
 +        edit: "preset-edit-overlay" }[kind] || (kind + "-overlay");
      var overlay = el(overlayId);
      if (!overlay) return;
@@ -24,6 +28,11 @@ index 0000000..1111111 100644
      modal.className = "preset-edit-modal";
      applyStyleObj(modal, TH.modal);
  
++    /* edit-window-v13: header wrapper so bindNativeWindowDrag("edit")
++       can find the header (it looks for [class*='-header']) and bind
++       window-dragging + the close button, exactly like every other
++       tool window (history/dashboard/themes/groups/etc.). Without
++       this wrapper the edit window was stuck - no drag, no close. */
 +    var header = document.createElement("div");
 +    header.className = "preset-edit-header";
 +    applyStyleObj(header, TH.title);
@@ -39,6 +48,9 @@ index 0000000..1111111 100644
 +    closeBtn.onclick = function (e) {
 +        e = e || window.event; cancelEv(e);
 +        closePresetEditModal();
++        /* If we're in a detached edit tool window, ask the host to
++           close it - closePresetEditModal only removes the overlay,
++           not the native window itself. */
 +        if (window.__rvlNativeWindow === "edit") {
 +            sendCmd("CMD:close_window");
 +        }
@@ -57,7 +69,7 @@ index 0000000..1111111 100644
 +    modal.appendChild(header);
  
      if ((p.method || 1) === 2) {
-         var scLabel = document.createElement("div");
+         /* Method 2: show only SHARE CODE field */
 @@ -7617,7 +7651,7 @@
              if (k === 27) closePresetEditModal();
          };
@@ -83,10 +95,20 @@ index 0000000..1111111 100644
 -        if ((e || window.event).target === overlay) closePresetEditModal();
 +        if ((e || window.event).target === overlay) {
 +            closePresetEditModal();
++            /* If we're in a detached edit tool window, also ask the
++               host to close the native window. */
 +            if (window.__rvlNativeWindow === "edit") sendCmd("CMD:close_window");
 +        }
      };
 +
++    /* edit-window-v13: bind the native window drag (header -> CMD:drag_start)
++       and the close button now that the overlay + header exist in the
++       DOM. bindNativeWindowDrag("edit") is also called from
++       initNativeWindow("edit"), but at that point the modal doesn't
++       exist yet - it's built 30ms later by openPresetEditModal. Calling
++       it again here, after the modal is in the DOM, is what actually
++       binds the handlers. idempotent - header.__rvlDragBound guard
++       prevents double-binding. */
 +    if (typeof bindNativeWindowDrag === "function") {
 +        bindNativeWindowDrag("edit");
 +    }
@@ -96,6 +118,10 @@ index 0000000..1111111 100644
      var ov = el("preset-edit-overlay");
      if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
      editingPresetId = null;
++    /* edit-window-v13: when the edit modal is closed from inside a
++       detached edit tool window (via the X button or the Cancel
++       button or Esc), also ask the host to close the native window
++       so the user isn't left with an empty black edit window. */
 +    if (window.__rvlNativeWindow === "edit") {
 +        try { sendCmd("CMD:close_window"); } catch (e) {}
 +    }
