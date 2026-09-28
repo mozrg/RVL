@@ -14156,3 +14156,52 @@ body.theme-light .pd-btn.pd-hk-toggle.pd-hk-off {
     0%, 100% { box-shadow: 0 0 6px  rgba(232,232,232,0.22); }
     50%      { box-shadow: 0 0 14px rgba(232,232,232,0.48); }
 }
+
+/* ============================================================
+   §startup-logo-v7 — bigger logo + tasteful animations.
+   The user wanted the RVL logo on the loading screen to be
+   bigger, and to have visible-but-calm animations.
+   This block:
+   1. Doubles the logo size (132×48 → 200×72) so it reads clearly.
+   2. Adds a slow gentle "float" — the logo bobs up and down 4px
+      every 4s, like it's hovering.
+   3. Adds a "breathing" glow pulse — opacity 0.85→1.0 every 3s.
+   4. Adds a subtle "scale breathe" — 1.00 → 1.04 → 1.00 every 3s.
+   No rotating squares, no scanlines, no random particles —
+   just the logo calmly breathing.
+   ============================================================ */
+
+/* Bigger logo on the loading screen + update screen. */
+.startup-mark { height: 76px !important; line-height: 76px !important; }
+.startup-mark .startup-logo,
+.startup-mark .rvl-logo.startup-logo {
+    width: 200px !important;
+    height: 72px !important;
+    /* Slow float: 4px vertical bob every 4s. Uses transform so it stays
+       on the GPU compositor — no reflow. */
+    -ms-animation: rvl-logo-float-v7 4s ease-in-out infinite,
+                   rvl-logo-breathe-v7 3s ease-in-out infinite;
+    animation: rvl-logo-float-v7 4s ease-in-out infinite,
+               rvl-logo-breathe-v7 3s ease-in-out infinite;
+    /* Filter glow — animates opacity 0.85 → 1.0 with a soft drop-shadow. */
+    filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
+            drop-shadow(0 0 16px rgba(232,232,232,0.15));
+    -webkit-filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
+                    drop-shadow(0 0 16px rgba(232,232,232,0.15));
+}
+@keyframes rvl-logo-float-v7 {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+}
+@-ms-keyframes rvl-logo-float-v7 {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-4px); }
+}
+@keyframes rvl-logo-breathe-v7 {
+    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
+    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
+}
+@-ms-keyframes rvl-logo-breathe-v7 {
+    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
+    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
+}

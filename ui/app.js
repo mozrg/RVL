@@ -6978,7 +6978,21 @@ function initNativeWindow(kind) {
     var splash = el("startup-screen"); if (splash) splash.style.display = "none";
     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
-        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal }[kind];
+        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
+        /* §edit-window-v7: when the edit tool window opens, read the
+           __edit_preset_id bridge field the launcher wrote before
+           CMD:open_window edit, then open the edit modal for that preset.
+           The field is cleared so re-opening for a different preset works. */
+        edit: function () {
+            var eid = el("__edit_preset_id");
+            var pid = eid ? eid.value : "";
+            if (eid) eid.value = "";
+            if (pid && findPreset(pid)) {
+                /* Defer one tick so initNativeWindow finishes its DOM
+                   prep (hiding app-shell etc.) before the modal builds. */
+                setTimeout(function () { openPresetEditModal(pid); }, 30);
+            }
+        } }[kind];
     if (typeof fn === "function") fn();
     bindNativeWindowDrag(kind);
 }
@@ -7383,6 +7397,18 @@ function applyStyleObj(el, styleObj) {
 }
 
 function openPresetEditModal(id) {
+    /* §edit-window-v7: in the native C# host, the edit modal opens as a
+       dedicated tool window — same pattern as history/dashboard/themes.
+       The preset id is passed to the new window via the __edit_preset_id
+       bridge field. This is the FIRST thing we do — before any of the
+       local modal setup runs — so the launcher's own window is never
+       touched by the modal build process. */
+    if (window.__rvlNativeHost && !window.__rvlNativeWindow) {
+        var eid = el("__edit_preset_id");
+        if (eid) eid.value = id;
+        sendCmd("CMD:open_window edit");
+        return;
+    }
     if (editingPresetId) closePresetEditModal();
     editingPresetId = id;
     var p = findPreset(id);

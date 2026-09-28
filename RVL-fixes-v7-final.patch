@@ -1,0 +1,149 @@
+diff --git a/app/WebMainForm.cs b/app/WebMainForm.cs
+index 0000000..1111111 100644
+@@ -358,7 +358,7 @@
+         if (_web.CoreWebView2 is null) return new Dictionary<string, string>();
+         const string script = """
+             (function(){
+-              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code"];
++              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code","__edit_preset_id"];
+               var o={}; for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);o[ids[i]]=e?String(e.value||""):"";}
+               var checks=["chk-enabled","chk-autostart","chk-always-on-top","chk-avatars","chk-compact-mode","chk-auto-minimize","chk-tooltips","chk-mask-inputs"];
+               for(var j=0;j<checks.length;j++){var c=document.getElementById(checks[j]);if(c)o[checks[j]]=c.checked?"1":"0";}
+@@ -445,6 +445,28 @@
+             ["__thumb_resp"] = "",
+             ["__avatars_cleared"] = ""
+         };
++        /* §edit-window-v7: copy the live __edit_preset_id value from the
++           active owner window's WebView into the bridge state we pass
++           to the freshly-opened edit tool window. Without this, the
++           preset id the launcher wrote before CMD:open_window edit
++           never reaches the new window's initNativeWindow("edit")
++           handler. */
++        try
++        {
++            var owner = MainHost;
++            if (!ReferenceEquals(owner, this) && owner._web.CoreWebView2 is not null)
++            {
++                var rawId = owner._web.CoreWebView2.ExecuteScriptAsync(
++                    "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
++                ).GetAwaiter().GetResult();
++                if (!string.IsNullOrEmpty(rawId))
++                {
++                    var unquoted = JsonSerializer.Deserialize<string>(rawId);
++                    if (!string.IsNullOrEmpty(unquoted)) d["__edit_preset_id"] = unquoted;
++                }
++            }
++        }
++        catch { /* best-effort — opening the edit window is non-fatal */ }
+         return d;
+     }
+ 
+diff --git a/ui/app.js b/ui/app.js
+index 0000000..1111111 100644
+@@ -6978,7 +6978,21 @@
+     var splash = el("startup-screen"); if (splash) splash.style.display = "none";
+     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
+         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
+-        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal }[kind];
++        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
++        /* §edit-window-v7: when the edit tool window opens, read the
++           __edit_preset_id bridge field the launcher wrote before
++           CMD:open_window edit, then open the edit modal for that preset.
++           The field is cleared so re-opening for a different preset works. */
++        edit: function () {
++            var eid = el("__edit_preset_id");
++            var pid = eid ? eid.value : "";
++            if (eid) eid.value = "";
++            if (pid && findPreset(pid)) {
++                /* Defer one tick so initNativeWindow finishes its DOM
++                   prep (hiding app-shell etc.) before the modal builds. */
++                setTimeout(function () { openPresetEditModal(pid); }, 30);
++            }
++        } }[kind];
+     if (typeof fn === "function") fn();
+     bindNativeWindowDrag(kind);
+ }
+@@ -7383,6 +7397,18 @@
+ }
+ 
+ function openPresetEditModal(id) {
++    /* §edit-window-v7: in the native C# host, the edit modal opens as a
++       dedicated tool window — same pattern as history/dashboard/themes.
++       The preset id is passed to the new window via the __edit_preset_id
++       bridge field. This is the FIRST thing we do — before any of the
++       local modal setup runs — so the launcher's own window is never
++       touched by the modal build process. */
++    if (window.__rvlNativeHost && !window.__rvlNativeWindow) {
++        var eid = el("__edit_preset_id");
++        if (eid) eid.value = id;
++        sendCmd("CMD:open_window edit");
++        return;
++    }
+     if (editingPresetId) closePresetEditModal();
+     editingPresetId = id;
+     var p = findPreset(id);
+diff --git a/ui/index.html b/ui/index.html
+index 0000000..1111111 100644
+@@ -112,6 +112,7 @@
+   <input type="hidden" id="__cfg_avatars" value="1">
+   <input type="hidden" id="__avatars_cleared" value="">
+   <input type="hidden" id="__drag_req" value="0">
++  <input type="hidden" id="__edit_preset_id" value="">
+ 
+   <!-- UNIVERSAL TOOLTIP -->
+   <div class="app-tooltip" id="app-tooltip">
+diff --git a/ui/style.css b/ui/style.css
+index 0000000..1111111 100644
+@@ -14156,3 +14156,52 @@
+     0%, 100% { box-shadow: 0 0 6px  rgba(232,232,232,0.22); }
+     50%      { box-shadow: 0 0 14px rgba(232,232,232,0.48); }
+ }
++
++/* ============================================================
++   §startup-logo-v7 — bigger logo + tasteful animations.
++   The user wanted the RVL logo on the loading screen to be
++   bigger, and to have visible-but-calm animations.
++   This block:
++   1. Doubles the logo size (132×48 → 200×72) so it reads clearly.
++   2. Adds a slow gentle "float" — the logo bobs up and down 4px
++      every 4s, like it's hovering.
++   3. Adds a "breathing" glow pulse — opacity 0.85→1.0 every 3s.
++   4. Adds a subtle "scale breathe" — 1.00 → 1.04 → 1.00 every 3s.
++   No rotating squares, no scanlines, no random particles —
++   just the logo calmly breathing.
++   ============================================================ */
++
++/* Bigger logo on the loading screen + update screen. */
++.startup-mark { height: 76px !important; line-height: 76px !important; }
++.startup-mark .startup-logo,
++.startup-mark .rvl-logo.startup-logo {
++    width: 200px !important;
++    height: 72px !important;
++    /* Slow float: 4px vertical bob every 4s. Uses transform so it stays
++       on the GPU compositor — no reflow. */
++    -ms-animation: rvl-logo-float-v7 4s ease-in-out infinite,
++                   rvl-logo-breathe-v7 3s ease-in-out infinite;
++    animation: rvl-logo-float-v7 4s ease-in-out infinite,
++               rvl-logo-breathe-v7 3s ease-in-out infinite;
++    /* Filter glow — animates opacity 0.85 → 1.0 with a soft drop-shadow. */
++    filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
++            drop-shadow(0 0 16px rgba(232,232,232,0.15));
++    -webkit-filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
++                    drop-shadow(0 0 16px rgba(232,232,232,0.15));
++}
++@keyframes rvl-logo-float-v7 {
++    0%, 100% { transform: translateY(0); }
++    50%      { transform: translateY(-4px); }
++}
++@-ms-keyframes rvl-logo-float-v7 {
++    0%, 100% { transform: translateY(0); }
++    50%      { transform: translateY(-4px); }
++}
++@keyframes rvl-logo-breathe-v7 {
++    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
++    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
++}
++@-ms-keyframes rvl-logo-breathe-v7 {
++    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
++    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
++}
