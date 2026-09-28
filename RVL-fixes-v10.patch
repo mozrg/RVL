@@ -15,19 +15,19 @@ index 0000000..1111111 100644
              ["__thumb_resp"] = "",
              ["__avatars_cleared"] = ""
          };
--        /* edit-window-v8: do NOT use a synchronous ExecuteScriptAsync here.
+-        /* §edit-window-v8: do NOT use a synchronous ExecuteScriptAsync here.
 -           BuildBridgeState is called on the UI thread during window load
--           (InjectStateAsync(true) -> BuildBridgeState), and calling
+-           (InjectStateAsync(true) → BuildBridgeState), and calling
 -           GetAwaiter().GetResult() on a script-async that itself needs the
 -           UI thread to dispatch the script will deadlock the launcher.
 -           The preset id for the edit window is instead passed through a
 -           dedicated bridge input written by the JS layer (see
 -           __edit_preset_id in HTML) and read on demand by the new
 -           edit window's initNativeWindow("edit") handler. */
-+        /* edit-window-v10: pass the preset id the launcher wrote to
++        /* §edit-window-v10: pass the preset id the launcher wrote to
 +           __edit_preset_id into the child edit window's bridge state.
 +           _editPresetId is set by OpenEditWindowAsync BEFORE the child
-+           is created, so this read is purely synchronous - no
++           is created, so this read is purely synchronous — no
 +           ExecuteScriptAsync, no deadlock. The child's
 +           initNativeWindow("edit") handler reads __edit_preset_id from
 +           the bridge and opens the edit modal for that preset. */
@@ -51,11 +51,11 @@ index 0000000..1111111 100644
          var child = new WebMainForm(host._config, kind, host) { Owner = host };
          host._childWindows[kind] = child;
          child.FormClosed += (_, _) => host._childWindows.Remove(kind);
--        /* edit-window-v8: for the edit tool window, we need to pass the
+-        /* §edit-window-v8: for the edit tool window, we need to pass the
 -           preset id the launcher wrote to __edit_preset_id BEFORE its
 -           bridge state is built. We can't do this synchronously in
 -           BuildBridgeState (deadlock), so we do it once here, BEFORE the
--           child WebView is initialized - the value will be read by the
+-           child WebView is initialized — the value will be read by the
 -           child's initNativeWindow("edit") handler right after its
 -           first render. Use a fire-and-forget await so we never block
 -           the UI thread. */
@@ -67,13 +67,13 @@ index 0000000..1111111 100644
      }
  
 -    private async Task PassEditPresetIdAsync(WebMainForm host, WebMainForm child)
-+    /* edit-window-v10: dedicated opener for the preset-edit window.
-+       Pattern is identical to OpenSettings - keep a single _editForm
++    /* §edit-window-v10: dedicated opener for the preset-edit window.
++       Pattern is identical to OpenSettings — keep a single _editForm
 +       reference, reuse it if still alive, otherwise create a new one.
 +       The preset id is read FROM the launcher WebView (the JS layer
 +       wrote it to __edit_preset_id just before sending CMD:open_window
 +       edit), then passed to the child via a constructor-style field
-+       _editPresetId. The child reads it from BuildBridgeState - no
++       _editPresetId. The child reads it from BuildBridgeState — no
 +       async roundtrip needed after creation. */
 +    private async Task OpenEditWindowAsync(Dictionary<string, string> payload)
      {
@@ -120,12 +120,12 @@ index 0000000..1111111 100644
 +                    {
 +                        var unquoted = JsonSerializer.Deserialize<string>(raw);
 +                        if (!string.IsNullOrEmpty(unquoted)) presetId = unquoted;
-                     }
++                    }
                  }
              }
 +            catch { /* best-effort */ }
          }
--        catch { /* best-effort - opening the edit window is non-fatal */ }
+-        catch { /* best-effort — opening the edit window is non-fatal */ }
 +        /* Create the child window with the preset id stashed on the
 +           host so BuildBridgeState (called for the child) can pick it
 +           up and pass it through the bridge. */
@@ -145,12 +145,12 @@ index 0000000..1111111 100644
      var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
          bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
          groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
--        /* edit-window-v8: the edit tool window doesn't need a fn entry -
+-        /* §edit-window-v8: the edit tool window doesn't need a fn entry —
 -           the C# host calls window.openEditPresetFromBridge() AFTER the
 -           child WebView is fully loaded, which is more reliable than
 -           racing the first render from inside initNativeWindow. */
 -        edit: null }[kind];
-+        /* edit-window-v10: when the edit tool window opens, the C# host
++        /* §edit-window-v10: when the edit tool window opens, the C# host
 +           has ALREADY written the preset id into __edit_preset_id (via
 +           BuildBridgeState + _editPresetId field). Read it immediately,
 +           clear the field, and open the edit modal. No waiting for a
@@ -165,7 +165,7 @@ index 0000000..1111111 100644
 +                   prep (hiding app-shell etc.) before the modal builds. */
 +                setTimeout(function () { openPresetEditModal(pid); }, 30);
 +            } else {
-+                /* No preset id - show an error so the user isn't stuck. */
++                /* No preset id — show an error so the user isn't stuck. */
 +                var err = document.createElement("div");
 +                err.id = "edit-window-error";
 +                err.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#FF7777;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;text-align:center;";
@@ -180,10 +180,10 @@ index 0000000..1111111 100644
      setTimeout(function () { buildPresetEditModal(id, p); }, 0);
  }
  
--/* edit-window-v8: global hook the C# host calls after it has copied the
+-/* §edit-window-v8: global hook the C# host calls after it has copied the
 -   launcher's __edit_preset_id value into this child window's DOM. It
 -   reads the value, clears the field, then opens the edit modal for
--   that preset - exactly what initNativeWindow("edit") used to do, but
+-   that preset — exactly what initNativeWindow("edit") used to do, but
 -   without racing the child window's first render. */
 -window.openEditPresetFromBridge = function () {
 -    var eid = el("__edit_preset_id");
@@ -193,9 +193,9 @@ index 0000000..1111111 100644
 -        setTimeout(function () { openPresetEditModal(pid); }, 30);
 -    }
 -};
-+/* edit-window-v10: removed the window.openEditPresetFromBridge hook -
++/* §edit-window-v10: removed the window.openEditPresetFromBridge hook —
 +   no longer needed. The C# host now passes the preset id through
-+   _editPresetId -> BuildBridgeState -> __edit_preset_id bridge input,
++   _editPresetId → BuildBridgeState → __edit_preset_id bridge input,
 +   which is already populated when initNativeWindow("edit") runs. */
  
  function buildPresetEditModal(id, p) {
