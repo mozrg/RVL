@@ -5,6 +5,7 @@
   const download = document.getElementById('download');
   const size = document.getElementById('asset-size');
   const note = document.getElementById('download-note');
+  const releaseList = document.getElementById('release-list');
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -17,6 +18,209 @@
     day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date(value));
 
+  const findZip = (release) => {
+    const assets = (release.assets || []).filter((asset) => /\.zip$/i.test(asset.name));
+    return assets.find((asset) => /^rvl[._-]/i.test(asset.name)) || assets[0];
+  };
+
+  function appendInline(parent, text) {
+    const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/g;
+    let offset = 0;
+    let match;
+
+    while ((match = pattern.exec(text)) !== null) {
+      parent.append(document.createTextNode(text.slice(offset, match.index)));
+      const token = match[0];
+
+      if (token.startsWith('**')) {
+        const strong = document.createElement('strong');
+        strong.textContent = token.slice(2, -2);
+        parent.append(strong);
+      } else if (token.startsWith('`')) {
+        const code = document.createElement('code');
+        code.textContent = token.slice(1, -1);
+        parent.append(code);
+      } else {
+        const linkMatch = token.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/);
+        if (!linkMatch) {
+          parent.append(document.createTextNode(token));
+        } else {
+          const link = document.createElement('a');
+          link.href = linkMatch[2];
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+          link.textContent = linkMatch[1];
+          parent.append(link);
+        }
+      }
+      offset = pattern.lastIndex;
+    }
+    parent.append(document.createTextNode(text.slice(offset)));
+  }
+
+  function renderMarkdown(container, markdown) {
+    const lines = markdown.replace(/\r/g, '').split('\n');
+    let paragraph = [];
+    let list = null;
+    let listKind = '';
+    let inCode = false;
+    let codeLines = [];
+
+    const flushParagraph = () => {
+      if (!paragraph.length) return;
+      const element = document.createElement('p');
+      appendInline(element, paragraph.join(' '));
+      container.append(element);
+      paragraph = [];
+    };
+    const flushList = () => {
+      if (list) container.append(list);
+      list = null;
+      listKind = '';
+    };
+    const flushText = () => {
+      flushParagraph();
+      flushList();
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+
+      if (line.startsWith('```')) {
+        flushText();
+        if (inCode) {
+          const pre = document.createElement('pre');
+          pre.textContent = codeLines.join('\n');
+          container.append(pre);
+          codeLines = [];
+        }
+        inCode = !inCode;
+        continue;
+      }
+      if (inCode) {
+        codeLines.push(rawLine);
+        continue;
+      }
+      if (!line) {
+        flushText();
+        continue;
+      }
+
+      const heading = line.match(/^#{1,4}\s+(.+)$/);
+      if (heading) {
+        flushText();
+        const element = document.createElement('h4');
+        appendInline(element, heading[1]);
+        container.append(element);
+        continue;
+      }
+      if (/^([-*_]\s*){3,}$/.test(line)) {
+        flushText();
+        container.append(document.createElement('hr'));
+        continue;
+      }
+
+      const item = line.match(/^\s*(?:[-*+]\s+|\d+\.\s+)(.+)$/);
+      if (item) {
+        flushParagraph();
+        const ordered = /^\s*\d+\./.test(line);
+        const kind = ordered ? 'ol' : 'ul';
+        if (!list || listKind !== kind) {
+          flushList();
+          list = document.createElement(kind);
+          listKind = kind;
+        }
+        const element = document.createElement('li');
+        appendInline(element, item[1]);
+        list.append(element);
+        continue;
+      }
+
+      const quote = line.match(/^>\s?(.*)$/);
+      if (quote) {
+        flushText();
+        const element = document.createElement('blockquote');
+        appendInline(element, quote[1]);
+        container.append(element);
+        continue;
+      }
+      flushList();
+      paragraph.push(line);
+    }
+
+    if (inCode) {
+      const pre = document.createElement('pre');
+      pre.textContent = codeLines.join('\n');
+      container.append(pre);
+    }
+    flushText();
+  }
+
+  function renderReleaseHistory(releases) {
+    releaseList.replaceChildren();
+    const published = releases.filter((release) => !release.draft);
+
+    if (!published.length) {
+      const message = document.createElement('p');
+      message.className = 'history-state';
+      message.textContent = 'Опубликованных релизов пока нет.';
+      releaseList.append(message);
+      return;
+    }
+
+    published.forEach((release) => {
+      const entry = document.createElement('article');
+      entry.className = 'release-entry';
+
+      const header = document.createElement('div');
+      header.className = 'release-entry-header';
+      const info = document.createElement('div');
+      const title = document.createElement('div');
+      title.className = 'release-entry-title';
+
+      const heading = document.createElement('h3');
+      heading.textContent = release.name || release.tag_name || 'Релиз RVL';
+      title.append(heading);
+      if (release.prerelease) {
+        const badge = document.createElement('span');
+        badge.className = 'prerelease-label';
+        badge.textContent = 'Тестовая';
+        title.append(badge);
+      }
+      info.append(title);
+
+      const releaseDate = release.published_at || release.created_at;
+      if (releaseDate) {
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'release-entry-date';
+        dateLabel.textContent = formatDate(releaseDate);
+        info.append(dateLabel);
+      }
+      header.append(info);
+
+      const asset = findZip(release);
+      if (asset) {
+        const assetLink = document.createElement('a');
+        assetLink.className = 'release-download';
+        assetLink.href = asset.browser_download_url;
+        assetLink.setAttribute('download', asset.name);
+        assetLink.textContent = 'Скачать ZIP ↓';
+        header.append(assetLink);
+      }
+      entry.append(header);
+
+      const body = document.createElement('div');
+      body.className = 'release-body';
+      if (release.body && release.body.trim()) {
+        renderMarkdown(body, release.body);
+      } else {
+        body.textContent = 'Описание изменений для этой версии не добавлено.';
+      }
+      entry.append(body);
+      releaseList.append(entry);
+    });
+  }
+
   fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
     headers: { Accept: 'application/vnd.github+json' }
   })
@@ -25,8 +229,7 @@
       return response.json();
     })
     .then((release) => {
-      const assets = (release.assets || []).filter((asset) => /\.zip$/i.test(asset.name));
-      const asset = assets.find((item) => /^rvl[._-]/i.test(item.name)) || assets[0];
+      const asset = findZip(release);
 
       version.textContent = release.tag_name || release.name || 'Последняя версия';
       date.textContent = release.published_at ? `Опубликовано ${formatDate(release.published_at)}` : 'Последний релиз GitHub';
@@ -57,5 +260,21 @@
       download.querySelector('.button-main').textContent = 'Загрузка недоступна';
       size.textContent = 'Нет соединения';
       note.textContent = 'Не удалось получить ссылку. Попробуйте позже.';
+    });
+
+  fetch(`https://api.github.com/repos/${repo}/releases?per_page=100`, {
+    headers: { Accept: 'application/vnd.github+json' }
+  })
+    .then((response) => {
+      if (!response.ok) throw new Error('Не удалось загрузить историю релизов');
+      return response.json();
+    })
+    .then(renderReleaseHistory)
+    .catch(() => {
+      releaseList.replaceChildren();
+      const message = document.createElement('p');
+      message.className = 'history-state';
+      message.textContent = 'Не удалось загрузить историю обновлений. Попробуйте обновить страницу.';
+      releaseList.append(message);
     });
 })();

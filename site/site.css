@@ -101,6 +101,35 @@ a { color: inherit; }
 .feature-index { color: var(--accent); }
 .feature h2 { margin: 24px 0 8px; font-size: 14px; letter-spacing: -.02em; }
 .feature p { max-width: 230px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.8; }
+
+.release-history { width: min(100% - 64px, 900px); margin: 0 auto 100px; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.section-heading h2 { margin: 9px 0 0; font-size: 25px; letter-spacing: -.05em; }
+.section-heading .all-releases { margin: 0 0 3px; }
+.release-list { border-top: 1px solid var(--line); }
+.release-entry { padding: 22px 0 25px; border-bottom: 1px solid var(--line); }
+.release-entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.release-entry-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.release-entry-title h3 { margin: 0; font-size: 16px; letter-spacing: -.03em; }
+.release-entry-date { color: var(--muted); font-size: 11px; }
+.prerelease-label { padding: 4px 7px; border: 1px solid #4b4b37; border-radius: 3px; color: var(--accent); font: 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.release-download { flex: 0 0 auto; color: var(--accent); text-decoration: none; font-size: 11px; }
+.release-download:hover { text-decoration: underline; }
+.release-body { max-width: 760px; margin-top: 16px; color: #a2a29c; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.release-body > :first-child { margin-top: 0; }
+.release-body > :last-child { margin-bottom: 0; }
+.release-body p { margin: 9px 0; }
+.release-body h4 { margin: 16px 0 7px; color: #deded8; font-size: 12px; }
+.release-body ul, .release-body ol { margin: 8px 0; padding-left: 21px; }
+.release-body li { padding-left: 3px; }
+.release-body li + li { margin-top: 4px; }
+.release-body strong { color: #deded8; font-weight: 700; }
+.release-body code { padding: 2px 5px; border-radius: 3px; background: #20211c; color: var(--accent); font: 11px 'DM Mono', monospace; }
+.release-body pre { overflow-x: auto; padding: 12px; border: 1px solid var(--line); border-radius: 4px; background: #151613; color: #d2d2ca; font: 11px/1.7 'DM Mono', monospace; white-space: pre-wrap; }
+.release-body blockquote { margin: 10px 0; padding-left: 12px; border-left: 2px solid #4b4b37; color: var(--muted); }
+.release-body hr { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
+.release-body a { color: var(--accent); text-underline-offset: 3px; }
+.history-state { margin: 0; padding: 22px 0; color: var(--muted); font-size: 12px; }
 .footer { min-height: 66px; border-top: 1px solid var(--line); color: #777772; font: 10px 'DM Mono', monospace; }
 
 @media (max-width: 600px) {
@@ -116,6 +145,10 @@ a { color: inherit; }
   .feature + .feature { border-left: 0; border-top: 1px solid var(--line); }
   .feature h2 { margin-top: 12px; }
   .feature p { max-width: 100%; }
+  .release-history { width: calc(100% - 36px); margin-bottom: 65px; }
+  .section-heading h2 { font-size: 22px; }
+  .section-heading .all-releases { font-size: 10px; }
+  .release-entry-header { flex-direction: column; gap: 10px; }
   .footer { gap: 15px; font-size: 9px; }
 }
 
