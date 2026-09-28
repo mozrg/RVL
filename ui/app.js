@@ -6979,11 +6979,32 @@ function initNativeWindow(kind) {
     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
         groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
-        /* §edit-window-v8: the edit tool window doesn't need a fn entry —
-           the C# host calls window.openEditPresetFromBridge() AFTER the
-           child WebView is fully loaded, which is more reliable than
-           racing the first render from inside initNativeWindow. */
-        edit: null }[kind];
+        /* §edit-window-v9: the edit tool window shows a "loading" state
+           immediately when it opens, so the user never sees a black
+           window. When C# PassEditPresetIdAsync finishes (after the
+           child WebView's first render + 120ms) it calls
+           window.openEditPresetFromBridge() which replaces the
+           loading message with the actual preset edit modal. If the
+           bridge call never arrives (e.g. launcher WebView closed),
+           the user can still close the window via the X in the
+           header — the loading message is just a placeholder, not a
+           modal. */
+        edit: function () {
+            var loadingEl = document.createElement("div");
+            loadingEl.id = "edit-window-loading";
+            loadingEl.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;letter-spacing:0.06em;text-align:center;";
+            loadingEl.innerHTML = "Загрузка редактора…";
+            document.body.appendChild(loadingEl);
+            /* Safety timeout — if C# never calls openEditPresetFromBridge,
+               show a helpful message after 8s instead of leaving the
+               user stuck on a black window. */
+            setTimeout(function () {
+                if (el("edit-window-loading")) {
+                    loadingEl.innerHTML = "Не удалось открыть редактор.<br>Закройте это окно и попробуйте снова.";
+                    loadingEl.style.color = "#FF7777";
+                }
+            }, 8000);
+        } }[kind];
     if (typeof fn === "function") fn();
     bindNativeWindowDrag(kind);
 }
@@ -7415,12 +7436,14 @@ function openPresetEditModal(id) {
     setTimeout(function () { buildPresetEditModal(id, p); }, 0);
 }
 
-/* §edit-window-v8: global hook the C# host calls after it has copied the
+/* §edit-window-v9: global hook the C# host calls after it has copied the
    launcher's __edit_preset_id value into this child window's DOM. It
-   reads the value, clears the field, then opens the edit modal for
-   that preset — exactly what initNativeWindow("edit") used to do, but
-   without racing the child window's first render. */
+   removes the "loading…" placeholder, reads the value, clears the
+   field, then opens the edit modal for that preset. */
 window.openEditPresetFromBridge = function () {
+    /* Remove the loading placeholder initNativeWindow("edit") showed. */
+    var loadingEl = el("edit-window-loading");
+    if (loadingEl && loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
     var eid = el("__edit_preset_id");
     var pid = eid ? eid.value : "";
     if (eid) eid.value = "";

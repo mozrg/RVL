@@ -543,8 +543,19 @@ public sealed class WebMainForm : Form
     {
         try
         {
-            /* Wait briefly so the child WebView is initialized and the
-               launcher's __edit_preset_id input has the latest value. */
+            /* §edit-window-v9: wait for the child WebView's first render
+               to complete (NavigationCompleted fires after the HTML + JS
+               are loaded and the body is rendered). Without this wait the
+               child's DOM might not yet have the __edit_preset_id input
+               we're trying to write to, and the openEditPresetFromBridge
+               helper wouldn't be defined yet either. */
+            if (child._firstRender is not null)
+            {
+                try { await child._firstRender.Task; } catch { }
+            }
+            /* The first render fires before the page's window-level
+               scripts have necessarily finished — give them one extra
+               frame so window.openEditPresetFromBridge is assigned. */
             await Task.Delay(120);
             var rawId = await host._web.CoreWebView2.ExecuteScriptAsync(
                 "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
@@ -556,7 +567,18 @@ public sealed class WebMainForm : Form
                 {
                     /* Push the id into the child's DOM directly, then call
                        a small JS helper to open the edit modal for that
-                       preset. The helper lives in the child's window. */
+                       preset. The helper lives in the child's window.
+                       Retry once if the helper isn't defined yet — the
+                       script that defines it (window.openEditPresetFromBridge
+                       = ...) runs at script-eval time, which is async-ish. */
+                    for (var attempt = 0; attempt < 3; attempt++)
+                    {
+                        var probe = await child._web.CoreWebView2.ExecuteScriptAsync(
+                            "(typeof window.openEditPresetFromBridge==='function')"
+                        );
+                        if (probe == "true") break;
+                        await Task.Delay(80);
+                    }
                     await child._web.CoreWebView2.ExecuteScriptAsync(
                         $"(function(){{var e=document.getElementById('__edit_preset_id');if(e)e.value={JsonSerializer.Serialize(unquoted)};if(typeof window.openEditPresetFromBridge==='function')window.openEditPresetFromBridge();}})();"
                     );
