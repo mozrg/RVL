@@ -13,7 +13,7 @@
       try {
         if (window.location.hash === "#settings-native") {
           document.documentElement.className = "settings-popup";
-        } else if (/^#(history|dashboard|backup|bulk|export|guide|groups|themes|new)-native$/.test(window.location.hash || "")) {
+        } else if (/^#(history|dashboard|backup|bulk|export|guide|groups|themes|new|edit)-native$/.test(window.location.hash || "")) {
           document.documentElement.className = "rvl-native-window";
         }
       } catch (e) {}

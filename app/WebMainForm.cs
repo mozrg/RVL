@@ -53,6 +53,7 @@ public sealed class WebMainForm : Form
     [DllImport("user32.dll")] private static extern bool ReleaseCapture();
     [DllImport("user32.dll")] private static extern nint SendMessage(nint hWnd, int msg, nint wParam, nint lParam);
     [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("kernel32.dll", ExactSpelling = true)] private static extern uint GetCurrentProcessId();
     [DllImport("user32.dll", SetLastError = true)] private static extern bool RegisterHotKey(nint hWnd, int id, uint modifiers, uint key);
     [DllImport("user32.dll", SetLastError = true)] private static extern bool UnregisterHotKey(nint hWnd, int id);
 
@@ -186,7 +187,7 @@ public sealed class WebMainForm : Form
         "export" => new Size(760, 560),
         "guide" => new Size(760, 380),
         "new" => new Size(520, 430),
-        "edit" => new Size(540, 540),  /* §edit-window: dedicated preset-edit window */
+        "edit" => new Size(540, 460),  /* Fits the editor controls without the unused lower strip. */
         _ => new Size(760, 620)
     };
 
@@ -542,13 +543,6 @@ public sealed class WebMainForm : Form
     private async Task OpenEditWindowAsync(Dictionary<string, string> payload)
     {
         var host = MainHost;
-        /* Reuse an existing edit window if it's still alive. */
-        if (host._editForm is { IsDisposed: false })
-        {
-            host._editForm.Show();
-            host._editForm.Activate();
-            return;
-        }
         /* Read the preset id the launcher wrote to __edit_preset_id
            before sending CMD:open_window edit. payload contains the
            bridge state already (read by ReadBridgeAsync before
@@ -573,6 +567,20 @@ public sealed class WebMainForm : Form
                 }
             }
             catch { /* best-effort */ }
+        }
+        /* Keep the current edit window when it already shows this preset.
+           If the user selected a different preset, replace the old window
+           so the command never silently focuses a stale editor. */
+        if (host._editForm is { IsDisposed: false } currentEdit)
+        {
+            if (string.Equals(currentEdit._editPresetId, presetId, StringComparison.Ordinal))
+            {
+                currentEdit.Show();
+                currentEdit.Activate();
+                return;
+            }
+            currentEdit.Close();
+            host._editForm = null;
         }
         /* Create the child window with the preset id stashed on the
            CHILD (not the host) so BuildBridgeState (called for the
@@ -1385,6 +1393,23 @@ public sealed class WebMainForm : Form
                     break;
                 }
             }
+            /* Also accept the project's existing release naming convention,
+               for example rvl.2.1.zip. Its archive contains RVL.exe at the
+               root, while the older filter only recognized names tagged
+               explicitly with "native" or "win". */
+            if (!native)
+            {
+                foreach (var asset in assets.EnumerateArray())
+                {
+                    var name = asset.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    if (name.StartsWith("rvl.", StringComparison.OrdinalIgnoreCase) && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    {
+                        packageUrl = asset.GetProperty("browser_download_url").GetString() ?? packageUrl;
+                        native = true;
+                        break;
+                    }
+                }
+            }
         }
         versions.Add((tag.GetString() ?? "", packageUrl, native));
     }
@@ -1414,9 +1439,11 @@ public sealed class WebMainForm : Form
             var extract = Path.Combine(temp, "extract");
             ZipFile.ExtractToDirectory(zip, extract);
             var helper = Path.Combine(temp, "install.ps1");
-            await File.WriteAllTextAsync(helper, NativeUpdateScript, new UTF8Encoding(false));
+            await File.WriteAllTextAsync(helper, NativeUpdateScript, new UTF8Encoding(true));
             var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
-            psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + QuoteArg(helper) + " -Source " + QuoteArg(extract) + " -Target " + QuoteArg(AppContext.BaseDirectory) + " -WaitPid " + Environment.ProcessId + " -Restart " + QuoteArg(Application.ExecutablePath);
+            var currentProcessId = GetCurrentProcessId();
+            if (currentProcessId == 0) throw new InvalidOperationException("Windows не вернула PID текущего процесса RVL.");
+            psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + QuoteArg(helper) + " -Source " + QuoteArg(extract) + " -Target " + QuoteArg(AppContext.BaseDirectory) + " -WaitPid " + currentProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture) + " -Restart " + QuoteArg(Application.ExecutablePath);
             Process.Start(psi);
             SetStatus("installing", "Файлы готовы. Перезапускаем RVL…", 100);
             await Task.Delay(500);
@@ -1425,7 +1452,46 @@ public sealed class WebMainForm : Form
         catch (Exception ex) { SetStatus("error", ex.Message, 0); }
     }
 
-    private const string NativeUpdateScript = "param([string]$Source,[string]$Target,[int]$WaitPid,[string]$Restart)\n$ErrorActionPreference='Stop'\nwhile(Get-Process -Id $WaitPid -ErrorAction SilentlyContinue){Start-Sleep -Milliseconds 120}\n$root=$Source\nif(-not(Test-Path (Join-Path $root 'RVL.exe'))){$candidate=Get-ChildItem -LiteralPath $root -Recurse -Filter RVL.exe -File | Select-Object -First 1;if($candidate){$root=$candidate.DirectoryName}}\nif(-not(Test-Path (Join-Path $root 'RVL.exe'))){throw 'Native RVL.exe not found in update archive'}\nGet-ChildItem -LiteralPath $root -Force | Where-Object {$_.Name -notin @('data','.git')} | ForEach-Object {Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force}\nStart-Process -FilePath $Restart\nRemove-Item -LiteralPath (Split-Path $Source -Parent) -Recurse -Force -ErrorAction SilentlyContinue\n";
+    private const string NativeUpdateScript = """
+        param([string]$Source,[string]$Target,[int]$WaitPid,[string]$Restart)
+        $ErrorActionPreference = 'Stop'
+        $log = Join-Path (Split-Path $Source -Parent) 'install.log'
+        function Write-UpdateLog([string]$message) {
+            Add-Content -LiteralPath $log -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $message)
+        }
+        try {
+            if ($WaitPid -le 0) { throw "Invalid RVL process ID: $WaitPid" }
+            Write-UpdateLog "Waiting for RVL process $WaitPid to exit."
+            try {
+                $oldProcess = [System.Diagnostics.Process]::GetProcessById($WaitPid)
+                if (-not $oldProcess.WaitForExit(60000)) { throw 'Timed out waiting for RVL to close.' }
+            } catch [System.ArgumentException] { }
+
+            $root = $Source
+            if (-not (Test-Path (Join-Path $root 'RVL.exe'))) {
+                $candidate = Get-ChildItem -LiteralPath $root -Recurse -Filter RVL.exe -File | Select-Object -First 1
+                if ($candidate) { $root = $candidate.DirectoryName }
+            }
+            if (-not (Test-Path (Join-Path $root 'RVL.exe'))) { throw 'Native RVL.exe not found in update archive.' }
+            Write-UpdateLog "Copying update files from $root to $Target."
+            Get-ChildItem -LiteralPath $root -Force |
+                Where-Object { $_.Name -notin @('data','.git') } |
+                ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force }
+
+            if (-not (Test-Path $Restart)) { throw "RVL.exe not found at restart path: $Restart" }
+            Write-UpdateLog "Starting $Restart."
+            $started = Start-Process -FilePath $Restart -WorkingDirectory $Target -PassThru
+            Start-Sleep -Seconds 2
+            $started.Refresh()
+            if ($started.HasExited) { throw "RVL exited during startup (code $($started.ExitCode))." }
+            Write-UpdateLog "RVL restarted successfully (PID $($started.Id))."
+            Remove-Item -LiteralPath (Split-Path $Source -Parent) -Recurse -Force
+        } catch {
+            Write-UpdateLog ("Update failed: " + $_.Exception.Message)
+            Add-Type -AssemblyName System.Windows.Forms
+            [void][System.Windows.Forms.MessageBox]::Show("RVL не запустился после обновления. Подробности: $log")
+        }
+        """;
 
     private void SetStatus(string state, string message, int progress = 0)
     {

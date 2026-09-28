@@ -12532,7 +12532,8 @@ html.rvl-native-window .bulk-overlay,
 html.rvl-native-window .export-overlay,
 html.rvl-native-window .guide-overlay,
 html.rvl-native-window .grp-overlay,
-html.rvl-native-window .tp-overlay {
+html.rvl-native-window .tp-overlay,
+html.rvl-native-window .preset-edit-overlay {
     position: fixed;
     inset: 0;
     border-radius: 0;
@@ -12546,7 +12547,8 @@ html.rvl-native-window .bulk-overlay,
 html.rvl-native-window .export-overlay,
 html.rvl-native-window .guide-overlay,
 html.rvl-native-window .grp-overlay,
-html.rvl-native-window .tp-overlay {
+html.rvl-native-window .tp-overlay,
+html.rvl-native-window .preset-edit-overlay {
     background: none;
 }
 html.rvl-native-window .history-modal,
@@ -12556,7 +12558,8 @@ html.rvl-native-window .bulk-modal,
 html.rvl-native-window .export-modal,
 html.rvl-native-window .guide-modal,
 html.rvl-native-window .grp-modal,
-html.rvl-native-window .tp-modal {
+html.rvl-native-window .tp-modal,
+html.rvl-native-window .preset-edit-modal {
     width: 100%;
     height: 100%;
     max-height: none;
@@ -12565,6 +12568,28 @@ html.rvl-native-window .tp-modal {
     box-shadow: none;
     -ms-transform: none;
     transform: none;
+}
+html.rvl-native-window .preset-edit-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 16px 16px;
+}
+html.rvl-native-window .preset-edit-header {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 46px;
+    margin: 0 -16px 8px;
+    padding: 0 16px;
+    border-bottom: 1px solid #1A1A1A;
+    background: #0D0D0D;
+}
+html.rvl-native-window .preset-edit-title {
+    flex: 1 1 auto;
+    margin: 0;
 }
 /* The export preset list must use the whole body height instead of stopping
    at its in-modal 220px cap, which left a large dead area above the footer. */

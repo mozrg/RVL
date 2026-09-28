@@ -110,7 +110,7 @@ var rvlStartupCheckShownAt = 0;
 try {
     __rvlNativeSettingsPopup = window.location.hash === "#settings-native";
     __rvlSettingsPopupMode = __rvlNativeSettingsPopup || window.location.hash === "#settings";
-    var __nativeWindowMatch = /^#(history|dashboard|backup|bulk|export|guide|groups|themes|new)-native$/.exec(window.location.hash || "");
+    var __nativeWindowMatch = /^#(history|dashboard|backup|bulk|export|guide|groups|themes|new|edit)-native$/.exec(window.location.hash || "");
     if (__nativeWindowMatch) __rvlNativeWindow = __nativeWindowMatch[1];
 } catch (e) {}
 
@@ -6779,7 +6779,27 @@ function applySettingsToOpener() {
    than window.opener. Refresh only the live visual state of the main page;
    persistence is still handled by the normal CMD:settings_save path. */
 function syncSettingsFromNativeBridge() {
-    if (__rvlSettingsPopupMode) return;
+    if (__rvlSettingsPopupMode) {
+        /* Other windows can change the global theme while the settings
+           window stays open. Refresh only its theme state here so an
+           unrelated bridge sync cannot overwrite in-progress settings. */
+        try {
+            themeMode = safeThemeMode(el("__cfg_theme_mode").value);
+            customTheme.bg = normalizeHex(el("__cfg_theme_bg").value, customTheme.bg);
+            customTheme.surface = normalizeHex(el("__cfg_theme_surface").value, customTheme.surface);
+            customTheme.text = normalizeHex(el("__cfg_theme_text").value, customTheme.text);
+            customTheme.accent = normalizeHex(el("__cfg_theme_accent").value, customTheme.accent);
+            customTheme.gradientEnabled = el("__cfg_theme_grad_en").value === "1";
+            customTheme.gradientBg2 = normalizeHex(el("__cfg_theme_grad_bg2").value, customTheme.bg);
+            customTheme.gradientAngle = parseInt(el("__cfg_theme_grad_angle").value, 10) || 135;
+            var popupGradientOpacity = parseInt(el("__cfg_theme_grad_op").value, 10);
+            customTheme.gradientOpacity = (isNaN(popupGradientOpacity) || popupGradientOpacity < 0 || popupGradientOpacity > 100)
+                ? 100 : popupGradientOpacity;
+            syncThemeControls();
+            applyTheme();
+        } catch (e) {}
+        return;
+    }
     try {
         themeMode = safeThemeMode(el("__cfg_theme_mode").value);
         autoMinimize = el("__cfg_auto_minimize").value === "1";
@@ -6994,12 +7014,17 @@ function initNativeWindow(kind) {
                    prep (hiding app-shell etc.) before the modal builds. */
                 setTimeout(function () { openPresetEditModal(pid); }, 30);
             } else {
-                /* No preset id — show an error so the user isn't stuck. */
-                var err = document.createElement("div");
-                err.id = "edit-window-error";
-                err.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#FF7777;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;text-align:center;";
-                err.innerHTML = "Не удалось открыть редактор.<br>Закройте это окно и попробуйте снова.";
-                document.body.appendChild(err);
+                /* The initial page boot can run before the native host has
+                   injected the preset list and selected id. Wait for that
+                   bridge update before treating the missing id as an error. */
+                setTimeout(function () {
+                    if (el("preset-edit-overlay") || el("edit-window-error")) return;
+                    var err = document.createElement("div");
+                    err.id = "edit-window-error";
+                    err.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#FF7777;font-family:'Segoe UI',Tahoma,sans-serif;font-size:11px;text-align:center;";
+                    err.innerHTML = "Не удалось открыть редактор.<br>Закройте это окно и попробуйте снова.";
+                    document.body.appendChild(err);
+                }, 500);
             }
         } }[kind];
     if (typeof fn === "function") fn();
@@ -7717,7 +7742,7 @@ function buildPresetEditModal(id, p) {
     }
 }
 
-function closePresetEditModal() {
+function closePresetEditModal(closeNativeWindow) {
     var ov = el("preset-edit-overlay");
     if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
     editingPresetId = null;
@@ -7725,7 +7750,7 @@ function closePresetEditModal() {
        detached edit tool window (via the X button or the Cancel
        button or Esc), also ask the host to close the native window
        so the user isn't left with an empty black edit window. */
-    if (window.__rvlNativeWindow === "edit") {
+    if (closeNativeWindow !== false && window.__rvlNativeWindow === "edit") {
         try { sendCmd("CMD:close_window"); } catch (e) {}
     }
 }
@@ -7782,11 +7807,12 @@ function confirmPresetEdit(id, placeInp, linkInp) {
             break;
         }
     }
-    closePresetEditModal();
+    closePresetEditModal(false);
     flushPresetsOut();
     renderPresets();
     setDirty();
     sendCmd("CMD:save_preset");
+    if (window.__rvlNativeWindow === "edit") sendCmd("CMD:close_window");
 }
 
 function confirmPresetEditM2(id, scInp) {
@@ -7811,11 +7837,12 @@ function confirmPresetEditM2(id, scInp) {
             break;
         }
     }
-    closePresetEditModal();
+    closePresetEditModal(false);
     flushPresetsOut();
     renderPresets();
     setDirty();
     sendCmd("CMD:save_preset");
+    if (window.__rvlNativeWindow === "edit") sendCmd("CMD:close_window");
 }
 
 /* Helper: get selected icon from edit modal */
