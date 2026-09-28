@@ -88,13 +88,7 @@ public sealed class WebMainForm : Form
         ClientSize = _isSettings ? new Size(760, 680) : windowKind == "main" ? new Size(900, 610) : ToolWindowSize(windowKind);
         MinimumSize = _isSettings ? new Size(600, 420) : new Size(360, 300);
         BackColor = ThemeSurfaceColor();
-        /* §taskbar-badge-fix-v5: only the main window gets a taskbar entry.
-           Tool windows (settings, history, themes, edit, etc.) used to
-           inflate the Windows 11 taskbar badge counter ("25 unread
-           notifications" look) — they each registered as a separate
-           taskbar item. With ShowInTaskbar=false, child windows shown
-           via ShowDeferred(owner) inherit the owner's taskbar entry
-           automatically. */
+        /* §taskbar-badge-fix-v6: only the main window gets a taskbar entry. */
         ShowInTaskbar = windowKind == "main";
         KeyPreview = true;
         /* The position must be final BEFORE the window is created — otherwise
@@ -364,7 +358,7 @@ public sealed class WebMainForm : Form
         if (_web.CoreWebView2 is null) return new Dictionary<string, string>();
         const string script = """
             (function(){
-              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code","__edit_preset_id"];
+              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code"];
               var o={}; for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);o[ids[i]]=e?String(e.value||""):"";}
               var checks=["chk-enabled","chk-autostart","chk-always-on-top","chk-avatars","chk-compact-mode","chk-auto-minimize","chk-tooltips","chk-mask-inputs"];
               for(var j=0;j<checks.length;j++){var c=document.getElementById(checks[j]);if(c)o[checks[j]]=c.checked?"1":"0";}
@@ -451,28 +445,6 @@ public sealed class WebMainForm : Form
             ["__thumb_resp"] = "",
             ["__avatars_cleared"] = ""
         };
-        /* §edit-window-v5: copy the live __edit_preset_id value from the
-           active owner window's WebView into the bridge state we pass
-           to the freshly-opened edit tool window. Without this, the
-           preset id the launcher wrote before CMD:open_window edit
-           never reaches the new window's initNativeWindow("edit")
-           handler. */
-        try
-        {
-            var owner = MainHost;
-            if (!ReferenceEquals(owner, this) && owner._web.CoreWebView2 is not null)
-            {
-                var rawId = owner._web.CoreWebView2.ExecuteScriptAsync(
-                    "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
-                ).GetAwaiter().GetResult();
-                if (!string.IsNullOrEmpty(rawId))
-                {
-                    var unquoted = JsonSerializer.Deserialize<string>(rawId);
-                    if (!string.IsNullOrEmpty(unquoted)) d["__edit_preset_id"] = unquoted;
-                }
-            }
-        }
-        catch { /* best-effort — opening the edit window is non-fatal */ }
         return d;
     }
 

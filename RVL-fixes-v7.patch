@@ -1,0 +1,278 @@
+diff --git a/app/WebMainForm.cs b/app/WebMainForm.cs
+index 0000000..1111111 100644
+@@ -88,13 +88,7 @@
+         ClientSize = _isSettings ? new Size(760, 680) : windowKind == "main" ? new Size(900, 610) : ToolWindowSize(windowKind);
+         MinimumSize = _isSettings ? new Size(600, 420) : new Size(360, 300);
+         BackColor = ThemeSurfaceColor();
+-        /* §taskbar-badge-fix-v5: only the main window gets a taskbar entry.
+-           Tool windows (settings, history, themes, edit, etc.) used to
+-           inflate the Windows 11 taskbar badge counter ("25 unread
+-           notifications" look) — they each registered as a separate
+-           taskbar item. With ShowInTaskbar=false, child windows shown
+-           via ShowDeferred(owner) inherit the owner's taskbar entry
+-           automatically. */
++        /* §taskbar-badge-fix-v6: only the main window gets a taskbar entry. */
+         ShowInTaskbar = windowKind == "main";
+         KeyPreview = true;
+         /* The position must be final BEFORE the window is created — otherwise
+@@ -451,7 +445,7 @@
+             ["__thumb_resp"] = "",
+             ["__avatars_cleared"] = ""
+         };
+-        /* §edit-window-v5: copy the live __edit_preset_id value from the
++        /* §edit-window-v7: copy the live __edit_preset_id value from the
+            active owner window's WebView into the bridge state we pass
+            to the freshly-opened edit tool window. Without this, the
+            preset id the launcher wrote before CMD:open_window edit
+diff --git a/ui/app.js b/ui/app.js
+index 0000000..1111111 100644
+@@ -3014,21 +3014,6 @@
+     syncCustomFromInputs(false);
+     syncThemeControls();
+     applyTheme();
+-    /* §settings-theme-live-v5: when the user clicks Dark / Light / Custom
+-       in the settings window, immediately push the new theme to the
+-       bridge so the launcher and any open sub-windows follow it live,
+-       without waiting for the SAVE button. Use sendCmd directly so
+-       applyTheme()'s own auto-sync (if any) doesn't double-fire. */
+-    if (el("__cfg_theme_mode")) el("__cfg_theme_mode").value = themeMode;
+-    if (el("__cfg_theme_bg"))      el("__cfg_theme_bg").value      = customTheme.bg;
+-    if (el("__cfg_theme_surface")) el("__cfg_theme_surface").value = customTheme.surface;
+-    if (el("__cfg_theme_text"))    el("__cfg_theme_text").value    = customTheme.text;
+-    if (el("__cfg_theme_accent"))  el("__cfg_theme_accent").value  = customTheme.accent;
+-    if (el("__cfg_theme_grad_en"))  el("__cfg_theme_grad_en").value   = customTheme.gradientEnabled ? "1" : "0";
+-    if (el("__cfg_theme_grad_bg2")) el("__cfg_theme_grad_bg2").value  = customTheme.gradientBg2 || customTheme.bg;
+-    if (el("__cfg_theme_grad_angle")) el("__cfg_theme_grad_angle").value = (customTheme.gradientAngle || 135).toString();
+-    if (el("__cfg_theme_grad_op"))  el("__cfg_theme_grad_op").value  = (customTheme.gradientOpacity || 100).toString();
+-    sendCmd("CMD:settings_live");
+ }
+ 
+ function syncThemeControls() {
+@@ -6794,32 +6779,7 @@
+    than window.opener. Refresh only the live visual state of the main page;
+    persistence is still handled by the normal CMD:settings_save path. */
+ function syncSettingsFromNativeBridge() {
+-    if (__rvlSettingsPopupMode) {
+-        /* §settings-theme-sync-v5: settings-popup should still visually
+-           follow the live theme when the user changes it elsewhere (e.g.
+-           clicks a chip in the themes tool window, or changes the color in
+-           the launcher's main window). Without this branch the settings
+-           window froze on its initial theme until closed and reopened.
+-           Only the visual theme bits are reloaded — auto-minimize, hotkey,
+-           language and other typed settings stay as the user typed them in
+-           the popup until they press SAVE. */
+-        try {
+-            themeMode = safeThemeMode(el("__cfg_theme_mode").value);
+-            customTheme.bg = normalizeHex(el("__cfg_theme_bg").value, customTheme.bg);
+-            customTheme.surface = normalizeHex(el("__cfg_theme_surface").value, customTheme.surface);
+-            customTheme.text = normalizeHex(el("__cfg_theme_text").value, customTheme.text);
+-            customTheme.accent = normalizeHex(el("__cfg_theme_accent").value, customTheme.accent);
+-            customTheme.gradientEnabled = el("__cfg_theme_grad_en").value === "1";
+-            customTheme.gradientBg2 = normalizeHex(el("__cfg_theme_grad_bg2").value, customTheme.bg);
+-            customTheme.gradientAngle = parseInt(el("__cfg_theme_grad_angle").value, 10) || 135;
+-            var gopS = parseInt(el("__cfg_theme_grad_op") ? el("__cfg_theme_grad_op").value : "100", 10);
+-            customTheme.gradientOpacity = (isNaN(gopS) || gopS < 0 || gopS > 100) ? 100 : gopS;
+-            if (typeof syncThemeControls === "function") syncThemeControls();
+-            if (typeof applyTheme === "function") applyTheme();
+-            if (typeof syncColorPickers === "function") syncColorPickers();
+-        } catch (e) {}
+-        return;
+-    }
++    if (__rvlSettingsPopupMode) return;
+     try {
+         themeMode = safeThemeMode(el("__cfg_theme_mode").value);
+         autoMinimize = el("__cfg_auto_minimize").value === "1";
+@@ -7019,15 +6979,17 @@
+     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
+         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
+         groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
+-        /* §edit-window-v5: when the edit tool window opens, read the
+-           __edit_preset_id bridge field (the launcher wrote it before
+-           sending CMD:open_window edit), then open the edit modal for
+-           that preset. */
++        /* §edit-window-v7: when the edit tool window opens, read the
++           __edit_preset_id bridge field the launcher wrote before
++           CMD:open_window edit, then open the edit modal for that preset.
++           The field is cleared so re-opening for a different preset works. */
+         edit: function () {
+             var eid = el("__edit_preset_id");
+             var pid = eid ? eid.value : "";
+             if (eid) eid.value = "";
+             if (pid && findPreset(pid)) {
++                /* Defer one tick so initNativeWindow finishes its DOM
++                   prep (hiding app-shell etc.) before the modal builds. */
+                 setTimeout(function () { openPresetEditModal(pid); }, 30);
+             }
+         } }[kind];
+@@ -7435,10 +7397,12 @@
+ }
+ 
+ function openPresetEditModal(id) {
+-    /* §edit-window-v5: in the native C# host, the edit modal opens as a
++    /* §edit-window-v7: in the native C# host, the edit modal opens as a
+        dedicated tool window — same pattern as history/dashboard/themes.
+        The preset id is passed to the new window via the __edit_preset_id
+-       bridge field. */
++       bridge field. This is the FIRST thing we do — before any of the
++       local modal setup runs — so the launcher's own window is never
++       touched by the modal build process. */
+     if (window.__rvlNativeHost && !window.__rvlNativeWindow) {
+         var eid = el("__edit_preset_id");
+         if (eid) eid.value = id;
+diff --git a/ui/index.html b/ui/index.html
+index 0000000..1111111 100644
+@@ -494,9 +494,6 @@
+     <div class="startup-orbit startup-orbit-one"></div>
+     <div class="startup-orbit startup-orbit-two"></div>
+     <div class="startup-grid"></div>
+-    <!-- §scan-line-v5: a 1px horizontal gradient sweeping top-to-bottom
+-         every 7s. Reads as "loading in progress" without being noisy. -->
+-    <div class="rvl-scanline"></div>
+     <div class="startup-content">
+       <div class="startup-mark"><span class="rvl-logo startup-logo" aria-label="RVL"></span></div>
+       <div class="startup-kicker">PRIVATE VIP LAUNCHER</div>
+diff --git a/ui/style.css b/ui/style.css
+index 0000000..1111111 100644
+@@ -14110,57 +14110,33 @@
+ }
+ 
+ /* ============================================================
+-   §startup-final-v5 — calm, deliberate loading screen.
+-   The user explicitly disliked the rotating square "orbits",
+-   the big RVL watermark, and the randomly moving dots.
+-   This block keeps ONLY three subtle effects:
+-   1. A single horizontal scanline sweeping top-to-bottom every 7s.
+-      Barely visible (opacity 0.35) but reads as "loading activity".
+-   2. A gentle "breathing" glow around the central RVL brand mark.
+-      The pulse is slow (3s) and dim — never distracting.
+-   3. The progress bar keeps its indeterminate fill, with a soft glow.
+-   No watermarks, no rotating shapes, no particle dots.
++   §startup-final-v6 — minimal, calm loading screen.
++   The user disliked the rotating square orbits, the RVL watermark,
++   the randomly moving dots, AND the horizontal scan line.
++   This block keeps only TWO subtle effects:
++   1. A gentle "breathing" glow around the central RVL brand mark.
++      Slow (3s), dim (opacity 0.18→0.28) — barely noticeable.
++   2. The progress bar gets a soft glow pulse (every 2s).
++   No scan line, no rotating shapes, no watermark, no particles.
+    ============================================================ */
+ 
+-/* Single scanline — a 1px gradient sweep. Visible only on the dark
+-   startup screen. */
+-.startup-screen .rvl-scanline {
+-    position: absolute;
+-    left: 0; right: 0;
+-    top: 0;
+-    height: 1px;
+-    background: linear-gradient(90deg, transparent, rgba(232,232,232,0.35), transparent);
+-    box-shadow: 0 0 6px rgba(232,232,232,0.25);
+-    pointer-events: none;
+-    z-index: 1;
+-    opacity: 0;
+-    -ms-animation: rvl-scan-sweep-v5 7s ease-in-out infinite;
+-    animation: rvl-scan-sweep-v5 7s ease-in-out infinite;
+-}
+-@keyframes rvl-scan-sweep-v5 {
+-    0%   { top: 0%;   opacity: 0; }
+-    8%   { opacity: 0.6; }
+-    92%  { opacity: 0.6; }
+-    100% { top: 100%; opacity: 0; }
+-}
+-@-ms-keyframes rvl-scan-sweep-v5 {
+-    0%   { top: 0%;   opacity: 0; }
+-    8%   { opacity: 0.6; }
+-    92%  { opacity: 0.6; }
+-    100% { top: 100%; opacity: 0; }
++/* Hide the orbit rings + perspective grid that ship in the static
++   HTML. They were the source of the "noisy corner pixels" feedback. */
++.startup-orbit-one, .startup-orbit-two, .startup-grid {
++    display: none !important;
+ }
+ 
+ /* Brand mark breathing glow — slow, dim, calm. */
+ .startup-mark {
+     position: relative;
+-    -ms-animation: rvl-brand-breathe-v5 3s ease-in-out infinite;
+-    animation: rvl-brand-breathe-v5 3s ease-in-out infinite;
++    -ms-animation: rvl-brand-breathe-v6 3s ease-in-out infinite;
++    animation: rvl-brand-breathe-v6 3s ease-in-out infinite;
+ }
+-@keyframes rvl-brand-breathe-v5 {
++@keyframes rvl-brand-breathe-v6 {
+     0%, 100% { text-shadow: 0 0 12px rgba(232,232,232,0.18), 0 0 3px rgba(232,232,232,0.28); }
+     50%      { text-shadow: 0 0 22px rgba(232,232,232,0.28), 0 0 6px rgba(232,232,232,0.42); }
+ }
+-@-ms-keyframes rvl-brand-breathe-v5 {
++@-ms-keyframes rvl-brand-breathe-v6 {
+     0%, 100% { text-shadow: 0 0 12px rgba(232,232,232,0.18), 0 0 3px rgba(232,232,232,0.28); }
+     50%      { text-shadow: 0 0 22px rgba(232,232,232,0.28), 0 0 6px rgba(232,232,232,0.42); }
+ }
+@@ -14168,15 +14144,64 @@
+ /* Progress bar glow pulse — gentle, every 2s. */
+ .startup-progress-fill {
+     -ms-animation: startup-progress 1.65s ease-in-out infinite,
+-                   rvl-progress-glow-v5 2s ease-in-out infinite;
++                   rvl-progress-glow-v6 2s ease-in-out infinite;
+     animation: startup-progress 1.65s ease-in-out infinite,
+-               rvl-progress-glow-v5 2s ease-in-out infinite;
++               rvl-progress-glow-v6 2s ease-in-out infinite;
+ }
+-@keyframes rvl-progress-glow-v5 {
++@keyframes rvl-progress-glow-v6 {
+     0%, 100% { box-shadow: 0 0 6px  rgba(232,232,232,0.22); }
+     50%      { box-shadow: 0 0 14px rgba(232,232,232,0.48); }
+ }
+-@-ms-keyframes rvl-progress-glow-v5 {
++@-ms-keyframes rvl-progress-glow-v6 {
+     0%, 100% { box-shadow: 0 0 6px  rgba(232,232,232,0.22); }
+     50%      { box-shadow: 0 0 14px rgba(232,232,232,0.48); }
+ }
++
++/* ============================================================
++   §startup-logo-v7 — bigger logo + tasteful animations.
++   The user wanted the RVL logo on the loading screen to be
++   bigger, and to have visible-but-calm animations.
++   This block:
++   1. Doubles the logo size (132×48 → 200×72) so it reads clearly.
++   2. Adds a slow gentle "float" — the logo bobs up and down 4px
++      every 4s, like it's hovering.
++   3. Adds a "breathing" glow pulse — opacity 0.85→1.0 every 3s.
++   4. Adds a subtle "scale breathe" — 1.00 → 1.04 → 1.00 every 3s.
++   No rotating squares, no scanlines, no random particles —
++   just the logo calmly breathing.
++   ============================================================ */
++
++/* Bigger logo on the loading screen + update screen. */
++.startup-mark { height: 76px !important; line-height: 76px !important; }
++.startup-mark .startup-logo,
++.startup-mark .rvl-logo.startup-logo {
++    width: 200px !important;
++    height: 72px !important;
++    /* Slow float: 4px vertical bob every 4s. Uses transform so it stays
++       on the GPU compositor — no reflow. */
++    -ms-animation: rvl-logo-float-v7 4s ease-in-out infinite,
++                   rvl-logo-breathe-v7 3s ease-in-out infinite;
++    animation: rvl-logo-float-v7 4s ease-in-out infinite,
++               rvl-logo-breathe-v7 3s ease-in-out infinite;
++    /* Filter glow — animates opacity 0.85 → 1.0 with a soft drop-shadow. */
++    filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
++            drop-shadow(0 0 16px rgba(232,232,232,0.15));
++    -webkit-filter: drop-shadow(0 0 6px rgba(232,232,232,0.30))
++                    drop-shadow(0 0 16px rgba(232,232,232,0.15));
++}
++@keyframes rvl-logo-float-v7 {
++    0%, 100% { transform: translateY(0); }
++    50%      { transform: translateY(-4px); }
++}
++@-ms-keyframes rvl-logo-float-v7 {
++    0%, 100% { transform: translateY(0); }
++    50%      { transform: translateY(-4px); }
++}
++@keyframes rvl-logo-breathe-v7 {
++    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
++    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
++}
++@-ms-keyframes rvl-logo-breathe-v7 {
++    0%, 100% { opacity: 0.88; transform: translateY(0) scale(1); }
++    50%      { opacity: 1.00; transform: translateY(-4px) scale(1.04); }
++}

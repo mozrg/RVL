@@ -3014,21 +3014,6 @@ function selectThemeMode(mode) {
     syncCustomFromInputs(false);
     syncThemeControls();
     applyTheme();
-    /* §settings-theme-live-v5: when the user clicks Dark / Light / Custom
-       in the settings window, immediately push the new theme to the
-       bridge so the launcher and any open sub-windows follow it live,
-       without waiting for the SAVE button. Use sendCmd directly so
-       applyTheme()'s own auto-sync (if any) doesn't double-fire. */
-    if (el("__cfg_theme_mode")) el("__cfg_theme_mode").value = themeMode;
-    if (el("__cfg_theme_bg"))      el("__cfg_theme_bg").value      = customTheme.bg;
-    if (el("__cfg_theme_surface")) el("__cfg_theme_surface").value = customTheme.surface;
-    if (el("__cfg_theme_text"))    el("__cfg_theme_text").value    = customTheme.text;
-    if (el("__cfg_theme_accent"))  el("__cfg_theme_accent").value  = customTheme.accent;
-    if (el("__cfg_theme_grad_en"))  el("__cfg_theme_grad_en").value   = customTheme.gradientEnabled ? "1" : "0";
-    if (el("__cfg_theme_grad_bg2")) el("__cfg_theme_grad_bg2").value  = customTheme.gradientBg2 || customTheme.bg;
-    if (el("__cfg_theme_grad_angle")) el("__cfg_theme_grad_angle").value = (customTheme.gradientAngle || 135).toString();
-    if (el("__cfg_theme_grad_op"))  el("__cfg_theme_grad_op").value  = (customTheme.gradientOpacity || 100).toString();
-    sendCmd("CMD:settings_live");
 }
 
 function syncThemeControls() {
@@ -6794,32 +6779,7 @@ function applySettingsToOpener() {
    than window.opener. Refresh only the live visual state of the main page;
    persistence is still handled by the normal CMD:settings_save path. */
 function syncSettingsFromNativeBridge() {
-    if (__rvlSettingsPopupMode) {
-        /* §settings-theme-sync-v5: settings-popup should still visually
-           follow the live theme when the user changes it elsewhere (e.g.
-           clicks a chip in the themes tool window, or changes the color in
-           the launcher's main window). Without this branch the settings
-           window froze on its initial theme until closed and reopened.
-           Only the visual theme bits are reloaded — auto-minimize, hotkey,
-           language and other typed settings stay as the user typed them in
-           the popup until they press SAVE. */
-        try {
-            themeMode = safeThemeMode(el("__cfg_theme_mode").value);
-            customTheme.bg = normalizeHex(el("__cfg_theme_bg").value, customTheme.bg);
-            customTheme.surface = normalizeHex(el("__cfg_theme_surface").value, customTheme.surface);
-            customTheme.text = normalizeHex(el("__cfg_theme_text").value, customTheme.text);
-            customTheme.accent = normalizeHex(el("__cfg_theme_accent").value, customTheme.accent);
-            customTheme.gradientEnabled = el("__cfg_theme_grad_en").value === "1";
-            customTheme.gradientBg2 = normalizeHex(el("__cfg_theme_grad_bg2").value, customTheme.bg);
-            customTheme.gradientAngle = parseInt(el("__cfg_theme_grad_angle").value, 10) || 135;
-            var gopS = parseInt(el("__cfg_theme_grad_op") ? el("__cfg_theme_grad_op").value : "100", 10);
-            customTheme.gradientOpacity = (isNaN(gopS) || gopS < 0 || gopS > 100) ? 100 : gopS;
-            if (typeof syncThemeControls === "function") syncThemeControls();
-            if (typeof applyTheme === "function") applyTheme();
-            if (typeof syncColorPickers === "function") syncColorPickers();
-        } catch (e) {}
-        return;
-    }
+    if (__rvlSettingsPopupMode) return;
     try {
         themeMode = safeThemeMode(el("__cfg_theme_mode").value);
         autoMinimize = el("__cfg_auto_minimize").value === "1";
@@ -7018,19 +6978,7 @@ function initNativeWindow(kind) {
     var splash = el("startup-screen"); if (splash) splash.style.display = "none";
     var fn = { history: openHistory, dashboard: openDashboard, backup: openBackup,
         bulk: openBulkEdit, export: openExportModal, guide: window.openGuide,
-        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal,
-        /* §edit-window-v5: when the edit tool window opens, read the
-           __edit_preset_id bridge field (the launcher wrote it before
-           sending CMD:open_window edit), then open the edit modal for
-           that preset. */
-        edit: function () {
-            var eid = el("__edit_preset_id");
-            var pid = eid ? eid.value : "";
-            if (eid) eid.value = "";
-            if (pid && findPreset(pid)) {
-                setTimeout(function () { openPresetEditModal(pid); }, 30);
-            }
-        } }[kind];
+        groups: openGroupsManager, themes: openTPManager, new: openNewPresetModal }[kind];
     if (typeof fn === "function") fn();
     bindNativeWindowDrag(kind);
 }
@@ -7435,16 +7383,6 @@ function applyStyleObj(el, styleObj) {
 }
 
 function openPresetEditModal(id) {
-    /* §edit-window-v5: in the native C# host, the edit modal opens as a
-       dedicated tool window — same pattern as history/dashboard/themes.
-       The preset id is passed to the new window via the __edit_preset_id
-       bridge field. */
-    if (window.__rvlNativeHost && !window.__rvlNativeWindow) {
-        var eid = el("__edit_preset_id");
-        if (eid) eid.value = id;
-        sendCmd("CMD:open_window edit");
-        return;
-    }
     if (editingPresetId) closePresetEditModal();
     editingPresetId = id;
     var p = findPreset(id);
