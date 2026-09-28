@@ -88,12 +88,13 @@ public sealed class WebMainForm : Form
         ClientSize = _isSettings ? new Size(760, 680) : windowKind == "main" ? new Size(900, 610) : ToolWindowSize(windowKind);
         MinimumSize = _isSettings ? new Size(600, 420) : new Size(360, 300);
         BackColor = ThemeSurfaceColor();
-        /* §taskbar-badge-fix: only the main window gets a taskbar entry.
-           Tool windows (settings, history, themes, etc.) used to inflate
-           the Windows 11 taskbar badge counter ("25 unread notifications"
-           look) — they were each registering as a separate taskbar item.
-           Child windows that show via ShowDeferred(owner) inherit the
-           owner's taskbar entry automatically when ShowInTaskbar=false. */
+        /* §taskbar-badge-fix-v5: only the main window gets a taskbar entry.
+           Tool windows (settings, history, themes, edit, etc.) used to
+           inflate the Windows 11 taskbar badge counter ("25 unread
+           notifications" look) — they each registered as a separate
+           taskbar item. With ShowInTaskbar=false, child windows shown
+           via ShowDeferred(owner) inherit the owner's taskbar entry
+           automatically. */
         ShowInTaskbar = windowKind == "main";
         KeyPreview = true;
         /* The position must be final BEFORE the window is created — otherwise
@@ -450,20 +451,16 @@ public sealed class WebMainForm : Form
             ["__thumb_resp"] = "",
             ["__avatars_cleared"] = ""
         };
-        /* §edit-window: copy the live __edit_preset_id value from the
+        /* §edit-window-v5: copy the live __edit_preset_id value from the
            active owner window's WebView into the bridge state we pass
            to the freshly-opened edit tool window. Without this, the
            preset id the launcher wrote before CMD:open_window edit
            never reaches the new window's initNativeWindow("edit")
-           handler. Read asynchronously so we never block the bridge. */
+           handler. */
         try
         {
             var owner = MainHost;
-            if (ReferenceEquals(owner, this) && owner._web.CoreWebView2 is not null)
-            {
-                /* Same window: no owner to copy from — skip. */
-            }
-            else if (owner._web.CoreWebView2 is not null)
+            if (!ReferenceEquals(owner, this) && owner._web.CoreWebView2 is not null)
             {
                 var rawId = owner._web.CoreWebView2.ExecuteScriptAsync(
                     "(function(){var e=document.getElementById('__edit_preset_id');return e?String(e.value||''):'';})()"
