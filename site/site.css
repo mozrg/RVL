@@ -31,9 +31,7 @@ a { color: inherit; }
   justify-content: space-between;
 }
 
-.topbar { height: 80px; border-bottom: 1px solid var(--line); }
-.brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-size: 14px; font-weight: 800; letter-spacing: .18em; }
-.brand img { object-fit: contain; }
+.topbar { height: 80px; justify-content: flex-end; border-bottom: 1px solid var(--line); }
 .github-link, .all-releases { color: #c0c0b9; text-decoration: none; font-size: 12px; }
 .github-link:hover, .all-releases:hover { color: var(--accent); }
 
@@ -46,8 +44,9 @@ a { color: inherit; }
 .eyebrow { display: inline-flex; align-items: center; gap: 9px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px #e8ff5b70; }
 
-h1 { margin: 25px 0 16px; font-size: clamp(46px, 8vw, 76px); line-height: .99; font-weight: 700; letter-spacing: -.075em; }
-h1 span { color: #8b8d7e; }
+.hero-logo { display: block; width: min(250px, 58vw); height: auto; margin: 27px auto 0; object-fit: contain; }
+.product-name { display: flex; flex-direction: column; gap: 7px; margin: -10px 0 15px; color: #d8d8d0; font: 500 11px/1.4 'DM Mono', monospace; letter-spacing: .2em; }
+.product-name span + span { color: #77786e; font-size: 10px; letter-spacing: .16em; }
 .intro { max-width: 430px; margin: 0 auto; color: #a2a29c; font-size: 14px; line-height: 1.8; }
 
 .download-card {
@@ -81,7 +80,8 @@ h1 span { color: #8b8d7e; }
   transition: transform .15s ease, background .15s ease;
 }
 .download-button:not(.is-loading):hover { transform: translateY(-2px); background: #f0ff91; }
-.download-button[aria-disabled="true"] { opacity: .68; cursor: wait; }
+.download-button[aria-disabled="true"] { opacity: .55; cursor: default; }
+.download-button.is-loading[aria-disabled="true"] { cursor: wait; }
 .button-main { font-size: 13px; font-weight: 800; }
 .button-meta { opacity: .68; font: 10px 'DM Mono', monospace; }
 .download-icon { position: absolute; right: 17px; top: 50%; transform: translateY(-50%); font-size: 22px; }
@@ -106,6 +106,8 @@ h1 span { color: #8b8d7e; }
 @media (max-width: 600px) {
   .topbar, .footer { width: calc(100% - 36px); }
   .hero { margin-top: 74px; }
+  .hero-logo { margin-top: 22px; }
+  .product-name { margin-top: -5px; font-size: 10px; }
   .download-card { grid-template-columns: 1fr; padding: 15px; }
   .release-info { padding: 2px 3px 5px; }
   .download-note { grid-column: auto; }

@@ -32,16 +32,17 @@
       date.textContent = release.published_at ? `Опубликовано ${formatDate(release.published_at)}` : 'Последний релиз GitHub';
 
       if (!asset) {
-        download.href = release.html_url || `https://github.com/${repo}/releases`;
+        download.removeAttribute('href');
         download.classList.remove('is-loading');
-        download.removeAttribute('aria-disabled');
-        download.querySelector('.button-main').textContent = 'Открыть релиз';
-        size.textContent = 'Открыть релиз';
-        note.textContent = 'В релизе пока нет ZIP-файла. Откройте страницу релиза и проверьте вложения.';
+        download.setAttribute('aria-disabled', 'true');
+        download.querySelector('.button-main').textContent = 'Загрузка недоступна';
+        size.textContent = 'ZIP не прикреплён';
+        note.textContent = 'Чтобы скачать RVL, к последнему GitHub-релизу нужно прикрепить ZIP приложения.';
         return;
       }
 
       download.href = asset.browser_download_url;
+      download.setAttribute('download', asset.name);
       download.classList.remove('is-loading');
       download.removeAttribute('aria-disabled');
       size.textContent = formatSize(asset.size);
@@ -50,10 +51,11 @@
     .catch(() => {
       version.textContent = 'GitHub недоступен';
       date.textContent = 'Попробуйте открыть список релизов';
-      download.href = `https://github.com/${repo}/releases/latest`;
+      download.removeAttribute('href');
       download.classList.remove('is-loading');
-      download.removeAttribute('aria-disabled');
-      size.textContent = 'Открыть GitHub';
-      note.textContent = 'Не удалось загрузить ссылку автоматически. Вы можете скачать релиз на GitHub.';
+      download.setAttribute('aria-disabled', 'true');
+      download.querySelector('.button-main').textContent = 'Загрузка недоступна';
+      size.textContent = 'Нет соединения';
+      note.textContent = 'Не удалось получить ссылку. Попробуйте позже.';
     });
 })();
