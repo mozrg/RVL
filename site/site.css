@@ -3,14 +3,14 @@
 :root {
   color-scheme: dark;
   font-family: 'Manrope', 'Segoe UI', sans-serif;
-  background: #101010;
+  background: #0A0A0A;
   color: #f3f3f0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --muted: #858581;
   --line: #292927;
-  --accent: #e8ff5b;
+  --accent: #FFFFFF;
 }
 
 * { box-sizing: border-box; }
@@ -18,7 +18,7 @@
 body {
   min-width: 320px;
   margin: 0;
-  background: radial-gradient(ellipse at 50% 31%, #1b1c16 0, #101010 51%);
+  background: #0A0A0A;
 }
 
 a { color: inherit; }
@@ -42,7 +42,7 @@ a { color: inherit; }
   letter-spacing: .16em;
 }
 .eyebrow { display: inline-flex; align-items: center; gap: 9px; }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px #e8ff5b70; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px #ffffff55; }
 
 .hero-logo { display: block; width: min(250px, 58vw); height: auto; margin: 27px auto 0; object-fit: contain; }
 .product-name { display: flex; flex-direction: column; gap: 7px; margin: -10px 0 15px; color: #d8d8d0; font: 500 11px/1.4 'DM Mono', monospace; letter-spacing: .2em; }
@@ -57,9 +57,9 @@ a { color: inherit; }
   gap: 16px;
   align-items: center;
   text-align: left;
-  border: 1px solid #35362f;
+  border: 1px solid #2E2E2E;
   border-radius: 8px;
-  background: #161713;
+  background: #111111;
   box-shadow: 0 20px 70px #0006;
 }
 .release-info { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding-left: 5px; }
@@ -79,7 +79,7 @@ a { color: inherit; }
   text-decoration: none;
   transition: transform .15s ease, background .15s ease;
 }
-.download-button:not(.is-loading):hover { transform: translateY(-2px); background: #f0ff91; }
+.download-button:not(.is-loading):hover { transform: translateY(-2px); background: #E2E2E2; }
 .download-button[aria-disabled="true"] { opacity: .55; cursor: default; }
 .download-button.is-loading[aria-disabled="true"] { cursor: wait; }
 .button-main { font-size: 13px; font-weight: 800; }
@@ -112,7 +112,7 @@ a { color: inherit; }
 .release-entry-title { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .release-entry-title h3 { margin: 0; font-size: 16px; letter-spacing: -.03em; }
 .release-entry-date { color: var(--muted); font-size: 11px; }
-.prerelease-label { padding: 4px 7px; border: 1px solid #4b4b37; border-radius: 3px; color: var(--accent); font: 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
+.prerelease-label { padding: 4px 7px; border: 1px solid #4A4A4A; border-radius: 3px; color: #D0D0D0; font: 9px 'DM Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
 .release-download { flex: 0 0 auto; color: var(--accent); text-decoration: none; font-size: 11px; }
 .release-download:hover { text-decoration: underline; }
 .release-body { max-width: 760px; margin-top: 16px; color: #a2a29c; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
@@ -124,9 +124,9 @@ a { color: inherit; }
 .release-body li { padding-left: 3px; }
 .release-body li + li { margin-top: 4px; }
 .release-body strong { color: #deded8; font-weight: 700; }
-.release-body code { padding: 2px 5px; border-radius: 3px; background: #20211c; color: var(--accent); font: 11px 'DM Mono', monospace; }
+.release-body code { padding: 2px 5px; border-radius: 3px; background: #202020; color: var(--accent); font: 11px 'DM Mono', monospace; }
 .release-body pre { overflow-x: auto; padding: 12px; border: 1px solid var(--line); border-radius: 4px; background: #151613; color: #d2d2ca; font: 11px/1.7 'DM Mono', monospace; white-space: pre-wrap; }
-.release-body blockquote { margin: 10px 0; padding-left: 12px; border-left: 2px solid #4b4b37; color: var(--muted); }
+.release-body blockquote { margin: 10px 0; padding-left: 12px; border-left: 2px solid #555555; color: var(--muted); }
 .release-body hr { margin: 14px 0; border: 0; border-top: 1px solid var(--line); }
 .release-body a { color: var(--accent); text-underline-offset: 3px; }
 .history-state { margin: 0; padding: 22px 0; color: var(--muted); font-size: 12px; }
