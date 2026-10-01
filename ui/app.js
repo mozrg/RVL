@@ -358,7 +358,7 @@ var STRINGS = {
         factoryResetConfirmBtn:"Да, сбросить",
         bulkEditTitle:"Массовое редактирование",bulkEditTooltip:"Массовое редактирование",
         bulkColName:"Название",
-        bulkColPlace:"Place ID",bulkColLink:"Link Code",
+        bulkColPlace:"Place ID (СП 1 / СП 3)",bulkColLink:"Link / Share Code (СП 1 / СП 2)",
         bulkSaveBtn:"Сохранить",bulkCancelBtn:"Отмена",
         /* New strings for enhancements */
         copyLinkTip:"Копировать ссылку",
@@ -383,9 +383,11 @@ var STRINGS = {
         trayFavLaunch:"Быстрый запуск",
         trayNoFav:"Нет избранных пресетов",
         exitConfirmTitle:"Несохранённые изменения",
-        exitConfirmMsg:"Есть несохранённые изменения. Выйти без сохранения?",
+        exitConfirmMsg:"Есть несохранённые изменения. Сохранить перед выходом?",
         exitConfirmYes:"Выйти",
         exitConfirmNo:"Отмена",
+        exitConfirmSave:"Сохранить и выйти",
+        exitConfirmDiscard:"Выйти без сохранения",
         backupTitle:"РЕЗЕРВНОЕ КОПИРОВАНИЕ",
         backupCreate:"Создать резервную копию",
         backupRestore:"Восстановить из копии",
@@ -472,7 +474,7 @@ var STRINGS = {
         shareCodeLinkHint:"SHARE CODE / ссылка...",
         linkCodeLinkHint: "LINK CODE / ссылка...",
         /* Guide footer tip */
-        guideFooterTipHTML: "<b>СПОСОБ 1</b> — приватный сервер (Place ID + Link Code).<br><b>СПОСОБ 2</b> — share-код (Configure Private Servers → Regenerate). Можно вставить ссылку целиком — лишнее отрежется автоматически."
+        guideFooterTipHTML: "<b>СПОСОБ 1</b> — приватный сервер (Place ID + Link Code).<br><b>СПОСОБ 2</b> — share-код (Configure Private Servers → Regenerate). Можно вставить ссылку целиком — лишнее отрежется автоматически.<br><b>СПОСОБ 3</b> — публичная игра по одному Place ID."
     },
     en: {
         /* Titlebar tooltips */
@@ -713,7 +715,7 @@ var STRINGS = {
         factoryResetConfirmBtn:"Yes, reset",
         bulkEditTitle:"Bulk edit",bulkEditTooltip:"Bulk edit",
         bulkColName:"Name",
-        bulkColPlace:"Place ID",bulkColLink:"Link Code",
+        bulkColPlace:"Place ID (M1 / M3)",bulkColLink:"Link / Share Code (M1 / M2)",
         bulkSaveBtn:"Save",bulkCancelBtn:"Cancel",
         /* New strings for enhancements */
         copyLinkTip:"Copy link",
@@ -738,9 +740,11 @@ var STRINGS = {
         trayFavLaunch:"Quick launch",
         trayNoFav:"No favorite presets",
         exitConfirmTitle:"Unsaved changes",
-        exitConfirmMsg:"You have unsaved changes. Exit without saving?",
+        exitConfirmMsg:"You have unsaved changes. Save before exiting?",
         exitConfirmYes:"Exit",
         exitConfirmNo:"Cancel",
+        exitConfirmSave:"Save and exit",
+        exitConfirmDiscard:"Exit without saving",
         backupTitle:"BACKUP",
         backupCreate:"Create backup",
         backupRestore:"Restore from backup",
@@ -826,7 +830,7 @@ var STRINGS = {
         shareCodeLinkHint:"SHARE CODE / link...",
         linkCodeLinkHint: "LINK CODE / link...",
         /* Guide footer tip */
-        guideFooterTipHTML: "<b>METHOD 1</b> — private server (Place ID + Link Code).<br><b>METHOD 2</b> — share code (Configure Private Servers → Regenerate). You can paste the full link — extra parts are trimmed automatically."
+        guideFooterTipHTML: "<b>METHOD 1</b> — private server (Place ID + Link Code).<br><b>METHOD 2</b> — share code (Configure Private Servers → Regenerate). You can paste the full link — extra parts are trimmed automatically.<br><b>METHOD 3</b> — public game using only its Place ID."
     }
 };
 
@@ -1036,6 +1040,9 @@ function initApp(skipStartupPreset) {
 
     el("inp-place").value = place;
     el("inp-link").value  = link;
+    if (el("inp-place-public")) el("inp-place-public").value = place;
+    var configuredMethod = parseInt(el("__cfg_method") ? el("__cfg_method").value : "1", 10);
+    switchMethod(configuredMethod === 2 || configuredMethod === 3 ? configuredMethod : 1);
     el("inp-key").value   = hotkey;
 
     el("chk-enabled").checked = enabled;
@@ -1114,6 +1121,10 @@ function initApp(skipStartupPreset) {
                 if (scInp0) scInp0.value = tp.linkCode || "";
                 el("inp-place").value = "";
                 el("inp-link").value  = tp.linkCode || "";
+            } else if ((tp.method || 1) === 3) {
+                if (el("inp-place-public")) el("inp-place-public").value = tp.placeId || "";
+                el("inp-place").value = tp.placeId || "";
+                el("inp-link").value = "";
             } else {
                 el("inp-place").value = tp.placeId  || "";
                 el("inp-link").value  = tp.linkCode || "";
@@ -1216,7 +1227,7 @@ function bootRvlUi() {
     initSettingsHotkeyBlock();
 
     /* Enhancement: track dirty state on input field changes */
-    var dirtyFields = ["inp-place", "inp-link", "inp-share-code", "inp-key"];
+    var dirtyFields = ["inp-place", "inp-place-public", "inp-link", "inp-share-code", "inp-key"];
     for (var dfi = 0; dfi < dirtyFields.length; dfi++) {
         var dfEl = el(dirtyFields[dfi]);
         if (dfEl) {
@@ -1311,8 +1322,10 @@ function bootRvlUi() {
     /* ── Method tabs ── */
     var tab1 = el("method-tab-1");
     var tab2 = el("method-tab-2");
+    var tab3 = el("method-tab-3");
     if (tab1) tab1.onclick = function () { switchMethod(1); };
     if (tab2) tab2.onclick = function () { switchMethod(2); };
+    if (tab3) tab3.onclick = function () { switchMethod(3); };
 
     /* ── Guide page navigation ── */
     var gPrev = el("guide-nav-prev");
@@ -2163,6 +2176,8 @@ function buildExportPresetRow(p) {
     sub.className = "preset-sub";
     if ((p.method || 1) === 2) {
         sub.appendChild(document.createTextNode("SC " + abbrev(p.linkCode, 8)));
+    } else if (p.method === 3) {
+        sub.appendChild(document.createTextNode((currentLang === "en" ? "M3 ID " : "СП 3 · ID ") + abbrev(p.placeId, 8)));
     } else {
         sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     }
@@ -2540,6 +2555,10 @@ function onLaunch() {
         var m2 = linkCode.match(/[?&]code=([A-Za-z0-9]+)/i);
         if (m2) linkCode = m2[1];
         if (!/^[A-Za-z0-9]+$/.test(linkCode)) { showLaunchValidationError("share"); return; }
+    } else if (currentMethod === 3) {
+        placeId  = trim(el("inp-place-public").value);
+        linkCode = "";
+        if (!/^\d{1,20}$/.test(placeId)) { showLaunchValidationError("place"); return; }
     } else {
         placeId  = trim(el("inp-place").value);
         linkCode = trim(el("inp-link").value);
@@ -2549,6 +2568,7 @@ function onLaunch() {
     isLaunching = true;
     /* Also sync the hidden bridge inputs so AHK ReadDom gets the right values */
     if (el("inp-place"))      el("inp-place").value = placeId;
+    if (el("inp-place-public")) el("inp-place-public").value = placeId;
     if (el("inp-link"))       el("inp-link").value  = linkCode;
     if (el("__cfg_method"))   el("__cfg_method").value = String(currentMethod);
 
@@ -3539,23 +3559,29 @@ function switchGuidePage(page) {
 
 /* ── Main-page method switching ─────────────────────────── */
 function switchMethod(n) {
+    n = (n === 2 || n === 3) ? n : 1;
     currentMethod = n;
     var S = STRINGS[currentLang] || STRINGS.ru;
 
     var panel1 = el("method-panel-1");
     var panel2 = el("method-panel-2");
+    var panel3 = el("method-panel-3");
     var tab1   = el("method-tab-1");
     var tab2   = el("method-tab-2");
+    var tab3   = el("method-tab-3");
 
     if (panel1) panel1.style.display = (n === 1) ? "" : "none";
     if (panel2) panel2.style.display = (n === 2) ? "" : "none";
+    if (panel3) panel3.style.display = (n === 3) ? "" : "none";
 
     if (tab1) tab1.className = "method-tab ir-tab" + (n === 1 ? " method-tab-active" : "");
     if (tab2) tab2.className = "method-tab ir-tab" + (n === 2 ? " method-tab-active" : "");
+    if (tab3) tab3.className = "method-tab ir-tab" + (n === 3 ? " method-tab-active" : "");
 
     /* Update tab labels from STRINGS (for language switch) */
     if (tab1 && S.methodTab1) tab1.innerHTML = S.methodTab1;
     if (tab2 && S.methodTab2) tab2.innerHTML = S.methodTab2;
+    if (tab3) tab3.innerHTML = currentLang === "en" ? "M3" : "СП 3";
 
     /* Update SHARE CODE label/placeholder */
     var shareLabel = el("lbl-share-code");
@@ -5258,6 +5284,10 @@ function confirmNewPreset() {
         /* Also handle roblox:// navigation links */
         var m3 = linkCode.match(/code=([A-Za-z0-9]+)/i);
         if (m3 && !m2) linkCode = m3[1];
+    } else if (currentMethod === 3) {
+        placeId = trim(el("inp-place-public").value);
+        linkCode = "";
+        if (!/^\d{1,20}$/.test(placeId)) { try { el("inp-place-public").focus(); } catch (e) {} return; }
     }
     var preset = {
         id:       uid(),
@@ -5277,6 +5307,7 @@ function confirmNewPreset() {
 function loadPreset(id) {
     var p = findPreset(id);
     if (!p) return;
+    __avatarRequestsPaused = false;
 
     /* Loading a preset fills the inputs programmatically. Some embedded
        browser versions emit input events for those assignments, but selecting
@@ -5293,6 +5324,10 @@ function loadPreset(id) {
             if (scInp) scInp.value = p.linkCode || "";
             el("inp-place").value = "";
             el("inp-link").value  = p.linkCode || "";
+        } else if (m === 3) {
+            if (el("inp-place-public")) el("inp-place-public").value = p.placeId || "";
+            el("inp-place").value = p.placeId || "";
+            el("inp-link").value = "";
         } else {
             el("inp-place").value = p.placeId  || "";
             el("inp-link").value  = p.linkCode || "";
@@ -5557,6 +5592,8 @@ function buildPresetRow(p, dispIdx, bucketItems, posInBucket) {
     sub.className = "preset-sub";
     if ((p.method || 1) === 2) {
         sub.appendChild(document.createTextNode("SC " + abbrev(p.linkCode, 8)));
+    } else if (p.method === 3) {
+        sub.appendChild(document.createTextNode((currentLang === "en" ? "M3 ID " : "СП 3 · ID ") + abbrev(p.placeId, 8)));
     } else {
         sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     }
@@ -7118,12 +7155,14 @@ function requestNewPresetWindow() {
 function openNewPresetModal() {
     var overlay = el("np-overlay");
     if (!overlay) return;
-    npMethod = (el("__cfg_method") && el("__cfg_method").value === "2") ? 2 : 1;
+    npMethod = el("__cfg_method") ? parseInt(el("__cfg_method").value, 10) : 1;
+    if (npMethod !== 2 && npMethod !== 3) npMethod = 1;
     npSwitchMethod(npMethod);
     if (el("np-name")) el("np-name").value = "";
     if (el("np-place")) el("np-place").value = "";
     if (el("np-link")) el("np-link").value = "";
     if (el("np-share")) el("np-share").value = "";
+    if (el("np-place-public")) el("np-place-public").value = "";
     overlay.style.display = "flex";
     overlay.className = "np-overlay np-open";
     setTimeout(function () {
@@ -7132,13 +7171,16 @@ function openNewPresetModal() {
 }
 
 function npSwitchMethod(n) {
-    npMethod = (n === 2) ? 2 : 1;
+    npMethod = (n === 2 || n === 3) ? n : 1;
     var t1 = el("np-tab-1"), t2 = el("np-tab-2");
+    var t3 = el("np-tab-3");
     if (t1) t1.className = "method-tab" + (npMethod === 1 ? " method-tab-active" : "");
     if (t2) t2.className = "method-tab" + (npMethod === 2 ? " method-tab-active" : "");
-    var p1 = el("np-panel-1"), p2 = el("np-panel-2");
+    if (t3) t3.className = "method-tab" + (npMethod === 3 ? " method-tab-active" : "");
+    var p1 = el("np-panel-1"), p2 = el("np-panel-2"), p3 = el("np-panel-3");
     if (p1) p1.style.display = npMethod === 1 ? "" : "none";
     if (p2) p2.style.display = npMethod === 2 ? "" : "none";
+    if (p3) p3.style.display = npMethod === 3 ? "" : "none";
 }
 
 function closeNewPresetModal() {
@@ -7168,6 +7210,9 @@ function confirmNewPresetWindow() {
     if (npMethod === 2) {
         linkCode = npNormalizeShare(el("np-share") ? el("np-share").value : "");
         if (!linkCode) { try { el("np-share").focus(); } catch (e2) {} return; }
+    } else if (npMethod === 3) {
+        placeId = trim(el("np-place-public") ? el("np-place-public").value : "");
+        if (!/^\d{1,20}$/.test(placeId)) { try { el("np-place-public").focus(); } catch (e3) {} return; }
     } else {
         placeId = trim(el("np-place") ? el("np-place").value : "");
         linkCode = trim(el("np-link") ? el("np-link").value : "");
@@ -7194,9 +7239,10 @@ function confirmNewPresetWindow() {
 /* Bind the new-preset window controls (exists in every window; only the
    detached "new" window ever shows the overlay). */
 function initNewPresetWindow() {
-    var t1 = el("np-tab-1"), t2 = el("np-tab-2");
+    var t1 = el("np-tab-1"), t2 = el("np-tab-2"), t3 = el("np-tab-3");
     if (t1) t1.onclick = function () { npSwitchMethod(1); };
     if (t2) t2.onclick = function () { npSwitchMethod(2); };
+    if (t3) t3.onclick = function () { npSwitchMethod(3); };
     var save = el("np-save");
     if (save) save.onclick = confirmNewPresetWindow;
     var cancel = el("np-cancel");
@@ -7734,6 +7780,30 @@ function buildPresetEditModal(id, p) {
         document.body.appendChild(overlay);
 
         try { setTimeout(function () { nameInp.focus(); nameInp.select(); }, 0); } catch(e) {}
+    } else if ((p.method || 1) === 3) {
+        saveBtn.onclick = function () { confirmPresetEditPublic(id, placeInp); };
+        placeInp.onkeydown = function (e) {
+            e = e || window.event;
+            var k = e.keyCode || e.which;
+            if (k === 13) confirmPresetEditPublic(id, placeInp);
+            if (k === 27) closePresetEditModal();
+        };
+        modal.appendChild(header);
+        modal.appendChild(nameLabel);
+        modal.appendChild(nameInp);
+        modal.appendChild(noteLabel);
+        modal.appendChild(noteInp);
+        modal.appendChild(placeLabel);
+        modal.appendChild(placeInp);
+        modal.appendChild(iconLabel);
+        modal.appendChild(iconRow);
+        modal.appendChild(colorLabel);
+        modal.appendChild(colorRow);
+        if (groupLabel) { modal.appendChild(groupLabel); modal.appendChild(groupRow); }
+        modal.appendChild(btnRow);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+        try { setTimeout(function () { placeInp.focus(); placeInp.select(); }, 0); } catch(e) {}
     } else {
         /* Method 1: Place ID + Link Code */
         saveBtn.onclick = function () { confirmPresetEdit(id, placeInp, linkInp); };
@@ -8094,6 +8164,7 @@ function buildBulkTable() {
         tr.className = "bulk-row";
         tr.setAttribute("data-pid", p.id);
         if ((p.method || 1) === 2) tr.className += " bulk-row-m2";
+        else if (p.method === 3) tr.className += " bulk-row-m3";
 
         /* Name cell — readonly label, prefixed with a method badge so the
            user can tell at a glance which method each row uses. Method 1
@@ -8107,9 +8178,9 @@ function buildBulkTable() {
         dot.style.background = DOT_COLORS[i % DOT_COLORS.length];
         dot.appendChild(document.createTextNode(i + 1));
         var methodBadge = document.createElement("span");
-        methodBadge.className = "bulk-method-badge" + ((p.method || 1) === 2 ? " bulk-method-m2" : "");
-        methodBadge.appendChild(document.createTextNode((p.method || 1) === 2 ? "СП 2" : "СП 1"));
-        methodBadge.title = (p.method || 1) === 2 ? "Share Code" : "Place ID + Link Code";
+        methodBadge.className = "bulk-method-badge" + ((p.method || 1) === 2 ? " bulk-method-m2" : (p.method === 3 ? " bulk-method-m3" : ""));
+        methodBadge.appendChild(document.createTextNode((p.method || 1) === 2 ? (currentLang === "en" ? "M2" : "СП 2") : (p.method === 3 ? (currentLang === "en" ? "M3" : "СП 3") : (currentLang === "en" ? "M1" : "СП 1"))));
+        methodBadge.title = (p.method || 1) === 2 ? "Share Code" : (p.method === 3 ? "Public game · Place ID only" : "Place ID + Link Code");
         var nameText = document.createElement("span");
         nameText.className = "bulk-name-text";
         nameText.appendChild(document.createTextNode(p.name || ""));
@@ -8153,7 +8224,7 @@ function buildBulkTable() {
             tdSC.appendChild(scInp);
             tr.appendChild(tdSC);
         } else {
-            /* Method 1: Place ID + Link Code cells */
+            /* Methods 1 and 3 use a Place ID; only Method 1 needs a Link Code. */
             var tdPlace = document.createElement("td");
             tdPlace.className = "bulk-td bulk-td-place";
             if (currentBulkTheme) tdPlace.style.background = currentBulkTheme.bgBase;
@@ -8178,22 +8249,27 @@ function buildBulkTable() {
             var tdLink = document.createElement("td");
             tdLink.className = "bulk-td bulk-td-link";
             if (currentBulkTheme) tdLink.style.background = currentBulkTheme.bgBase;
-            var linkInp = document.createElement("input");
-            linkInp.type = "text";
-            linkInp.className = "bulk-inp bulk-inp-link";
-            linkInp.value = p.linkCode || "";
-            linkInp.maxLength = 64;
-            linkInp.spellcheck = false;
-            linkInp.setAttribute("data-pid", p.id);
-            linkInp.setAttribute("data-field", "linkCode");
-            linkInp.onchange = onBulkInputChange;
-            linkInp.onkeydown = onBulkKeyDown;
-            if (currentBulkTheme) {
-                linkInp.style.background  = currentBulkTheme.inpBg;
-                linkInp.style.borderColor = currentBulkTheme.inpBorder;
-                linkInp.style.color       = currentBulkTheme.inpColor;
+            if (p.method === 3) {
+                tdLink.appendChild(document.createTextNode("—"));
+                tdLink.title = "Method 3 does not use a Link Code";
+            } else {
+                var linkInp = document.createElement("input");
+                linkInp.type = "text";
+                linkInp.className = "bulk-inp bulk-inp-link";
+                linkInp.value = p.linkCode || "";
+                linkInp.maxLength = 64;
+                linkInp.spellcheck = false;
+                linkInp.setAttribute("data-pid", p.id);
+                linkInp.setAttribute("data-field", "linkCode");
+                linkInp.onchange = onBulkInputChange;
+                linkInp.onkeydown = onBulkKeyDown;
+                if (currentBulkTheme) {
+                    linkInp.style.background  = currentBulkTheme.inpBg;
+                    linkInp.style.borderColor = currentBulkTheme.inpBorder;
+                    linkInp.style.color       = currentBulkTheme.inpColor;
+                }
+                tdLink.appendChild(linkInp);
             }
-            tdLink.appendChild(linkInp);
             tr.appendChild(tdLink);
         }
 
@@ -8204,7 +8280,10 @@ function buildBulkTable() {
 function onBulkInputChange() {
     /* Live highlight changed rows */
     var row = this.parentNode && this.parentNode.parentNode;
-    if (row) row.className = "bulk-row bulk-row-dirty";
+    if (row) {
+        var p = findPreset(row.getAttribute("data-pid"));
+        row.className = "bulk-row bulk-row-dirty" + ((p && (p.method || 1) === 2) ? " bulk-row-m2" : ((p && p.method === 3) ? " bulk-row-m3" : ""));
+    }
 }
 
 function onBulkKeyDown(e) {
@@ -8257,7 +8336,7 @@ function applyBulkLanguage() {
        tell which column holds Place ID vs Share Code without having to
        look at every row's method badge. */
     setText("bulk-col-name",   S.bulkColName    || "Название");
-    setText("bulk-col-place",  S.bulkColPlace   || "Place ID (СП 1)");
+    setText("bulk-col-place",  S.bulkColPlace   || "Place ID (СП 1 / СП 3)");
     setText("bulk-col-link",   S.bulkColLink    || "Link / Share Code (СП 1 / СП 2)");
     setText("bulk-save",       S.bulkSaveBtn    || "Сохранить");
     setText("bulk-cancel",     S.bulkCancelBtn  || "Отмена");
@@ -8292,13 +8371,13 @@ function cancelEv(e) {
    ============================================================ */
 
 /* ── §A1 · Toast notification system ─────────────────────── */
-function showToast(message, actionLabel, actionFn, duration) {
+function showToast(message, actionLabel, actionFn, duration, secondActionLabel, secondActionFn) {
     var S = STRINGS[currentLang] || STRINGS.ru;
     if (!toastContainer) toastContainer = el("toast-container");
     if (!toastContainer) return;
 
     var t = document.createElement("div");
-    t.className = "toast";
+    t.className = "toast" + (secondActionLabel && secondActionFn ? " toast-multi-action" : "");
 
     var msg = document.createElement("span");
     msg.className = "toast-msg";
@@ -8307,13 +8386,24 @@ function showToast(message, actionLabel, actionFn, duration) {
 
     if (actionLabel && actionFn) {
         var btn = document.createElement("button");
-        btn.className = "toast-action";
+        btn.className = "toast-action" + (secondActionLabel && secondActionFn ? " toast-action-save" : "");
         btn.appendChild(document.createTextNode(actionLabel));
         btn.onclick = function () {
             try { actionFn(); } catch(e){}
             removeToast(t);
         };
         t.appendChild(btn);
+    }
+
+    if (secondActionLabel && secondActionFn) {
+        var secondBtn = document.createElement("button");
+        secondBtn.className = "toast-action toast-action-secondary";
+        secondBtn.appendChild(document.createTextNode(secondActionLabel));
+        secondBtn.onclick = function () {
+            try { secondActionFn(); } catch(e){}
+            removeToast(t);
+        };
+        t.appendChild(secondBtn);
     }
 
     var close = document.createElement("button");
@@ -8348,6 +8438,8 @@ function copyPresetLink(id) {
     var link = "";
     if ((p.method || 1) === 2) {
         link = "https://www.roblox.com/share?code=" + (p.linkCode || "") + "&type=Server";
+    } else if ((p.method || 1) === 3) {
+        link = "https://www.roblox.com/games/" + (p.placeId || "");
     } else {
         link = "https://www.roblox.com/games/" + (p.placeId || "") + "?privateServerLinkCode=" + (p.linkCode || "");
     }
@@ -8828,9 +8920,11 @@ function requestExit() {
         return;
     }
     var S = STRINGS[currentLang] || STRINGS.ru;
-    showToast(S.exitConfirmMsg, S.exitConfirmYes, function () {
+    showToast(S.exitConfirmMsg, S.exitConfirmSave, function () {
         sendCmd("CMD:close");
-    }, 6000);
+    }, 12000, S.exitConfirmDiscard, function () {
+        sendCmd("CMD:close_discard");
+    });
 }
 
 /* ── §F1 · History modal ─────────────────────────────────── */
@@ -9876,7 +9970,35 @@ function saveWindowPosition() {
 function loadSavedMethod() {
     var saved = el("__cfg_method") ? el("__cfg_method").value : "1";
     if (saved === "2") switchMethod(2);
+    else if (saved === "3") switchMethod(3);
     else switchMethod(1);
+}
+
+function confirmPresetEditPublic(id, placeInp) {
+    var newPlace = trim(placeInp.value);
+    if (!/^\d{1,20}$/.test(newPlace)) return;
+    var noteEl = el("preset-edit-note");
+    var newNote = noteEl ? trim(noteEl.value) : "";
+    var nameEl = el("preset-edit-name");
+    var newName = nameEl ? trim(nameEl.value) : "";
+    var newIcon = getSelectedEditIcon();
+    var newColor = getSelectedEditColor();
+    for (var i = 0; i < presets.length; i++) if (presets[i].id === id) {
+        presets[i].placeId = newPlace;
+        presets[i].linkCode = "";
+        presets[i].method = 3;
+        presets[i].note = newNote;
+        if (newName) presets[i].name = newName;
+        if (newIcon) presets[i].icon = newIcon; else delete presets[i].icon;
+        if (newColor) presets[i].color = newColor; else delete presets[i].color;
+        break;
+    }
+    closePresetEditModal(false);
+    flushPresetsOut();
+    renderPresets();
+    setDirty();
+    sendCmd("CMD:save_preset");
+    if (window.__rvlNativeWindow === "edit") sendCmd("CMD:close_window");
 }
 
 /* ── Wire up all new features ────────────────────────────── */
@@ -9925,11 +10047,11 @@ var origBuildPresetRow = buildPresetRow;
 buildPresetRow = function(p, dispIdx, bucketItems, posInBucket) {
     var row = origBuildPresetRow(p, dispIdx, bucketItems, posInBucket);
 
-    /* Tag the row with its method (1 = Place ID + Link Code, 2 = Share Code)
-       so the grid-view CSS can color Method 2 rows differently and the
-       detail panel can show the right labels. */
+    /* Tag method 2 and the public-game method 3 separately. */
     if ((p.method || 1) === 2) {
         row.className = row.className + " preset-method-2";
+    } else if (p.method === 3) {
+        row.className = row.className + " preset-method-3";
     }
 
     /* Add selected state */
@@ -10171,7 +10293,7 @@ confirmRename = function(id, inp, nameSpan) {
 };
 
 /* ============================================================
-   §maket-redesign · RVL v2.0 layout wiring
+   §maket-redesign · RVL v2.1 layout wiring
    Appended override — runs after all legacy code above, so it can
    safely reuse every existing function (loadPreset, onLaunch,
    openPresetEditModal, toggleFavorite, duplicatePreset,
@@ -10237,7 +10359,8 @@ function layoutInputRow() {
 
     var panel1 = el("method-panel-1");
     var panel2 = el("method-panel-2");
-    var activePanel = (panel1 && panel1.style.display !== "none") ? panel1 : panel2;
+    var panel3 = el("method-panel-3");
+    var activePanel = panel1 && panel1.style.display !== "none" ? panel1 : panel2 && panel2.style.display !== "none" ? panel2 : panel3;
     if (!activePanel) return;
 
     var padding = 10 + 96; /* input-row: 10px left + 96px right (reserved for the absolutely-positioned hotkey toggle) */
@@ -10498,12 +10621,13 @@ function renderDetailPanel(id) {
     }
 
     var isM2 = (p.method || 1) === 2;
+    var isM3 = p.method === 3;
     /* §pd-lang: the right-panel labels must switch with the language and
        with the method. Previously hardcoded "PLACE ID"/"LINK CODE"/"SHARE
        CODE"/"SHARE" — English users got Russian text and Method 2 rows
        still read "PLACE ID" instead of "SHARE". */
     var Sd = STRINGS[currentLang] || STRINGS.ru;
-    el("pd-lbl-place").innerHTML = isM2 ? (Sd.pdShareLabel || "SHARE") : (Sd.labelPlace || "PLACE ID");
+    el("pd-lbl-place").innerHTML = isM2 ? (Sd.pdShareLabel || "SHARE") : (isM3 ? (currentLang === "en" ? "PLACE ID · M3" : "PLACE ID · СП 3") : (Sd.labelPlace || "PLACE ID"));
     el("pd-val-place").innerHTML = "";
     el("pd-val-place").appendChild(document.createTextNode(isM2 ? "—" : (p.placeId || "—")));
     el("pd-copy-place").onclick = function () { copyFieldToClipboard(p.placeId || ""); };
@@ -10514,6 +10638,7 @@ function renderDetailPanel(id) {
     linkVal.innerHTML = "";
     linkVal.appendChild(document.createTextNode(linkRevealed ? (p.linkCode || "—") : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"));
     el("pd-copy-link").onclick = function () { copyFieldToClipboard(p.linkCode || ""); };
+    el("pd-copy-link").parentNode.parentNode.style.display = (p.method || 1) === 3 ? "none" : "";
     el("pd-eye-link").onclick = function () { linkRevealed = !linkRevealed; renderDetailPanel(id); };
 
     el("pd-val-launches").innerHTML = "";
@@ -10592,6 +10717,7 @@ function renderDetailPanel(id) {
    (CMD:thumb_req <placeId>) and returned as a local file path via
    __thumb_resp — JS never touches the network directly (IE). */
 var __thumbCache = {};
+var __avatarRequestsPaused = false;
 function placeThumbSrc(placeId) {
     /* §avatars-off: when avatar loading is disabled, never return a cached
        path so the panel keeps the index-number fallback. */
@@ -10607,7 +10733,7 @@ function rvlLocalImageSrc(src) {
 /* Failed attempts retry after 90s, stalled "pending" after 20s — so one
    offline moment never freezes the avatar for the whole session. */
 function requestPlaceThumb(key) {
-    if (!key || !avatarsEnabled) return;
+    if (!key || !avatarsEnabled || __avatarRequestsPaused) return;
     var t = __thumbCache[key];
     var now = (new Date()).getTime();
     if (t) {
@@ -10617,6 +10743,25 @@ function requestPlaceThumb(key) {
     }
     __thumbCache[key] = { state: "pending", ts: now };
     sendCmd("CMD:thumb_req " + key);
+}
+
+/* Host calls this before deleting cached files so both WebViews release
+   displayed images first. Selecting a preset resumes fetching immediately. */
+function clearAvatarsFromHost() {
+    __avatarRequestsPaused = true;
+    __thumbCache = {};
+    var response = el("__thumb_resp");
+    if (response) response.value = "";
+    if (typeof renderPresets === "function") renderPresets();
+    if (detailPresetId) renderDetailPanel(detailPresetId);
+}
+
+function notifyAvatarsCleared(success, detail) {
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    var message = success
+        ? (S.avatarsCleared || "Все аватарки удалены")
+        : (currentLang === "en" ? "Could not remove avatar files: " : "Не удалось удалить файлы аватарок: ") + (detail || "");
+    showToast(message, null, null, success ? 2200 : 5000);
 }
 
 /* Re-apply compact icon-only labels after legacy applyLanguage() writes
@@ -10691,21 +10836,6 @@ window.addEventListener("load", function () {
        in one pass — a single overwritten value lost all answers but the
        last when every preset resolved within one 350ms poll. */
     setInterval(function () {
-        /* §clear-avatars FIRST: the clear button only sets __avatars_cleared
-           (thumb_resp stays empty), so an early return on an empty
-           __thumb_resp used to swallow the reset and kept serving deleted
-           avatar paths until the next restart. */
-        var clearedEl = el("__avatars_cleared");
-        if (clearedEl && clearedEl.value) {
-            clearedEl.value = "";
-            __thumbCache = {};
-            if (typeof renderPresets === "function") renderPresets();
-            if (detailPresetId) renderDetailPanel(detailPresetId);
-            if (typeof showToast === "function") {
-                var SA = (STRINGS && STRINGS[currentLang]) || STRINGS.ru;
-                showToast(SA.avatarsCleared || "Все аватарки удалены", null, null, 2200);
-            }
-        }
         var r = el("__thumb_resp");
         if (!r) return;
         var v = r.value;
@@ -10783,7 +10913,14 @@ var UPDATE_TEXT = {
         promptTitle: "Доступно обновление",
         promptText: function(v) { return "Найдена новая версия " + rvlInlineLogo() + (v ? " · " + v : ""); },
         promptLater: "ПОЗЖЕ",
-        promptInstall: "ОБНОВИТЬ"
+        promptInstall: "ОБНОВИТЬ",
+        updateLogTitle: "Что нового",
+        updateLogClose: "ПОНЯТНО",
+        updateLogItems: [
+            "Добавлен СП 3: запуск публичной игры только по Place ID.",
+            "Аватары можно удалить и загрузить заново без перезапуска приложения.",
+            "Пресеты и настройки хранятся в папке data."
+        ]
     },
     en: {
         label: "UPDATE",
@@ -10804,7 +10941,14 @@ var UPDATE_TEXT = {
         promptTitle: "Update available",
         promptText: function(v) { return "A new " + rvlInlineLogo() + " version is available" + (v ? " · " + v : ""); },
         promptLater: "LATER",
-        promptInstall: "UPDATE"
+        promptInstall: "UPDATE",
+        updateLogTitle: "What’s new",
+        updateLogClose: "GOT IT",
+        updateLogItems: [
+            "Added Method 3: launch a public game using only its Place ID.",
+            "Avatars can be deleted and loaded again without restarting the app.",
+            "Presets and settings are stored in the data folder."
+        ]
     }
 };
 var lastRenderedUpdateState = "";
@@ -11011,9 +11155,43 @@ function hideStartupScreen(resultState) {
     var minimumCheckDelay = Math.max(0, RVL_VERSION_CHECK_MIN_DURATION - checkElapsed);
     var fadeDelay = Math.max(minimumDelay, minimumCheckDelay, notice ? 680 : 430);
     setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, fadeDelay);
+    setTimeout(openUpdateLog, fadeDelay + 180);
     if (resultState === "available" && !notice) {
         setTimeout(function () { openUpdatePrompt(); }, fadeDelay + 490);
     }
+}
+
+function openUpdateLog() {
+    if (window.__rvlUpdateLogShown) return;
+    var pending = el("__update_log_pending") ? trim(el("__update_log_pending").value) : "0";
+    if (pending !== "1") return;
+
+    window.__rvlUpdateLogShown = true;
+    var U = updateText();
+    var title = el("update-log-title");
+    var version = el("update-log-version");
+    var list = el("update-log-list");
+    var close = el("update-log-close");
+    if (title) title.innerHTML = U.updateLogTitle;
+    if (version) version.innerHTML = (currentLang === "en" ? "Installed update · " : "Установленное обновление · ") + (el("__app_version") ? trim(el("__app_version").value) : "");
+    if (list) {
+        list.innerHTML = "";
+        var items = U.updateLogItems || [];
+        for (var i = 0; i < items.length; i++) {
+            var item = document.createElement("li");
+            item.appendChild(document.createTextNode(items[i]));
+            list.appendChild(item);
+        }
+    }
+    if (close) close.innerHTML = U.updateLogClose;
+    var overlay = el("update-log-overlay");
+    if (overlay) overlay.style.display = "flex";
+    sendCmd("CMD:update_log_seen");
+}
+
+function closeUpdateLog() {
+    var overlay = el("update-log-overlay");
+    if (overlay) overlay.style.display = "none";
 }
 
 function openUpdatePrompt() {

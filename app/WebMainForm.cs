@@ -20,6 +20,7 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
+    private static string UpdateLogPendingPath => Path.Combine(Storage.DataDirectory, "update-log-pending.txt");
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
     private const int PresetHotKeyBase = 42100;
@@ -38,6 +39,9 @@ public sealed class WebMainForm : Form
     private readonly Dictionary<string, int> _registeredKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, byte> _thumbnailRequests = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _thumbnailPushLock = new(1, 1);
+    private readonly SemaphoreSlim _avatarClearGate = new(1, 1);
+    private readonly object _avatarCacheSync = new();
+    private int _avatarCacheGeneration;
     private NotifyIcon? _tray;
     private System.Windows.Forms.Timer? _statusTimer;
     private bool _ready;
@@ -186,7 +190,7 @@ public sealed class WebMainForm : Form
         "export" => new Size(760, 560),
         "guide" => new Size(760, 380),
         "new" => new Size(520, 430),
-        "edit" => new Size(560, 560),  /* Fits the note field and action buttons without scrolling. */
+        "edit" => new Size(560, 480),  /* Keeps the edit form compact while fitting every field. */
         _ => new Size(760, 620)
     };
 
@@ -319,6 +323,8 @@ public sealed class WebMainForm : Form
                 case "CMD:save_close": SaveBridge(payload); CloseSettingsAndMain(); break;
                 case "CMD:minimize": SaveBridge(payload); Hide(); break;
                 case "CMD:close": SaveBridge(payload); Close(); break;
+                case "CMD:close_discard": Close(); break;
+                case "CMD:update_log_seen": try { File.Delete(UpdateLogPendingPath); } catch { } break;
                 case "CMD:save_preset": SaveBridge(payload); SyncAll(); ApplyPresetHotkeys(payload); break;
                 case "CMD:del_preset": SaveBridge(payload); SyncAll(); ApplyPresetHotkeys(payload); break;
                 case "CMD:save_preset_groups": SaveBridge(payload); SyncAll(); break;
@@ -341,7 +347,7 @@ public sealed class WebMainForm : Form
                 case "CMD:copy_clipboard": CopyToClipboard(payload); break;
                 case "CMD:load_history": await PushHistoryAsync(); break;
                 case "CMD:clear_history": _config.ClearHistory(); await PushHistoryAsync(); break;
-                case "CMD:clear_avatars": ClearAvatars(); break;
+                case "CMD:clear_avatars": await MainHost.ClearAvatarsAsync(); break;
                 case "CMD:backup_create": BackupCreate(payload); break;
                 case "CMD:backup_restore": BackupRestore(); break;
                 case "CMD:reload_state": ReloadState(); break;
@@ -363,7 +369,7 @@ public sealed class WebMainForm : Form
         if (_web.CoreWebView2 is null) return new Dictionary<string, string>();
         const string script = """
             (function(){
-              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-link","inp-share-code","__edit_preset_id"];
+              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-place-public","inp-link","inp-share-code","__edit_preset_id"];
               var o={}; for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);o[ids[i]]=e?String(e.value||""):"";}
               var checks=["chk-enabled","chk-autostart","chk-always-on-top","chk-avatars","chk-compact-mode","chk-auto-minimize","chk-tooltips","chk-mask-inputs"];
               for(var j=0;j<checks.length;j++){var c=document.getElementById(checks[j]);if(c)o[checks[j]]=c.checked?"1":"0";}
@@ -440,15 +446,15 @@ public sealed class WebMainForm : Form
             ["__theme_presets_out"] = _config.ThemePresetsJson,
             ["__cfg_preset_groups"] = _config.GroupsJson,
             ["__preset_groups_out"] = _config.GroupsJson,
-            ["__app_version"] = "2.0",
+            ["__app_version"] = "2.1",
+            ["__update_log_pending"] = File.Exists(UpdateLogPendingPath) ? "1" : "0",
             ["__update_state"] = _updateState,
             ["__update_version"] = _updateVersion,
             ["__update_message"] = _updateMessage,
             ["__update_progress"] = _updateProgress.ToString(),
             ["__update_notice"] = "",
             ["__roblox_status"] = IsRobloxRunning() ? "1" : "0",
-            ["__thumb_resp"] = "",
-            ["__avatars_cleared"] = ""
+            ["__thumb_resp"] = ""
         };
         /* §edit-window-v10: pass the preset id the launcher wrote to
            __edit_preset_id into the child edit window's bridge state.
@@ -664,15 +670,18 @@ public sealed class WebMainForm : Form
     private async Task LaunchFromBridgeAsync(Dictionary<string, string> values)
     {
         var method = V(values, "__cfg_method", "1");
-        var place = values.TryGetValue("inp-place", out var placeValue) ? placeValue.Trim() : _config.Get("PlaceId");
+        var place = values.TryGetValue("inp-place-public", out var publicPlaceValue) && method == "3"
+            ? publicPlaceValue.Trim()
+            : values.TryGetValue("inp-place", out var placeValue) ? placeValue.Trim() : _config.Get("PlaceId");
         var rawCode = method == "2"
             ? values.TryGetValue("inp-share-code", out var shareValue) ? shareValue.Trim() : values.TryGetValue("inp-link", out var shareFallback) ? shareFallback.Trim() : _config.Get("LinkCode")
             : values.TryGetValue("inp-link", out var linkValue) ? linkValue.Trim() : _config.Get("LinkCode");
         var code = RvlPreset.NormalizeShareCode(rawCode);
+        var isPublicGame = method == "3";
         var invalidReason = method == "2"
             ? Regex.IsMatch(code, @"^[A-Za-z0-9]+$") ? "" : "share"
             : !Regex.IsMatch(place, @"^\d{1,20}$") ? "place"
-            : string.IsNullOrWhiteSpace(rawCode) ? "link" : "";
+            : !isPublicGame && string.IsNullOrWhiteSpace(rawCode) ? "link" : "";
         if (invalidReason.Length > 0)
         {
             var host = MainHost;
@@ -686,10 +695,14 @@ public sealed class WebMainForm : Form
            current Roblox client enforces the type parameter on both URLs. */
         var appUri = method == "2"
             ? $"roblox://navigation/share_links?code={Uri.EscapeDataString(code)}&type=Server"
-            : $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}&linkCode={Uri.EscapeDataString(rawCode)}";
+            : isPublicGame
+                ? $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}"
+                : $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}&linkCode={Uri.EscapeDataString(rawCode)}";
         var webUri = method == "2"
             ? $"https://www.roblox.com/share?code={Uri.EscapeDataString(code)}&type=Server"
-            : $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/?linkCode={Uri.EscapeDataString(rawCode)}";
+            : isPublicGame
+                ? $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/"
+                : $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/?linkCode={Uri.EscapeDataString(rawCode)}";
         var success = TryOpen(method == "2" || Registry.ClassesRoot.OpenSubKey("roblox") is not null ? appUri : webUri);
         if (!success) success = TryOpen(webUri);
 
@@ -698,7 +711,7 @@ public sealed class WebMainForm : Form
         var presets = ParsePresets(_config.PresetsJson);
         var preset = presets.FirstOrDefault(p => p.Id == id);
         if (preset is not null) name = preset.Name;
-        var historyPreset = new RvlPreset { Name = name, PlaceId = place, LinkCode = method == "2" ? code : rawCode, Method = method == "2" ? 2 : 1 };
+        var historyPreset = new RvlPreset { Name = name, PlaceId = place, LinkCode = method == "2" ? code : isPublicGame ? "" : rawCode, Method = method == "2" ? 2 : isPublicGame ? 3 : 1 };
         Storage.AppendHistory(historyPreset, success);
         _config.Set("LastPreset", id);
         _config.SaveIni();
@@ -958,13 +971,36 @@ public sealed class WebMainForm : Form
         await SetValueAsync("__history_data", JsonSerializer.Serialize(list));
     }
 
-    private void ClearAvatars()
+    private async Task ClearAvatarsAsync()
     {
-        _config.ClearAvatars();
-        var stamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
-        var host = MainHost;
-        _ = host.SetValueAsync("__avatars_cleared", stamp);
-        if (host._settingsForm is not null) _ = host._settingsForm.SetValueAsync("__avatars_cleared", stamp);
+        await _avatarClearGate.WaitAsync();
+        try
+        {
+            await _thumbnailPushLock.WaitAsync();
+            try { lock (_avatarCacheSync) Interlocked.Increment(ref _avatarCacheGeneration); }
+            finally { _thumbnailPushLock.Release(); }
+            var host = MainHost;
+            try { await host.ExecuteScriptAsync("clearAvatarsFromHost();"); } catch { }
+            if (host._settingsForm is not null)
+                try { await host._settingsForm.ExecuteScriptAsync("clearAvatarsFromHost();"); } catch { }
+
+            /* Let both WebViews remove their <img> elements before deleting
+               files on Windows, where an image can remain open while displayed. */
+            await Task.Delay(150);
+            lock (_avatarCacheSync) _config.ClearAvatars();
+            try { await host.ExecuteScriptAsync("notifyAvatarsCleared(true, '');"); } catch { }
+            if (host._settingsForm is not null)
+                try { await host._settingsForm.ExecuteScriptAsync("notifyAvatarsCleared(true, '');"); } catch { }
+        }
+        catch (Exception ex)
+        {
+            var host = MainHost;
+            var message = JsonSerializer.Serialize(ex.Message);
+            try { await host.ExecuteScriptAsync($"notifyAvatarsCleared(false, {message});"); } catch { }
+            if (host._settingsForm is not null)
+                try { await host._settingsForm.ExecuteScriptAsync($"notifyAvatarsCleared(false, {message});"); } catch { }
+        }
+        finally { _avatarClearGate.Release(); }
     }
 
     private void BackupCreate(Dictionary<string, string> values)
@@ -1317,8 +1353,12 @@ public sealed class WebMainForm : Form
 
     private async Task FetchThumbnailAsync(string key)
     {
+        await _avatarClearGate.WaitAsync();
+        _avatarClearGate.Release();
         if (_config.Get("AvatarsEnabled", "1") == "0" || string.IsNullOrWhiteSpace(key)) return;
-        if (!_thumbnailRequests.TryAdd(key, 0)) return;
+        var cacheGeneration = Volatile.Read(ref _avatarCacheGeneration);
+        var requestKey = cacheGeneration.ToString() + ":" + key;
+        if (!_thumbnailRequests.TryAdd(requestKey, 0)) return;
         try
         {
             Directory.CreateDirectory(Path.GetFullPath(_config.AvatarDirectory));
@@ -1330,13 +1370,13 @@ public sealed class WebMainForm : Form
                    never leak into the share URL. */
                 var code = key.StartsWith("sc:", StringComparison.OrdinalIgnoreCase) ? key[3..] : key;
                 var placeId = code.All(char.IsDigit) ? code : await ResolvePlaceFromShareAsync(RvlPreset.NormalizeShareCode(code));
-                if (string.IsNullOrWhiteSpace(placeId)) { await PushThumbnailAsync(key, ""); return; }
+                if (string.IsNullOrWhiteSpace(placeId)) { await PushThumbnailAsync(key, "", cacheGeneration); return; }
                 using var universeResponse = await Http.GetAsync("https://apis.roblox.com/universes/v1/places/" + placeId + "/universe");
                 universeResponse.EnsureSuccessStatusCode();
                 using var universe = JsonDocument.Parse(await universeResponse.Content.ReadAsStringAsync());
                 if (!universe.RootElement.TryGetProperty("universeId", out var universeIdElement) || !universeIdElement.TryGetInt64(out var universeId))
                 {
-                    await PushThumbnailAsync(key, "");
+                    await PushThumbnailAsync(key, "", cacheGeneration);
                     return;
                 }
                 using var imageResponse = await Http.GetAsync($"https://thumbnails.roblox.com/v1/games/icons?universeIds={universeId}&size=150x150&format=Png");
@@ -1348,14 +1388,23 @@ public sealed class WebMainForm : Form
                     var first = imageData[0];
                     if (first.TryGetProperty("imageUrl", out var imageUrlElement)) imageUrl = imageUrlElement.GetString() ?? "";
                 }
-                if (string.IsNullOrWhiteSpace(imageUrl)) { await PushThumbnailAsync(key, ""); return; }
-                await File.WriteAllBytesAsync(path, await Http.GetByteArrayAsync(imageUrl));
+                if (string.IsNullOrWhiteSpace(imageUrl)) { await PushThumbnailAsync(key, "", cacheGeneration); return; }
+                var imageBytes = await Http.GetByteArrayAsync(imageUrl);
+                lock (_avatarCacheSync)
+                {
+                    if (cacheGeneration != Volatile.Read(ref _avatarCacheGeneration)) return;
+                    File.WriteAllBytes(path, imageBytes);
+                }
             }
-            /* The page normalizes a local Windows path to file:/// exactly once. */
-            await PushThumbnailAsync(key, path);
+            if (cacheGeneration != Volatile.Read(ref _avatarCacheGeneration)) return;
+            /* The file URL is consumed directly by WebView2; the write-time
+               query changes after a clear/refetch so Chromium can't reuse a
+               previously decoded image for the same path. */
+            var imageUri = new Uri(Path.GetFullPath(path)).AbsoluteUri + "?v=" + File.GetLastWriteTimeUtc(path).Ticks;
+            await PushThumbnailAsync(key, imageUri, cacheGeneration);
         }
-        catch { await PushThumbnailAsync(key, ""); }
-        finally { _thumbnailRequests.TryRemove(key, out _); }
+        catch { await PushThumbnailAsync(key, "", cacheGeneration); }
+        finally { _thumbnailRequests.TryRemove(requestKey, out _); }
     }
 
     private static async Task<string> ResolvePlaceFromShareAsync(string code)
@@ -1377,11 +1426,12 @@ public sealed class WebMainForm : Form
         return "";
     }
 
-    private async Task PushThumbnailAsync(string key, string path)
+    private async Task PushThumbnailAsync(string key, string path, int cacheGeneration)
     {
         await _thumbnailPushLock.WaitAsync();
         try
         {
+            if (cacheGeneration != Volatile.Read(ref _avatarCacheGeneration)) return;
             var current = await ReadValueAsync("__thumb_resp");
             await SetValueAsync("__thumb_resp", current + key + "|" + path + "\n");
             if (_settingsForm is not null) await _settingsForm.SetValueAsync("__thumb_resp", (await _settingsForm.ReadValueAsync("__thumb_resp")) + key + "|" + path + "\n");
@@ -1418,7 +1468,7 @@ public sealed class WebMainForm : Form
             }
             var latest = versions.OrderByDescending(x => VersionNumber(x.version)).FirstOrDefault();
             if (string.IsNullOrWhiteSpace(latest.version)) throw new InvalidOperationException("GitHub не вернул версию");
-            if (VersionNumber(latest.version) <= VersionNumber("2.0")) SetStatus("latest", "Установлена последняя версия", 100);
+            if (VersionNumber(latest.version) <= VersionNumber("2.1")) SetStatus("latest", "Установлена последняя версия", 100);
             else { host._updateUrl = latest.url; host._updateIsNativePackage = latest.native; host._updateVersion = latest.version; SetStatus("available", "Доступно обновление", 0); }
         }
         catch (Exception ex) { SetStatus("error", "Не удалось проверить обновления: " + ex.Message, 0); }
@@ -1530,6 +1580,9 @@ public sealed class WebMainForm : Form
                 ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force }
 
             if (-not (Test-Path $restartPath)) { throw "RVL.exe not found at restart path: $restartPath" }
+            $pendingLog = Join-Path $targetPath 'data\update-log-pending.txt'
+            New-Item -ItemType Directory -Path (Split-Path $pendingLog -Parent) -Force | Out-Null
+            [System.IO.File]::WriteAllText($pendingLog, '1')
             Write-UpdateLog "Starting $restartPath."
             $started = Start-Process -FilePath $restartPath -WorkingDirectory $targetPath -PassThru
             Start-Sleep -Seconds 2
@@ -1673,7 +1726,7 @@ public sealed class WebMainForm : Form
     private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RVL", "2.0"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RVL", "2.1"));
         return client;
     }
 

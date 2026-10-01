@@ -105,12 +105,12 @@
   <input type="hidden" id="__update_message" value="">
   <input type="hidden" id="__update_progress" value="0">
   <input type="hidden" id="__update_notice" value="">
+  <input type="hidden" id="__update_log_pending" value="0">
   <input type="hidden" id="__update_install_req" value="0">
   <input type="hidden" id="__cfg_ui_hidden">
   <input type="hidden" id="__cfg_ui_text">
   <input type="hidden" id="__cfg_ui_nobg">
   <input type="hidden" id="__cfg_avatars" value="1">
-  <input type="hidden" id="__avatars_cleared" value="">
   <input type="hidden" id="__drag_req" value="0">
   <input type="hidden" id="__edit_preset_id" value="">
 
@@ -482,6 +482,7 @@
             <b>СПОСОБ 1</b> — приватный сервер (Place ID + Link Code).<br>
             <b>СПОСОБ 2</b> — share-код (Configure Private Servers → Regenerate).
             Можно вставить ссылку целиком — лишнее отрежется автоматически.
+            <br><b>СПОСОБ 3</b> — публичная игра по одному Place ID.
           </span>
         </div>
 
@@ -516,6 +517,17 @@
         <button class="update-prompt-later" id="update-prompt-later" onclick="closeUpdatePrompt();">ПОЗЖЕ</button>
         <button class="update-prompt-install" id="update-prompt-install" onclick="installUpdate();">ОБНОВИТЬ</button>
       </div>
+    </div>
+  </div>
+
+  <!-- One-time release notes shown after the startup screen. -->
+  <div class="update-log-overlay" id="update-log-overlay" style="display:none;">
+    <div class="update-log-card" role="dialog" aria-modal="true" aria-labelledby="update-log-title">
+      <div class="update-log-kicker">RVL · UPDATE LOG</div>
+      <div class="update-log-title" id="update-log-title">Что нового</div>
+      <div class="update-log-version" id="update-log-version"></div>
+      <ul class="update-log-list" id="update-log-list"></ul>
+      <button class="update-log-close" id="update-log-close" onclick="closeUpdateLog();">ПОНЯТНО</button>
     </div>
   </div>
 
@@ -556,7 +568,7 @@
         <span class="upd-note" id="update-screen-footer-text">Не закрывайте окно</span>
       </div>
       <button class="upd-retry" id="update-screen-dismiss" style="display:none;" onclick="retryUpdateFromScreen();">ПОВТОРИТЬ ЗАГРУЗКУ</button>
-      <span class="upd-version" id="update-screen-version">v2.0</span>
+      <span class="upd-version" id="update-screen-version">v2.1</span>
     </div>
   </div>
 
@@ -577,6 +589,7 @@
     <div class="method-tabs ir-tabs" id="method-tabs">
       <button class="method-tab ir-tab method-tab-active" id="method-tab-1">СП 1</button>
       <button class="method-tab ir-tab" id="method-tab-2">СП 2</button>
+      <button class="method-tab ir-tab" id="method-tab-3">СП 3</button>
     </div>
 
     <!-- METHOD 1: Place ID + Link Code -->
@@ -603,6 +616,12 @@
                placeholder="SHARE CODE / ссылка...">
         <button type="button" class="field-eye ir-eye" id="eye-share-code" tabindex="-1" data-tooltip="Показать"></button>
         <button type="button" class="field-clear" id="clr-share-code" tabindex="-1" data-tooltip="Очистить"></button>
+      </div>
+    </div>
+    <div id="method-panel-3" class="ir-panel" style="display:none;">
+      <div class="field-input-wrap ir-field-wrap ir-field-wrap-wide" id="fw-place-public">
+        <input class="field-input ir-field" id="inp-place-public" type="text"
+               spellcheck="false" autocomplete="off" placeholder="PLACE ID">
       </div>
     </div>
 
@@ -963,6 +982,7 @@
         <div class="method-tabs np-tabs">
           <button type="button" class="method-tab method-tab-active" id="np-tab-1">СП 1</button>
           <button type="button" class="method-tab" id="np-tab-2">СП 2</button>
+          <button type="button" class="method-tab" id="np-tab-3">СП 3</button>
         </div>
         <div id="np-panel-1">
           <div class="np-label">PLACE ID</div>
@@ -976,6 +996,11 @@
           <div class="np-label">SHARE CODE</div>
           <input class="field-input np-inp" id="np-share" type="text"
                  spellcheck="false" autocomplete="off" placeholder="SHARE CODE / ссылка...">
+        </div>
+        <div id="np-panel-3" style="display:none;">
+          <div class="np-label">PLACE ID</div>
+          <input class="field-input np-inp" id="np-place-public" type="text"
+                 spellcheck="false" autocomplete="off" placeholder="PLACE ID">
         </div>
       </div>
       <div class="np-footer">

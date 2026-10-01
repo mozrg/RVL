@@ -17,12 +17,15 @@ public sealed class RvlPreset
     [JsonPropertyName("_dispIdx")] public int DisplayIndex { get; set; }
 
     [JsonIgnore]
-    public string TypeLabel => Method == 2 ? "Share-код" : "Place ID + Link Code";
+    public string TypeLabel => Method switch { 2 => "Share-код", 3 => "Place ID", _ => "Place ID + Link Code" };
 
     [JsonIgnore]
-    public string CodePreview => Method == 2
-        ? NormalizeShareCode(LinkCode)
-        : $"{PlaceId} · {LinkCode}";
+    public string CodePreview => Method switch
+    {
+        2 => NormalizeShareCode(LinkCode),
+        3 => PlaceId,
+        _ => $"{PlaceId} · {LinkCode}"
+    };
 
     public static string NormalizeShareCode(string value)
     {

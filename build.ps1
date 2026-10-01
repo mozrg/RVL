@@ -1,0 +1,1 @@
+powershell -File C:\Users\Miver\OneDrive\Документы\GitHub\RVL\app\build.ps1

@@ -12,6 +12,7 @@ public static class Storage
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
+    public static string AppRootDirectory { get; } = LocateAppRootDirectory();
     public static string DataDirectory { get; } = LocateDataDirectory();
     public static string PresetsPath => Path.Combine(DataDirectory, "presets.json");
     public static string ConfigPath => Path.Combine(DataDirectory, "config.ini");
@@ -121,21 +122,43 @@ public static class Storage
 
     private static string LocateDataDirectory()
     {
-        var candidates = new List<string>
+        var directory = Path.Combine(AppRootDirectory, "data");
+        Directory.CreateDirectory(directory);
+        MigrateLegacyData(directory);
+        return directory;
+    }
+
+    private static string LocateAppRootDirectory()
+    {
+        foreach (var start in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory })
         {
-            Path.Combine(AppContext.BaseDirectory, "data"),
-            Path.Combine(Environment.CurrentDirectory, "data")
-        };
-        var parent = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var depth = 0; depth < 6 && parent is not null; depth++, parent = parent.Parent)
-            candidates.Add(Path.Combine(parent.FullName, "data"));
-        foreach (var candidate in candidates)
-        {
-            if (File.Exists(Path.Combine(candidate, "presets.json")) || File.Exists(Path.Combine(candidate, "config.ini")))
-                return candidate;
+            var parent = new DirectoryInfo(Path.GetFullPath(start));
+            for (var depth = 0; depth < 16 && parent is not null; depth++, parent = parent.Parent)
+            {
+                if (File.Exists(Path.Combine(parent.FullName, "ui", "index.html")))
+                    return parent.FullName;
+            }
         }
-        var roaming = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RVL", "data");
-        Directory.CreateDirectory(roaming);
-        return roaming;
+        /* Framework-dependent builds may be copied without the source UI.
+           Keep their data beside the executable instead of silently moving
+           user files into AppData based on the shortcut's working directory. */
+        return Path.GetFullPath(AppContext.BaseDirectory);
+    }
+
+    private static void MigrateLegacyData(string destination)
+    {
+        var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "RVL", "data");
+        if (!Directory.Exists(legacy) || string.Equals(Path.GetFullPath(legacy), Path.GetFullPath(destination), StringComparison.OrdinalIgnoreCase)) return;
+
+        foreach (var name in new[] { "config.ini", "presets.json", "preset_groups.json", "theme_presets.json", "history.log" })
+        {
+            var source = Path.Combine(legacy, name);
+            var target = Path.Combine(destination, name);
+            if (!File.Exists(target) && File.Exists(source))
+            {
+                try { File.Copy(source, target); }
+                catch { /* Keep startup available if a legacy file is locked. */ }
+            }
+        }
     }
 }

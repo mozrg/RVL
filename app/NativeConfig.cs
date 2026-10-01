@@ -7,8 +7,8 @@ internal sealed class NativeConfig
 {
     private readonly Dictionary<string, string> _values = new(StringComparer.OrdinalIgnoreCase);
 
-    public string UiDirectory { get; } = LocateUiDirectory();
-    public string AvatarDirectory => Path.Combine(Storage.DataDirectory, "..", "images", "av");
+    public string UiDirectory { get; } = Path.Combine(Storage.AppRootDirectory, "ui");
+    public string AvatarDirectory => Path.Combine(Storage.AppRootDirectory, "images", "av");
 
     public NativeConfig()
     {
@@ -88,9 +88,21 @@ internal sealed class NativeConfig
     {
         var dir = Path.GetFullPath(AvatarDirectory);
         if (!Directory.Exists(dir)) return;
-        foreach (var file in Directory.EnumerateFiles(dir, "*.png").Concat(Directory.EnumerateFiles(dir, "*.done")))
+        foreach (var file in Directory.EnumerateFiles(dir))
         {
-            try { File.Delete(file); } catch { }
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    File.Delete(file);
+                    if (!File.Exists(file)) break;
+                }
+                catch (IOException) when (attempt < 7) { Thread.Sleep(100); }
+                catch (UnauthorizedAccessException) when (attempt < 7) { Thread.Sleep(100); }
+
+                if (attempt >= 7 || File.Exists(file))
+                    throw new IOException($"Не удалось удалить файл аватарки: {file}");
+            }
         }
     }
 
@@ -99,7 +111,7 @@ internal sealed class NativeConfig
         SaveIni();
         var backup = new
         {
-            version = "2.0",
+            version = "2.1",
             timestamp = DateTime.Now.ToString("yyyyMMddHHmmss"),
             config = File.Exists(Storage.ConfigPath) ? File.ReadAllText(Storage.ConfigPath, Encoding.UTF8) : "",
             presets,
@@ -175,12 +187,4 @@ internal sealed class NativeConfig
         File.WriteAllText(Path.Combine(Storage.DataDirectory, name), value, new UTF8Encoding(false));
     }
 
-    private static string LocateUiDirectory()
-    {
-        var candidates = new List<string> { Path.Combine(Environment.CurrentDirectory, "ui") };
-        var parent = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var depth = 0; depth < 8 && parent is not null; depth++, parent = parent.Parent)
-            candidates.Add(Path.Combine(parent.FullName, "ui"));
-        return candidates.FirstOrDefault(path => File.Exists(Path.Combine(path, "index.html"))) ?? AppContext.BaseDirectory;
-    }
 }
