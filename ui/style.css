@@ -12266,14 +12266,14 @@ body.theme-light .update-prompt-later { border-color: #D9DDE9; color: #737B8B; }
 
 /* One-time update log shown after the startup screen. */
 .update-log-overlay { position: fixed; z-index: 1300; top: 0; right: 0; bottom: 0; left: 0; display: -ms-flexbox; display: flex; -ms-flex-align: center; align-items: center; -ms-flex-pack: center; justify-content: center; padding: 18px; background: rgba(3,4,8,0.76); }
-.update-log-card { width: 370px; max-width: 100%; max-height: 80%; overflow-y: auto; padding: 21px; border: 1px solid #303030; border-radius: 14px; background: #111111; color: #E8E8E8; box-shadow: 0 18px 50px rgba(0,0,0,0.55); }
+.update-log-card { width: 430px; max-width: 100%; max-height: calc(100% - 36px); overflow: hidden; box-sizing: border-box; padding: 16px 20px; border: 1px solid #303030; border-radius: 14px; background: #111111; color: #E8E8E8; box-shadow: 0 18px 50px rgba(0,0,0,0.55); }
 .update-log-kicker { color: #777777; font-size: 8px; font-weight: 800; letter-spacing: 0.15em; }
-.update-log-title { margin-top: 8px; color: #F0F0F0; font-size: 17px; font-weight: 800; }
-.update-log-version { margin-top: 5px; color: #858585; font-size: 9px; }
-.update-log-list { margin: 18px 0 20px; padding: 0; list-style: none; }
-.update-log-list li { position: relative; margin-top: 11px; padding-left: 17px; color: #C6C6C6; font-size: 11px; line-height: 1.55; }
+.update-log-title { margin-top: 5px; color: #F0F0F0; font-size: 17px; font-weight: 800; }
+.update-log-version { margin-top: 4px; color: #858585; font-size: 9px; }
+.update-log-list { margin: 12px 0 14px; padding: 0; list-style: none; }
+.update-log-list li { position: relative; margin-top: 7px; padding-left: 17px; color: #C6C6C6; font-size: 11px; line-height: 1.35; }
 .update-log-list li:before { position: absolute; left: 1px; color: #F0B75B; content: "•"; }
-.update-log-close { width: 100%; height: 34px; border: 1px solid #E8E8E8; border-radius: 7px; background: #E8E8E8; color: #101010; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; cursor: pointer; }
+.update-log-close { width: 100%; height: 31px; border: 1px solid #E8E8E8; border-radius: 7px; background: #E8E8E8; color: #101010; font-size: 9px; font-weight: 800; letter-spacing: 0.08em; cursor: pointer; }
 .update-log-close:hover { background: #FFFFFF; }
 body.theme-light .update-log-overlay { background: rgba(224,226,234,0.72); }
 body.theme-light .update-log-card { border-color: #D9DDE9; background: #FFFFFF; box-shadow: 0 18px 50px rgba(51,56,74,0.18); }

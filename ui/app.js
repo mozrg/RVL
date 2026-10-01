@@ -10919,7 +10919,8 @@ var UPDATE_TEXT = {
         updateLogItems: [
             "Добавлен СП 3: запуск публичной игры только по Place ID.",
             "Аватары можно удалить и загрузить заново без перезапуска приложения.",
-            "Пресеты и настройки хранятся в папке data."
+            "Пресеты и настройки хранятся в папке data.",
+            "Загрузчик обновлений проверяет архив и повторяет загрузку при сетевом сбое."
         ]
     },
     en: {
@@ -10947,7 +10948,8 @@ var UPDATE_TEXT = {
         updateLogItems: [
             "Added Method 3: launch a public game using only its Place ID.",
             "Avatars can be deleted and loaded again without restarting the app.",
-            "Presets and settings are stored in the data folder."
+            "Presets and settings are stored in the data folder.",
+            "The updater validates downloaded archives and retries network failures."
         ]
     }
 };

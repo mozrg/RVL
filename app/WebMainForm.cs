@@ -20,7 +20,7 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
-    private static string UpdateLogPendingPath => Path.Combine(Storage.DataDirectory, "update-log-pending.txt");
+    private const string AppVersion = "2.1";
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
     private const int PresetHotKeyBase = 42100;
@@ -70,6 +70,8 @@ public sealed class WebMainForm : Form
     private const int DwmColorNone = unchecked((int)0xFFFFFFFE); /* DWMWA_COLOR_NONE */
 
     private static readonly HttpClient Http = CreateHttpClient();
+    private static readonly HttpClient UpdateHttp = CreateUpdateHttpClient();
+    private static readonly SemaphoreSlim UpdateInstallGate = new(1, 1);
     private static readonly object WebViewEnvironmentSync = new();
     private static Task<CoreWebView2Environment>? _webViewEnvironmentTask;
 
@@ -324,7 +326,7 @@ public sealed class WebMainForm : Form
                 case "CMD:minimize": SaveBridge(payload); Hide(); break;
                 case "CMD:close": SaveBridge(payload); Close(); break;
                 case "CMD:close_discard": Close(); break;
-                case "CMD:update_log_seen": try { File.Delete(UpdateLogPendingPath); } catch { } break;
+                case "CMD:update_log_seen": _config.Set("UpdateLogSeenVersion", AppVersion); _config.SaveIni(); break;
                 case "CMD:save_preset": SaveBridge(payload); SyncAll(); ApplyPresetHotkeys(payload); break;
                 case "CMD:del_preset": SaveBridge(payload); SyncAll(); ApplyPresetHotkeys(payload); break;
                 case "CMD:save_preset_groups": SaveBridge(payload); SyncAll(); break;
@@ -446,8 +448,8 @@ public sealed class WebMainForm : Form
             ["__theme_presets_out"] = _config.ThemePresetsJson,
             ["__cfg_preset_groups"] = _config.GroupsJson,
             ["__preset_groups_out"] = _config.GroupsJson,
-            ["__app_version"] = "2.1",
-            ["__update_log_pending"] = File.Exists(UpdateLogPendingPath) ? "1" : "0",
+            ["__app_version"] = AppVersion,
+            ["__update_log_pending"] = _config.Get("UpdateLogSeenVersion") == AppVersion ? "0" : "1",
             ["__update_state"] = _updateState,
             ["__update_version"] = _updateVersion,
             ["__update_message"] = _updateMessage,
@@ -1457,25 +1459,30 @@ public sealed class WebMainForm : Form
             /* A version check only reads release metadata. The download
                state is reserved for an explicit installation click. */
             SetStatus("checking", "Проверяем обновления…", 0);
+            host._updateUrl = "";
+            host._updateVersion = "";
+            host._updateIsNativePackage = false;
             var versions = new List<(string version, string url, bool native)>();
-            using var release = JsonDocument.Parse(await Http.GetStringAsync("https://api.github.com/repos/mozrg/RVL/releases/latest"));
-            AddRelease(release.RootElement, versions);
-            using var tags = JsonDocument.Parse(await Http.GetStringAsync("https://api.github.com/repos/mozrg/RVL/tags"));
-            foreach (var tag in tags.RootElement.EnumerateArray())
+            using var releases = JsonDocument.Parse(await Http.GetStringAsync("https://api.github.com/repos/mozrg/RVL/releases?per_page=100"));
+            foreach (var release in releases.RootElement.EnumerateArray())
             {
-                var name = tag.GetProperty("name").GetString() ?? "";
-                if (Regex.IsMatch(name, "^v?[0-9]+(\\.[0-9]+)*$") && tag.TryGetProperty("zipball_url", out var url)) versions.Add((name, url.GetString() ?? "", false));
+                AddRelease(release, versions);
             }
-            var latest = versions.OrderByDescending(x => VersionNumber(x.version)).FirstOrDefault();
-            if (string.IsNullOrWhiteSpace(latest.version)) throw new InvalidOperationException("GitHub не вернул версию");
-            if (VersionNumber(latest.version) <= VersionNumber("2.1")) SetStatus("latest", "Установлена последняя версия", 100);
-            else { host._updateUrl = latest.url; host._updateIsNativePackage = latest.native; host._updateVersion = latest.version; SetStatus("available", "Доступно обновление", 0); }
+            /* Tag zipballs contain source code, not a Windows installer. Only
+               compare releases that actually publish a native RVL ZIP. */
+            var latest = versions.Where(x => x.native && Uri.TryCreate(x.url, UriKind.Absolute, out _))
+                .OrderByDescending(x => VersionNumber(x.version)).FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(latest.version)) throw new InvalidOperationException("GitHub не вернул опубликованный ZIP установщика RVL.");
+            host._updateVersion = latest.version;
+            if (VersionNumber(latest.version) <= VersionNumber(AppVersion)) SetStatus("latest", "Установлена последняя версия", 100);
+            else { host._updateUrl = latest.url; host._updateIsNativePackage = true; SetStatus("available", "Доступно обновление", 0); }
         }
         catch (Exception ex) { SetStatus("error", "Не удалось проверить обновления: " + ex.Message, 0); }
     }
 
     private static void AddRelease(JsonElement root, List<(string version, string url, bool native)> versions)
     {
+        if (root.TryGetProperty("prerelease", out var prerelease) && prerelease.ValueKind == JsonValueKind.True) return;
         if (!root.TryGetProperty("tag_name", out var tag) || !root.TryGetProperty("zipball_url", out var url)) return;
         var packageUrl = url.GetString() ?? "";
         var native = false;
@@ -1527,29 +1534,91 @@ public sealed class WebMainForm : Form
             SetStatus("error", "Релиз не содержит native-пакет RVL для автоматической установки.", 0);
             return;
         }
-        SetStatus("downloading", "Скачиваем обновление…", 0);
+        if (!await UpdateInstallGate.WaitAsync(0)) return;
         try
         {
+            SetStatus("downloading", "Скачиваем обновление…", 0);
             var temp = Path.Combine(Path.GetTempPath(), "RVL-update-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(temp);
             var zip = Path.Combine(temp, "update.zip");
-            await File.WriteAllBytesAsync(zip, await Http.GetByteArrayAsync(host._updateUrl));
+            await DownloadUpdateArchiveAsync(host._updateUrl, zip);
             var extract = Path.Combine(temp, "extract");
             ZipFile.ExtractToDirectory(zip, extract);
+            if (!Directory.EnumerateFiles(extract, "RVL.exe", SearchOption.AllDirectories).Any())
+                throw new InvalidDataException("В архиве обновления не найден RVL.exe. Архив не установлен.");
             var helper = Path.Combine(temp, "install.ps1");
             await File.WriteAllTextAsync(helper, NativeUpdateScript, new UTF8Encoding(true));
             var psi = new ProcessStartInfo("powershell.exe") { UseShellExecute = true, WindowStyle = ProcessWindowStyle.Hidden };
-            psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File " + QuoteArg(helper) + " -Source " + QuoteArg(extract) + " -Target " + QuoteArg(AppContext.BaseDirectory);
-            Process.Start(psi);
-            SetStatus("installing", "Файлы готовы. Перезапускаем RVL…", 100);
+            psi.ArgumentList.Add("-NoProfile");
+            psi.ArgumentList.Add("-ExecutionPolicy");
+            psi.ArgumentList.Add("Bypass");
+            psi.ArgumentList.Add("-File");
+            psi.ArgumentList.Add(helper);
+            psi.ArgumentList.Add("-Source");
+            psi.ArgumentList.Add(extract);
+            psi.ArgumentList.Add("-Target");
+            psi.ArgumentList.Add(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            psi.ArgumentList.Add("-WaitPid");
+            psi.ArgumentList.Add(Environment.ProcessId.ToString());
+            if (Process.Start(psi) is null) throw new InvalidOperationException("Не удалось запустить установщик обновления.");
+            SetStatus("installing", "Установщик запущен. Проверяем и заменяем файлы…", 100);
             await Task.Delay(500);
             host._settingsForm?.Close(); host.Close();
         }
         catch (Exception ex) { SetStatus("error", ex.Message, 0); }
+        finally { UpdateInstallGate.Release(); }
+    }
+
+    private async Task DownloadUpdateArchiveAsync(string url, string destination)
+    {
+        Exception? lastError = null;
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                if (attempt > 1)
+                    SetStatus("downloading", $"Повторная загрузка {attempt}/3…", 0);
+                using var response = await UpdateHttp.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+                response.EnsureSuccessStatusCode();
+                var expectedLength = response.Content.Headers.ContentLength;
+                await using var input = await response.Content.ReadAsStreamAsync();
+                long received = 0;
+                await using (var output = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 131072, useAsync: true))
+                {
+                    var buffer = new byte[131072];
+                    int read;
+                    while ((read = await input.ReadAsync(buffer.AsMemory(0, buffer.Length))) > 0)
+                    {
+                        await output.WriteAsync(buffer.AsMemory(0, read));
+                        received += read;
+                        var progress = expectedLength is > 0 ? (int)Math.Min(99, received * 100 / expectedLength.Value) : 0;
+                        SetStatus("downloading", expectedLength is > 0
+                            ? $"Скачиваем обновление… {progress}%"
+                            : $"Скачано {received / 1024:N0} КБ…", progress);
+                    }
+                    await output.FlushAsync();
+                }
+                if (received == 0) throw new InvalidDataException("Сервер вернул пустой файл обновления.");
+                if (expectedLength is > 0 && received != expectedLength.Value)
+                    throw new IOException($"Загрузка прервалась: получено {received} из {expectedLength.Value} байт.");
+
+                using var archive = ZipFile.OpenRead(destination);
+                if (!archive.Entries.Any(entry => string.Equals(entry.FullName.Replace('\\', '/').Split('/').Last(), "RVL.exe", StringComparison.OrdinalIgnoreCase)))
+                    throw new InvalidDataException("Скачанный файл не содержит RVL.exe и не является установочным архивом.");
+                return;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or TaskCanceledException)
+            {
+                lastError = ex;
+                try { if (File.Exists(destination)) File.Delete(destination); } catch { }
+                if (attempt < 3) await Task.Delay(attempt * 1200);
+            }
+        }
+        throw new IOException("Не удалось скачать корректный архив обновления после 3 попыток: " + lastError?.Message, lastError);
     }
 
     private const string NativeUpdateScript = """
-        param([string]$Source,[string]$Target)
+        param([string]$Source,[string]$Target,[int]$WaitPid)
         $ErrorActionPreference = 'Stop'
         $log = Join-Path (Split-Path $Source -Parent) 'install.log'
         function Write-UpdateLog([string]$message) {
@@ -1559,11 +1628,10 @@ public sealed class WebMainForm : Form
             $targetPath = [System.IO.Path]::GetFullPath($Target)
             $restartPath = Join-Path $targetPath 'RVL.exe'
             $deadline = [DateTime]::UtcNow.AddSeconds(60)
-            Write-UpdateLog "Waiting for RVL to exit from $restartPath."
+            Write-UpdateLog "Waiting for RVL process $WaitPid to exit from $restartPath."
             do {
-                $running = @(Get-CimInstance -ClassName Win32_Process -Filter "Name = 'RVL.exe'" |
-                    Where-Object { $_.ExecutablePath -and [string]::Equals($_.ExecutablePath, $restartPath, [System.StringComparison]::OrdinalIgnoreCase) })
-                if ($running.Count -eq 0) { break }
+                $running = Get-Process -Id $WaitPid -ErrorAction SilentlyContinue
+                if (-not $running) { break }
                 if ([DateTime]::UtcNow -ge $deadline) { throw 'Timed out waiting for RVL to close.' }
                 Start-Sleep -Milliseconds 200
             } while ($true)
@@ -1575,14 +1643,23 @@ public sealed class WebMainForm : Form
             }
             if (-not (Test-Path (Join-Path $root 'RVL.exe'))) { throw 'Native RVL.exe not found in update archive.' }
             Write-UpdateLog "Copying update files from $root to $Target."
-            Get-ChildItem -LiteralPath $root -Force |
-                Where-Object { $_.Name -notin @('data','.git') } |
-                ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Target $_.Name) -Recurse -Force }
+            $sourceFiles = @(Get-ChildItem -LiteralPath $root -Recurse -File -Force |
+                Where-Object { $_.FullName.Substring($root.Length).TrimStart('\','/') -notmatch '^(data|\.git)(\\|/|$)' })
+            if ($sourceFiles.Count -eq 0) { throw 'Update archive contains no installable files.' }
+            foreach ($sourceFile in $sourceFiles) {
+                $relativePath = $sourceFile.FullName.Substring($root.Length).TrimStart('\','/')
+                $targetFile = Join-Path $targetPath $relativePath
+                $targetDirectory = Split-Path -Parent $targetFile
+                New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
+                Copy-Item -LiteralPath $sourceFile.FullName -Destination $targetFile -Force
+                if (-not (Test-Path -LiteralPath $targetFile -PathType Leaf)) { throw "Updated file is missing: $relativePath" }
+                $sourceHash = (Get-FileHash -LiteralPath $sourceFile.FullName -Algorithm SHA256).Hash
+                $targetHash = (Get-FileHash -LiteralPath $targetFile -Algorithm SHA256).Hash
+                if ($targetHash -ne $sourceHash) { throw "Updated file verification failed: $relativePath" }
+            }
+            Write-UpdateLog "Verified $($sourceFiles.Count) installed files."
 
             if (-not (Test-Path $restartPath)) { throw "RVL.exe not found at restart path: $restartPath" }
-            $pendingLog = Join-Path $targetPath 'data\update-log-pending.txt'
-            New-Item -ItemType Directory -Path (Split-Path $pendingLog -Parent) -Force | Out-Null
-            [System.IO.File]::WriteAllText($pendingLog, '1')
             Write-UpdateLog "Starting $restartPath."
             $started = Start-Process -FilePath $restartPath -WorkingDirectory $targetPath -PassThru
             Start-Sleep -Seconds 2
@@ -1592,6 +1669,10 @@ public sealed class WebMainForm : Form
             Remove-Item -LiteralPath (Split-Path $Source -Parent) -Recurse -Force
         } catch {
             Write-UpdateLog ("Update failed: " + $_.Exception.Message)
+            try {
+                Add-Type -AssemblyName System.Windows.Forms
+                [System.Windows.Forms.MessageBox]::Show("RVL не удалось обновить. Приложение осталось в прежней версии.`n`n$($_.Exception.Message)`n`nЖурнал: $log", 'RVL — ошибка обновления', 'OK', 'Error') | Out-Null
+            } catch { }
         }
         """;
 
@@ -1726,12 +1807,18 @@ public sealed class WebMainForm : Form
     private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RVL", "2.1"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RVL", AppVersion));
+        return client;
+    }
+
+    private static HttpClient CreateUpdateHttpClient()
+    {
+        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(8) };
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("RVL", AppVersion));
         return client;
     }
 
     private static string Escape(string value) => JsonSerializer.Serialize(value);
 
-    private static string QuoteArg(string value) => "\"" + value.Replace("\"", "\\\"") + "\"";
 }
 
