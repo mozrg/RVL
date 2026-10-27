@@ -270,6 +270,7 @@ var STRINGS = {
         tipColorPick: "Нажмите для выбора цвета",
         favSetTip:    "Сделать избранным — загружается автоматически",
         favUnsetTip:  "Убрать из избранного",
+        favLimit:     "Можно выбрать максимум 5 избранных пресетов",
         /* Show/hide hotkey settings */
         showHideLabel:   "КЛАВИША СВЕРНУТЬ/РАЗВЕРНУТЬ",
         showHideEnable:  "Включить",
@@ -627,6 +628,7 @@ var STRINGS = {
         tipColorPick: "Click to pick color",
         favSetTip:    "Set as favorite — loads automatically on start",
         favUnsetTip:  "Remove from favorites",
+        favLimit:     "You can select up to 5 favorite presets",
         /* Show/hide hotkey settings */
         showHideLabel:   "MINIMIZE / RESTORE HOTKEY",
         showHideEnable:  "Enable",
@@ -1055,7 +1057,12 @@ function initApp(skipStartupPreset) {
     } catch (e) {
         presets = [];
     }
+    var favoritesTrimmed = enforceFavoriteLimit();
     renderPresets();
+    if (favoritesTrimmed) {
+        flushPresetsOut();
+        sendCmd("CMD:save_preset");
+    }
     flushPresetHKMap();
 
     /* ── Startup preset loading ─────────────────────────────────
@@ -1267,14 +1274,31 @@ function bootRvlUi() {
         return null;
     }
 
+    function applyParsedRobloxURL(parsed) {
+        if (!parsed) return;
+        var share = parsed.linkCode && parsed.linkCode.match(/^([A-Za-z0-9]+)&type=Server$/i);
+        if (share) {
+            switchMethod(2);
+            if (el("inp-share-code")) el("inp-share-code").value = share[1];
+            return;
+        }
+        if (parsed.placeId && parsed.linkCode) {
+            switchMethod(1);
+            el("inp-place").value = parsed.placeId;
+            el("inp-link").value = parsed.linkCode;
+            return;
+        }
+        if (parsed.placeId) el("inp-place").value = parsed.placeId;
+        if (parsed.linkCode) el("inp-link").value = parsed.linkCode;
+    }
+
     function onLinkPaste(e) {
         /* Use setTimeout so .value is already updated when we read it */
         setTimeout(function () {
             var raw = trim(el("inp-link").value);
             var parsed = parseRobloxURL(raw);
             if (!parsed) return;
-            if (parsed.linkCode) el("inp-link").value  = parsed.linkCode;
-            if (parsed.placeId)  el("inp-place").value = parsed.placeId;
+            applyParsedRobloxURL(parsed);
         }, 0);
     }
 
@@ -1288,8 +1312,7 @@ function bootRvlUi() {
                 var raw = trim(el("inp-place").value);
                 var parsed = parseRobloxURL(raw);
                 if (!parsed) return;
-                if (parsed.placeId)  el("inp-place").value = parsed.placeId;
-                if (parsed.linkCode) el("inp-link").value  = parsed.linkCode;
+                applyParsedRobloxURL(parsed);
             }, 0);
         };
     }
@@ -1301,8 +1324,13 @@ function bootRvlUi() {
             setTimeout(function () {
                 var raw = trim(el("inp-share-code").value);
                 /* Strip URL prefix if user pasted full URL */
-                var m = raw.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
-                if (m) el("inp-share-code").value = m[1];
+                var m = raw.match(/[?&]code=([A-Za-z0-9]+)/i);
+                if (m) raw = m[1];
+                else {
+                    var plain = raw.match(/^([A-Za-z0-9]+)&type=Server$/i);
+                    if (plain) raw = plain[1];
+                }
+                el("inp-share-code").value = raw;
             }, 0);
         };
     }
@@ -5279,7 +5307,7 @@ function confirmNewPreset() {
         placeId  = "";
         linkCode = trim(el("inp-share-code").value);
         /* Strip full URL — extract code value, same as onLaunch does */
-        var m2 = linkCode.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
+        var m2 = linkCode.match(/[?&]code=([A-Za-z0-9]+)/i);
         if (m2) linkCode = m2[1];
         /* Also handle roblox:// navigation links */
         var m3 = linkCode.match(/code=([A-Za-z0-9]+)/i);
@@ -5727,7 +5755,13 @@ function makeDuplicator(id) {
 function duplicatePreset(id) {
     var src = findPreset(id);
     if (!src) return;
-    var copy = { id:uid(), name:src.name+" (2)", placeId:src.placeId, linkCode:src.linkCode, hotkey:"", launches:0, lastLaunch:0 };
+    var copy = {
+        id: uid(), name: src.name + " (2)", placeId: src.placeId, linkCode: src.linkCode,
+        method: src.method || 1, note: src.note || "", hotkey: "", launches: 0, lastLaunch: 0,
+        groupId: src.groupId || ""
+    };
+    if (src.icon) copy.icon = src.icon;
+    if (src.color) copy.color = src.color;
     var idx = -1;
     for (var i = 0; i < presets.length; i++) { if (presets[i].id === id) { idx = i; break; } }
     if (idx >= 0) presets.splice(idx + 1, 0, copy);
@@ -5775,44 +5809,34 @@ function makeFavToggler(id) {
     };
 }
 
+function enforceFavoriteLimit() {
+    var count = 0;
+    var trimmed = false;
+    for (var i = 0; i < presets.length; i++) {
+        if (!presets[i].favorite) continue;
+        count++;
+        if (count > 5) {
+            delete presets[i].favorite;
+            trimmed = true;
+        }
+    }
+    return trimmed;
+}
+
 function toggleFavorite(id) {
-    /* Multiple presets can be starred simultaneously */
     var p = findPreset(id);
     if (!p) return;
     if (p.favorite) {
         delete p.favorite;
     } else {
+        var count = 0;
+        for (var i = 0; i < presets.length; i++) if (presets[i].favorite) count++;
+        if (count >= 5) {
+            var S = STRINGS[currentLang] || STRINGS.ru;
+            showToast(S.favLimit || "Можно выбрать максимум 5 избранных пресетов", null, null, 3000);
+            return;
+        }
         p.favorite = true;
-    }
-    /* Sync global favoritePresetId: used for tray / quick-launch.
-       Rules: 1 fav → that one. Multiple favs → last loaded among them.
-              0 favs → null.                                            */
-    var favs = [];
-    for (var i = 0; i < presets.length; i++) {
-        if (presets[i].favorite) favs.push(presets[i].id);
-    }
-    if (favs.length === 0) {
-        favoritePresetId = null;
-    } else if (favs.length === 1) {
-        favoritePresetId = favs[0];
-    } else {
-        /* Keep favoritePresetId pointing to the last loaded fav if it's
-           still starred, otherwise fall back to the most-recently-launched */
-        var stillFav = false;
-        for (var j = 0; j < favs.length; j++) {
-            if (favs[j] === favoritePresetId) { stillFav = true; break; }
-        }
-        if (!stillFav) {
-            /* Pick the favourite with the latest lastLaunch timestamp */
-            var best = null, bestTs = -1;
-            for (var k = 0; k < presets.length; k++) {
-                if (presets[k].favorite) {
-                    var ts = presets[k].lastLaunch || 0;
-                    if (ts > bestTs) { bestTs = ts; best = presets[k].id; }
-                }
-            }
-            favoritePresetId = best;
-        }
     }
     updateFavButtons();
     flushPresetsOut();
@@ -6081,6 +6105,7 @@ function importPresetsFromAHK() {
         if (window.__rvlNativeHost && !window.__rvlImportBackupDone) sendCmd("CMD:auto_backup_import-presets");
         window.__rvlImportBackupDone = false;
         presets = imported;
+        enforceFavoriteLimit();
         flushPresetHKMap();
         renderPresets();
         flushPresetsOut();
@@ -10827,7 +10852,10 @@ window.addEventListener("load", function () {
         if (v && v !== lastHkPing) {
             lastHkPing = v;
             var pid = v.split("|")[0];
-            if (pid && findPreset(pid)) creditPresetLaunch(pid);
+            if (pid && findPreset(pid)) {
+                creditPresetLaunch(pid);
+                sendCmd("CMD:save_preset");
+            }
         }
     }, 250);
 
@@ -11157,7 +11185,6 @@ function hideStartupScreen(resultState) {
     var minimumCheckDelay = Math.max(0, RVL_VERSION_CHECK_MIN_DURATION - checkElapsed);
     var fadeDelay = Math.max(minimumDelay, minimumCheckDelay, notice ? 680 : 430);
     setTimeout(function () { splash.className = "startup-screen startup-screen-out"; }, fadeDelay);
-    setTimeout(openUpdateLog, fadeDelay + 180);
     if (resultState === "available" && !notice) {
         setTimeout(function () { openUpdatePrompt(); }, fadeDelay + 490);
     }

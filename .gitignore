@@ -2,3 +2,6 @@
 images/av/
 
 dist/
+
+# User-specific presets, private server codes, history and settings
+data/

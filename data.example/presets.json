@@ -1,0 +1,13 @@
+﻿[
+  {
+    "id": "EXAMPLE01",
+    "name": "Example private server",
+    "placeId": "1234567890",
+    "linkCode": "example-link-code",
+    "method": 1,
+    "launches": 0,
+    "lastLaunch": 0,
+    "favorite": false,
+    "hotkey": ""
+  }
+]

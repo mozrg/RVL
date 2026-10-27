@@ -18,7 +18,7 @@ foreach ($name in @('RVL.exe', 'RVL.dll', 'RVL.deps.json', 'RVL.runtimeconfig.js
 New-Item -ItemType Directory -Path (Join-Path $releaseDir 'runtimes\win-x64\native') -Force | Out-Null
 Copy-Item (Join-Path $buildDir 'runtimes\win-x64\native\WebView2Loader.dll') (Join-Path $releaseDir 'runtimes\win-x64\native') -Force
 $repoRoot = Split-Path $PSScriptRoot
-foreach ($folder in @('ui', 'images', 'update')) {
+foreach ($folder in @('ui', 'images')) {
     $sourceDir = Join-Path $repoRoot $folder
     $targetDir = Join-Path $releaseDir $folder
     New-Item -ItemType Directory -Path $targetDir -Force | Out-Null

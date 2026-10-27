@@ -20,7 +20,8 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
-    private const string AppVersion = "2.1";
+    private const string AppVersion = "2.2";
+    private const int MaxTrayFavorites = 5;
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
     private const int PresetHotKeyBase = 42100;
@@ -400,9 +401,11 @@ public sealed class WebMainForm : Form
         _ready = true;
         if (_windowKind == "main")
         {
-            ApplyMainHotkey(data);
-            ApplyShowHideHotkey(data);
-            ApplyPresetHotkeys(data);
+            await ExecuteScriptAsync("updateRobloxStatus();");
+            var liveState = await ReadBridgeAsync();
+            ApplyMainHotkey(liveState);
+            ApplyShowHideHotkey(liveState);
+            ApplyPresetHotkeys(liveState);
         }
     }
 
@@ -412,8 +415,8 @@ public sealed class WebMainForm : Form
         {
             ["__cfg_place"] = _config.Get("PlaceId"),
             ["__cfg_link"] = _config.Get("LinkCode"),
-            ["__cfg_hotkey"] = _config.Get("HotkeyKey", "F4"),
-            ["__cfg_enabled"] = _config.Get("HotkeyEnabled", "1"),
+            ["__cfg_hotkey"] = _config.Get("HotkeyKey"),
+            ["__cfg_enabled"] = _config.Get("HotkeyEnabled", "0"),
             ["__cfg_method"] = _config.Get("Method", "1"),
             ["__cfg_presets"] = _config.PresetsJson,
             ["__presets_out"] = _config.PresetsJson,
@@ -478,8 +481,8 @@ public sealed class WebMainForm : Form
         _config.Set("PlaceId", V("inp-place", V("__cfg_place")));
         _config.Set("LinkCode", V("inp-link", V("__cfg_link")));
         _config.Set("Method", V("__cfg_method", "1"));
-        _config.Set("HotkeyKey", V("inp-key", V("__cfg_hotkey", "F4")));
-        _config.Set("HotkeyEnabled", V("chk-enabled", V("__cfg_enabled", "1")));
+        _config.Set("HotkeyKey", V("inp-key", V("__cfg_hotkey", _config.Get("HotkeyKey"))));
+        _config.Set("HotkeyEnabled", V("chk-enabled", V("__cfg_enabled", _config.Get("HotkeyEnabled", "0"))));
         var map = new Dictionary<string, string>
         {
             ["__cfg_theme_mode"] = "ThemeMode", ["__cfg_theme_bg"] = "ThemeBg", ["__cfg_theme_surface"] = "ThemeSurface", ["__cfg_theme_text"] = "ThemeText", ["__cfg_theme_accent"] = "ThemeAccent",
@@ -487,10 +490,22 @@ public sealed class WebMainForm : Form
             ["__cfg_tooltips"] = "TooltipsEnabled", ["__cfg_lang"] = "Lang", ["__cfg_last_preset"] = "LastPreset", ["__cfg_opacity"] = "Opacity", ["__cfg_sh_key"] = "ShowHideKey", ["__cfg_sh_en"] = "ShowHideEnabled", ["__cfg_mask_inputs"] = "MaskInputs", ["__cfg_always_on_top"] = "AlwaysOnTop", ["__cfg_autostart"] = "Autostart", ["__cfg_avatars"] = "AvatarsEnabled", ["__cfg_compact_mode"] = "CompactMode", ["__cfg_sort_mode"] = "SortMode", ["__cfg_ui_hidden"] = "UiHidden", ["__cfg_ui_text"] = "UiText", ["__cfg_ui_nobg"] = "UiNoBg"
         };
         foreach (var pair in map) _config.Set(pair.Value, V(pair.Key, _config.Get(pair.Value)));
-        var presets = V("__presets_out", V("__cfg_presets", "[]"));
-        var themes = V("__theme_presets_out", V("__cfg_theme_presets", "[]"));
-        var groups = V("__preset_groups_out", V("__cfg_preset_groups", "[]"));
-        _config.SaveJsonState(presets, themes, groups);
+        /* A tray or hotkey launch sends only the fields it needs. Missing
+           collections must keep the files on disk instead of being treated
+           as empty arrays (that wiped every preset). */
+        var presets = values.TryGetValue("__presets_out", out var presetsValue)
+            ? presetsValue : values.TryGetValue("__cfg_presets", out var presetsConfig) ? presetsConfig : null;
+        var themes = values.TryGetValue("__theme_presets_out", out var themesValue)
+            ? themesValue : values.TryGetValue("__cfg_theme_presets", out var themesConfig) ? themesConfig : null;
+        var groups = values.TryGetValue("__preset_groups_out", out var groupsValue)
+            ? groupsValue : values.TryGetValue("__cfg_preset_groups", out var groupsConfig) ? groupsConfig : null;
+        if (presets is not null || themes is not null || groups is not null)
+        {
+            var safePresets = string.IsNullOrWhiteSpace(presets) ? _config.PresetsJson : presets;
+            var safeThemes = string.IsNullOrWhiteSpace(themes) ? _config.ThemePresetsJson : themes;
+            var safeGroups = string.IsNullOrWhiteSpace(groups) ? _config.GroupsJson : groups;
+            _config.SaveJsonState(safePresets, safeThemes, safeGroups);
+        }
         _config.SaveIni();
     }
 
@@ -512,7 +527,8 @@ public sealed class WebMainForm : Form
         UpdateThemeSurfaceColor();
         _ = InjectStateAsync(false);
         if (_settingsForm is not null) _ = _settingsForm.InjectStateAsync(false);
-        foreach (var child in _childWindows.Values.ToArray()) _ = child.InjectStateAsync(false);
+        foreach (var child in _childWindows.Values.Where(child => !child.IsDisposed).ToArray()) _ = child.InjectStateAsync(false);
+        RebuildTrayMenu();
     }
 
     private WebMainForm? _settingsForm;
@@ -663,7 +679,7 @@ public sealed class WebMainForm : Form
            center. Re-center once and persist — afterwards user moves win. */
         if (isFresh)
         {
-            var area = Screen.PrimaryScreen.WorkingArea;
+            var area = Screen.PrimaryScreen?.WorkingArea ?? SystemInformation.WorkingArea;
             Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
             SaveWindowPosition();
         }
@@ -679,8 +695,14 @@ public sealed class WebMainForm : Form
             ? values.TryGetValue("inp-share-code", out var shareValue) ? shareValue.Trim() : values.TryGetValue("inp-link", out var shareFallback) ? shareFallback.Trim() : _config.Get("LinkCode")
             : values.TryGetValue("inp-link", out var linkValue) ? linkValue.Trim() : _config.Get("LinkCode");
         var code = RvlPreset.NormalizeShareCode(rawCode);
+        /* Older UI builds stored a copied share link in the Method 1 field as
+           "CODE&type=Server". Route that legacy shape through the share-link
+           intent instead of percent-encoding the whole suffix into linkCode. */
+        var legacyShareCode = method != "2" && method != "3" && Regex.IsMatch(
+            rawCode, @"(?:^|[?&])(?:code=)?[A-Za-z0-9]+&type=Server(?:$|[&#])", RegexOptions.IgnoreCase);
+        var isShareCode = method == "2" || legacyShareCode;
         var isPublicGame = method == "3";
-        var invalidReason = method == "2"
+        var invalidReason = isShareCode
             ? Regex.IsMatch(code, @"^[A-Za-z0-9]+$") ? "" : "share"
             : !Regex.IsMatch(place, @"^\d{1,20}$") ? "place"
             : !isPublicGame && string.IsNullOrWhiteSpace(rawCode) ? "link" : "";
@@ -695,17 +717,17 @@ public sealed class WebMainForm : Form
            the app shows "This link doesn't exist". Old builds omitted it because the
            web share path used to default to type=Server for short codes, but the
            current Roblox client enforces the type parameter on both URLs. */
-        var appUri = method == "2"
+        var appUri = isShareCode
             ? $"roblox://navigation/share_links?code={Uri.EscapeDataString(code)}&type=Server"
             : isPublicGame
                 ? $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}"
                 : $"roblox://experiences/start?placeId={Uri.EscapeDataString(place)}&linkCode={Uri.EscapeDataString(rawCode)}";
-        var webUri = method == "2"
+        var webUri = isShareCode
             ? $"https://www.roblox.com/share?code={Uri.EscapeDataString(code)}&type=Server"
             : isPublicGame
                 ? $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/"
                 : $"https://www.roblox.com/games/{Uri.EscapeDataString(place)}/?linkCode={Uri.EscapeDataString(rawCode)}";
-        var success = TryOpen(method == "2" || Registry.ClassesRoot.OpenSubKey("roblox") is not null ? appUri : webUri);
+        var success = TryOpen(isShareCode || Registry.ClassesRoot.OpenSubKey("roblox") is not null ? appUri : webUri);
         if (!success) success = TryOpen(webUri);
 
         var name = "Quick launch";
@@ -713,11 +735,13 @@ public sealed class WebMainForm : Form
         var presets = ParsePresets(_config.PresetsJson);
         var preset = presets.FirstOrDefault(p => p.Id == id);
         if (preset is not null) name = preset.Name;
-        var historyPreset = new RvlPreset { Name = name, PlaceId = place, LinkCode = method == "2" ? code : isPublicGame ? "" : rawCode, Method = method == "2" ? 2 : isPublicGame ? 3 : 1 };
+        var historyPreset = new RvlPreset { Name = name, PlaceId = place, LinkCode = isShareCode ? code : isPublicGame ? "" : rawCode, Method = isShareCode ? 2 : isPublicGame ? 3 : 1 };
         Storage.AppendHistory(historyPreset, success);
         _config.Set("LastPreset", id);
         _config.SaveIni();
         await SetValueAsync("__roblox_status", IsRobloxRunning() ? "1" : "0");
+        var mainHost = MainHost;
+        if (success && mainHost._config.GetBool("AutoMinimize")) mainHost.Hide();
     }
 
     private static string V(Dictionary<string, string> values, string key, string fallback = "") => values.TryGetValue(key, out var value) && value.Length > 0 ? value : fallback;
@@ -762,9 +786,10 @@ public sealed class WebMainForm : Form
         var host = MainHost;
         UnregisterHotKey(host.Handle, MainHotKeyId);
         var enabled = V(values, "__cfg_enabled", _config.Get("HotkeyEnabled")) == "1";
-        var name = V(values, "inp-key", _config.Get("HotkeyKey", "F4"));
+        var name = V(values, "inp-key", _config.Get("HotkeyKey"));
         _config.Set("HotkeyKey", name); _config.Set("HotkeyEnabled", enabled ? "1" : "0"); _config.SaveIni();
         if (enabled && TryKey(name, out var key)) RegisterHotKey(host.Handle, MainHotKeyId, 0, (uint)key);
+        host.RebuildTrayMenu();
     }
 
     private void ApplyShowHideHotkey(Dictionary<string, string> values)
@@ -792,6 +817,7 @@ public sealed class WebMainForm : Form
             var id = next++;
             if (RegisterHotKey(host.Handle, id, 0, (uint)key)) { host._registeredKeys[parts[0]] = id; host._presetHotkeys[id] = parts[4]; }
         }
+        host.RebuildTrayMenu();
     }
 
     private static bool TryKey(string value, out Keys key)
@@ -1293,7 +1319,7 @@ public sealed class WebMainForm : Form
         /* Header item — purely visual, clicking it does nothing. Bold + muted
            color distinguishes it from real actions (the renderer uses
            Font.Bold to switch to the muted text color). */
-        var header = new ToolStripMenuItem(isEn ? "RVL · PRIVATE VIP LAUNCHER" : "RVL · ПРИВАТНЫЙ ЛАУНЧЕР")
+        var header = new ToolStripMenuItem(isEn ? "RVL · PRIVATE SERVER LAUNCHER" : "RVL · ПРИВАТНЫЙ ЛАУНЧЕР")
         {
             Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold),
             Enabled = false,
@@ -1302,26 +1328,45 @@ public sealed class WebMainForm : Form
         menu.Items.Add(header);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(isEn ? "Show RVL" : "Показать RVL", null, (_, _) => ShowWindow());
-        menu.Items.Add(isEn ? "Launch favorite" : "Запустить избранное", null, (_, _) => LaunchFavorite());
-        var presets = ParsePresets(_config.PresetsJson).Where(p => p.Favorite).ToList();
-        if (presets.Count > 0)
+        var presets = ParsePresets(_config.PresetsJson)
+            .Select((preset, index) => (preset, index))
+            .Where(item => item.preset.Favorite)
+            .OrderBy(item => item.index)
+            .Take(MaxTrayFavorites)
+            .ToList();
+        menu.Items.Add(new ToolStripSeparator());
+        var favLabel = new ToolStripMenuItem(isEn ? "FAVORITES · 5 MAX" : "ИЗБРАННОЕ · МАКС. 5")
         {
-            menu.Items.Add(new ToolStripSeparator());
-            var favLabel = new ToolStripMenuItem(isEn ? "FAVORITES" : "ИЗБРАННОЕ")
+            Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold),
+            Enabled = false,
+            Margin = new Padding(8, 2, 4, 2)
+        };
+        menu.Items.Add(favLabel);
+        if (presets.Count == 0)
+        {
+            menu.Items.Add(new ToolStripMenuItem(isEn ? "No favorite presets" : "Нет избранных пресетов") { Enabled = false });
+        }
+        else
+        {
+            var hotkeys = _registeredKeys.ToDictionary(pair => pair.Value, pair => pair.Key);
+            var presetKeys = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in _presetHotkeys)
             {
-                Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold),
-                Enabled = false,
-                Margin = new Padding(8, 2, 4, 2)
-            };
-            menu.Items.Add(favLabel);
-            foreach (var preset in presets.Take(10))
+                if (hotkeys.TryGetValue(pair.Key, out var key)) presetKeys[pair.Value] = key;
+            }
+            for (var i = 0; i < presets.Count; i++)
             {
-                menu.Items.Add(preset.Name, null, (_, _) => LaunchPreset(preset));
+                var preset = presets[i].preset;
+                var text = $"{i + 1}. {preset.Name}";
+                if (presetKeys.TryGetValue(preset.Id, out var key)) text += "   ·   " + key;
+                menu.Items.Add(text, null, (_, _) => LaunchPreset(preset));
             }
         }
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(isEn ? "Exit" : "Выход", null, (_, _) => Close());
+        var previousMenu = _tray.ContextMenuStrip;
         _tray.ContextMenuStrip = menu;
+        previousMenu?.Dispose();
     }
 
     private void ShowWindow()
@@ -1336,16 +1381,35 @@ public sealed class WebMainForm : Form
         TopMost = true;
         TopMost = wasTopMost;
     }
-    private void LaunchFavorite()
+    private void LaunchActivePreset()
     {
-        var preset = ParsePresets(_config.PresetsJson).FirstOrDefault(p => p.Favorite) ?? new RvlPreset { PlaceId = _config.Get("PlaceId"), LinkCode = _config.Get("LinkCode"), Method = int.TryParse(_config.Get("Method"), out var m) ? m : 1 };
+        var presets = ParsePresets(_config.PresetsJson);
+        var lastId = _config.Get("LastPreset");
+        var preset = presets.FirstOrDefault(p => !string.IsNullOrWhiteSpace(lastId) && p.Id == lastId)
+            ?? presets.FirstOrDefault(p => p.Favorite)
+            ?? new RvlPreset { PlaceId = _config.Get("PlaceId"), LinkCode = _config.Get("LinkCode"), Method = int.TryParse(_config.Get("Method"), out var m) ? m : 1 };
         LaunchPreset(preset);
     }
 
     private async void LaunchPreset(RvlPreset preset)
     {
-        var values = new Dictionary<string, string> { ["__cfg_method"] = preset.Method.ToString(), ["inp-place"] = preset.PlaceId, ["inp-link"] = preset.LinkCode, ["inp-share-code"] = preset.LinkCode, ["__last_loaded_preset_id"] = preset.Id };
-        await LaunchFromBridgeAsync(values);
+        var host = MainHost;
+        var values = new Dictionary<string, string>();
+        try
+        {
+            /* Keep the complete live UI snapshot. The old partial payload made
+               SaveBridge interpret absent JSON fields as empty arrays. */
+            foreach (var pair in await host.ReadBridgeAsync()) values[pair.Key] = pair.Value;
+        }
+        catch { }
+        values["__cfg_method"] = preset.Method.ToString();
+        values["inp-place"] = preset.PlaceId;
+        values["inp-link"] = preset.LinkCode;
+        values["inp-share-code"] = preset.LinkCode;
+        values["inp-place-public"] = preset.PlaceId;
+        values["__last_loaded_preset_id"] = preset.Id;
+        await host.LaunchFromBridgeAsync(values);
+        await host.SetValueAsync("__hotkey_launch_ping", preset.Id + "|" + DateTimeOffset.Now.ToUnixTimeMilliseconds());
     }
 
     private static List<RvlPreset> ParsePresets(string json)
@@ -1449,7 +1513,28 @@ public sealed class WebMainForm : Form
         await ExecuteScriptAsync("updateRobloxStatus();");
     }
 
-    private static bool IsRobloxRunning() => Process.GetProcessesByName("RobloxPlayerBeta").Length > 0;
+    private static bool IsRobloxRunning()
+    {
+        foreach (var process in Process.GetProcesses())
+        {
+            try
+            {
+                /* Roblox has used several client process names: RobloxPlayerBeta,
+                   RobloxPlayer, RobloxPlayerLauncher. Match the product, not one
+                   build, while ignoring helpers such as RobloxCrashHandler. */
+                if (process.ProcessName.StartsWith("RobloxPlayer", StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            catch
+            {
+                /* One inaccessible process must not hide a running client. */
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+        return false;
+    }
 
     private async Task CheckUpdateAsync()
     {
@@ -1742,7 +1827,7 @@ public sealed class WebMainForm : Form
         if (m.Msg == WmHotKey && !_capturing)
         {
             var id = m.WParam.ToInt32();
-            if (id == MainHotKeyId) LaunchFavorite();
+            if (id == MainHotKeyId) LaunchActivePreset();
             else if (id == ShowHideHotKeyId)
             {
                 /* Hide only when the window is actually the active one. If it
@@ -1756,7 +1841,7 @@ public sealed class WebMainForm : Form
             else if (_presetHotkeys.TryGetValue(id, out var presetId))
             {
                 var preset = ParsePresets(_config.PresetsJson).FirstOrDefault(p => p.Id == presetId);
-                if (preset is not null) { LaunchPreset(preset); _ = SetValueAsync("__hotkey_launch_ping", preset.Id + "|" + DateTimeOffset.Now.ToUnixTimeMilliseconds()); }
+                if (preset is not null) LaunchPreset(preset);
             }
         }
         if (m.Msg == WmNchittest && FormBorderStyle == FormBorderStyle.None)

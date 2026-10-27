@@ -15,8 +15,8 @@ internal sealed class NativeConfig
         LoadIni();
         SetDefault("PlaceId", "133410800847665");
         SetDefault("LinkCode", "63587187475624144843883901936517");
-        SetDefault("HotkeyKey", "F4");
-        SetDefault("HotkeyEnabled", "1");
+        SetDefault("HotkeyKey", "");
+        SetDefault("HotkeyEnabled", "0");
         SetDefault("ThemeMode", "dark");
         SetDefault("ThemeBg", "#0A0A0A");
         SetDefault("ThemeSurface", "#111111");
@@ -111,7 +111,7 @@ internal sealed class NativeConfig
         SaveIni();
         var backup = new
         {
-            version = "2.1",
+            version = "2.2",
             timestamp = DateTime.Now.ToString("yyyyMMddHHmmss"),
             config = File.Exists(Storage.ConfigPath) ? File.ReadAllText(Storage.ConfigPath, Encoding.UTF8) : "",
             presets,
