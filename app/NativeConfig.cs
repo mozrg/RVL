@@ -64,9 +64,12 @@ internal sealed class NativeConfig
 
     public void SaveJsonState(string presets, string themes, string groups)
     {
-        WriteJson("presets.json", string.IsNullOrWhiteSpace(presets) ? "[]" : presets);
-        WriteJson("theme_presets.json", string.IsNullOrWhiteSpace(themes) ? "[]" : themes);
-        WriteJson("preset_groups.json", string.IsNullOrWhiteSpace(groups) ? "[]" : groups);
+        /* Never replace a valid collection with malformed bridge data.  A
+           transient WebView/child-window payload used to turn a parse error
+           into [] on the next save, effectively deleting all presets. */
+        WriteJson("presets.json", presets, requireArray: true);
+        WriteJson("theme_presets.json", themes, requireArray: true);
+        WriteJson("preset_groups.json", groups, requireArray: true);
     }
 
     public void SaveIni()
@@ -111,7 +114,7 @@ internal sealed class NativeConfig
         SaveIni();
         var backup = new
         {
-            version = "2.2",
+            version = "2.3",
             timestamp = DateTime.Now.ToString("yyyyMMddHHmmss"),
             config = File.Exists(Storage.ConfigPath) ? File.ReadAllText(Storage.ConfigPath, Encoding.UTF8) : "",
             presets,
@@ -181,10 +184,31 @@ internal sealed class NativeConfig
         catch { return "[]"; }
     }
 
-    private void WriteJson(string name, string value)
+    private void WriteJson(string name, string value, bool requireArray = false)
     {
         Directory.CreateDirectory(Storage.DataDirectory);
-        File.WriteAllText(Path.Combine(Storage.DataDirectory, name), value, new UTF8Encoding(false));
+        var path = Path.Combine(Storage.DataDirectory, name);
+        var candidate = string.IsNullOrWhiteSpace(value) ? "[]" : value.Trim();
+        if (requireArray)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(candidate);
+                if (document.RootElement.ValueKind != JsonValueKind.Array)
+                    return;
+            }
+            catch
+            {
+                /* A partial/empty WebView bridge must never destroy the last
+                   valid preset file. Keep the existing file unchanged. */
+                return;
+            }
+        }
+        /* Commit atomically so a crash cannot leave a truncated JSON file
+           that is later interpreted as an empty preset collection. */
+        var tempPath = path + ".tmp";
+        File.WriteAllText(tempPath, candidate, new UTF8Encoding(false));
+        File.Move(tempPath, path, overwrite: true);
     }
 
 }

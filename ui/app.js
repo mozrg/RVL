@@ -944,7 +944,9 @@ function initApp(skipStartupPreset) {
     var place   = el("__cfg_place").value;
     var link    = el("__cfg_link").value;
     var hotkey  = el("__cfg_hotkey").value;
-    var enabled = el("__cfg_enabled").value !== "0";
+    /* Hotkeys are opt-in.  Empty/missing legacy values must not turn the
+       launcher hotkey on during startup; only the persisted explicit "1" does. */
+    var enabled = el("__cfg_enabled").value === "1";
 
     themeMode = safeThemeMode(el("__cfg_theme_mode").value);
 
@@ -6439,19 +6441,44 @@ function keyNameFromEvent(ev) {
        these is the literal symbol — returning it directly gives the user
        a single-character name in the UI. */
     if (key.length === 1 && /^[^\s]$/.test(key) && !/[A-Za-z0-9]/.test(key)) return key;
+    /* Named keys cover the full standard PC keyboard plus the extended
+       multimedia/browser keys exposed by WebView2.  Values are WinForms Keys
+       names (or aliases understood by TryKey), so every captured key can be
+       registered globally after the page capture completes. */
     var named = {
         ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right",
         Enter: "Enter", " ": "Space", Spacebar: "Space", Backspace: "Back",
         Delete: "Delete", Insert: "Insert", Home: "Home", End: "End",
-        PageUp: "PageUp", PageDown: "PageDown", Tab: "Tab",
-        /* §keys-extra2: function-key-adjacent keys that browsers do name
-           explicitly. CapsLock, ScrollLock, NumLock, Pause can all be
-           bound as global hotkeys in WinForms. */
-        CapsLock: "CapsLock", ScrollLock: "ScrollLock",
-        NumLock: "NumLock", Pause: "Pause", PrintScreen: "PrintScreen",
-        ContextMenu: "Menu", Escape: "Escape"
+        PageUp: "PageUp", PageDown: "PageDown", Tab: "Tab", Escape: "Escape",
+        CapsLock: "CapsLock", ScrollLock: "ScrollLock", NumLock: "NumLock",
+        Pause: "Pause", PrintScreen: "PrintScreen", ContextMenu: "Menu",
+        // Navigation/editing and system keys
+        Clear: "Clear", Help: "Help", Select: "Select", Execute: "Execute",
+        Windows: "LWin", Win: "LWin", Meta: "LWin",
+        // Browser/media keys (USB HID / Windows extended keyboard)
+        BrowserBack: "BrowserBack", BrowserForward: "BrowserForward",
+        BrowserRefresh: "BrowserRefresh", BrowserStop: "BrowserStop",
+        BrowserSearch: "BrowserSearch", BrowserFavorites: "BrowserFavorites",
+        BrowserHome: "BrowserHome", VolumeMute: "VolumeMute",
+        VolumeDown: "VolumeDown", VolumeUp: "VolumeUp", MediaTrackPrevious: "MediaPrevious",
+        MediaTrackNext: "MediaNext", MediaPlayPause: "MediaPlayPause", MediaStop: "MediaStop",
+        LaunchMail: "LaunchMail", LaunchApp1: "LaunchApplication1", LaunchApp2: "LaunchApplication2",
+        Sleep: "Sleep", WakeUp: "WakeUp", Apps: "Apps"
     };
-    return named[key] || "";
+    var byCode = {
+        NumpadEnter: "Enter", NumpadEqual: "Oemplus", NumpadComma: "Oemcomma",
+        IntlBackslash: "OemBackslash", IntlRo: "OemBackslash", IntlYen: "OemBackslash",
+        Lang1: "Kana", Lang2: "Kanji", Convert: "Convert", NonConvert: "NonConvert",
+        KanaMode: "Kana", Alphanumeric: "Alphanumeric", Hiragana: "Hiragana", Katakana: "Katakana",
+        MediaTrackPrevious: "MediaPrevious", MediaTrackNext: "MediaNext",
+        MediaPlayPause: "MediaPlayPause", MediaStop: "MediaStop", AudioVolumeMute: "VolumeMute",
+        AudioVolumeDown: "VolumeDown", AudioVolumeUp: "VolumeUp", BrowserBack: "BrowserBack",
+        BrowserForward: "BrowserForward", BrowserRefresh: "BrowserRefresh", BrowserStop: "BrowserStop",
+        BrowserSearch: "BrowserSearch", BrowserFavorites: "BrowserFavorites", BrowserHome: "BrowserHome",
+        LaunchMail: "LaunchMail", LaunchApp1: "LaunchApplication1", LaunchApp2: "LaunchApplication2",
+        Sleep: "Sleep", WakeUp: "WakeUp", ContextMenu: "Menu", PrintScreen: "PrintScreen"
+    };
+    return byCode[code] || named[key] || "";
 }
 
 function pageCaptureFinish(key) {
@@ -7300,7 +7327,8 @@ function syncSettingsHotkeyUI() {
     var keyEl = el("__cfg_hotkey");
     var box = el("st-key-box");
     if (box && keyEl) box.value = keyEl.value;
-    var on = el("__cfg_enabled") ? el("__cfg_enabled").value !== "0" : true;
+    /* This setting is opt-in: absent/invalid values must stay disabled. */
+    var on = el("__cfg_enabled") ? el("__cfg_enabled").value === "1" : false;
     var chk = el("st-chk-enabled");
     if (chk) chk.checked = on;
     var track = el("st-toggle-track");
@@ -7312,7 +7340,7 @@ function syncSettingsHotkeyUI() {
 function toggleSettingsHotkey() {
     var cfg = el("__cfg_enabled");
     if (!cfg) return;
-    var on = cfg.value !== "0";
+    var on = cfg.value === "1";
     cfg.value = on ? "0" : "1";
     var hidden = el("chk-enabled");
     if (hidden) hidden.checked = !on;

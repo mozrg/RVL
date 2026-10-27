@@ -20,7 +20,7 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
-    private const string AppVersion = "2.2";
+    private const string AppVersion = "2.3";
     private const int MaxTrayFavorites = 5;
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
