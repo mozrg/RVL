@@ -20,7 +20,7 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
-    private const string AppVersion = "2.3";
+    private const string AppVersion = "2.3.4";
     private const int MaxTrayFavorites = 5;
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
@@ -304,6 +304,17 @@ public sealed class WebMainForm : Form
                 TryCreateAutomaticBackup(command["CMD:auto_backup_".Length..]);
                 return;
             }
+            if (command.StartsWith("CMD:hotkey_update ", StringComparison.Ordinal))
+            {
+                /* The state travels in the command itself, not solely through
+                   asynchronously sampled WebView DOM fields. */
+                var state = command["CMD:hotkey_update ".Length..].Trim() == "1" ? "1" : "0";
+                payload["__cfg_enabled"] = state;
+                payload["chk-enabled"] = state;
+                SaveBridge(payload);
+                ApplyMainHotkey(payload);
+                return;
+            }
 
             switch (command)
             {
@@ -482,7 +493,12 @@ public sealed class WebMainForm : Form
         _config.Set("LinkCode", V("inp-link", V("__cfg_link")));
         _config.Set("Method", V("__cfg_method", "1"));
         _config.Set("HotkeyKey", V("inp-key", V("__cfg_hotkey", _config.Get("HotkeyKey"))));
-        _config.Set("HotkeyEnabled", V("chk-enabled", V("__cfg_enabled", _config.Get("HotkeyEnabled", "0"))));
+        /* __cfg_enabled is updated by both toggle UIs before the command is
+           sent. Prefer this explicit state over a possibly stale checkbox
+           snapshot from a detached settings WebView. */
+        var hotkeyState = V("__cfg_enabled", "");
+        if (hotkeyState is not ("0" or "1")) hotkeyState = V("chk-enabled", _config.Get("HotkeyEnabled", "0"));
+        _config.Set("HotkeyEnabled", hotkeyState == "1" ? "1" : "0");
         var map = new Dictionary<string, string>
         {
             ["__cfg_theme_mode"] = "ThemeMode", ["__cfg_theme_bg"] = "ThemeBg", ["__cfg_theme_surface"] = "ThemeSurface", ["__cfg_theme_text"] = "ThemeText", ["__cfg_theme_accent"] = "ThemeAccent",
@@ -785,8 +801,21 @@ public sealed class WebMainForm : Form
     {
         var host = MainHost;
         UnregisterHotKey(host.Handle, MainHotKeyId);
-        var enabled = V(values, "__cfg_enabled", _config.Get("HotkeyEnabled")) == "1";
-        var name = V(values, "inp-key", _config.Get("HotkeyKey"));
+        /* The visible checkbox is authoritative.  The hidden __cfg_enabled
+           field can still contain the previous startup snapshot when the user
+           clicks the toggle, so preferring it made an enabled toggle revert to
+           0 immediately and therefore after every restart. */
+        /* The toggle handlers synchronously write __cfg_enabled before
+           sending CMD:hotkey_update. Treat that as canonical; the checkbox
+           may belong to a detached WebView and can be an older snapshot. */
+        var enabledValue = V(values, "__cfg_enabled", "");
+        if (enabledValue is not ("0" or "1"))
+            enabledValue = values.TryGetValue("chk-enabled", out var checkbox)
+                ? checkbox
+                : _config.Get("HotkeyEnabled", "0");
+        enabledValue = enabledValue == "1" ? "1" : "0";
+        var enabled = enabledValue == "1";
+        var name = V(values, "inp-key", V(values, "__cfg_hotkey", _config.Get("HotkeyKey")));
         _config.Set("HotkeyKey", name); _config.Set("HotkeyEnabled", enabled ? "1" : "0"); _config.SaveIni();
         if (enabled && TryKey(name, out var key)) RegisterHotKey(host.Handle, MainHotKeyId, 0, (uint)key);
         host.RebuildTrayMenu();

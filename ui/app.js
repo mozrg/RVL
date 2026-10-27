@@ -1545,8 +1545,15 @@ function bootRvlUi() {
         cancelEv(e);
         var chk = el("chk-enabled");
         chk.checked = !chk.checked;
+        /* Keep the hidden bridge value synchronized immediately. Native
+           ApplyMainHotkey reads both fields during the same command, and a
+           stale __cfg_enabled could otherwise restore the old state. */
+        var cfgEnabled = el("__cfg_enabled");
+        if (cfgEnabled) cfgEnabled.value = chk.checked ? "1" : "0";
         syncToggle(chk.checked);
-        sendCmd("CMD:hotkey_update");
+        /* Include the clicked value in the command so detached/native
+           settings windows cannot lose it to an older DOM snapshot. */
+        sendCmd("CMD:hotkey_update " + (chk.checked ? "1" : "0"));
         return false;
     };
 
@@ -6399,13 +6406,17 @@ function stopCaptureExternal(keyName) {
     }
 
     if (keyName !== null && keyName !== "") {
+        /* Assigning a key must not enable the launcher as a side effect.
+           Keep the user's previous enabled/disabled choice; enabling is a
+           separate explicit toggle. This prevents F4 from reactivating after
+           a capture or a settings-window sync. */
         el("inp-key").value = keyName;
-        el("chk-enabled").checked = true;
-        syncToggle(true);
         var cfgKey = el("__cfg_hotkey");
         if (cfgKey) cfgKey.value = keyName;
         var cfgEn = el("__cfg_enabled");
-        if (cfgEn) cfgEn.value = "1";
+        var wasEnabled = cfgEn ? cfgEn.value === "1" : el("chk-enabled").checked;
+        el("chk-enabled").checked = wasEnabled;
+        syncToggle(wasEnabled);
         syncSettingsHotkeyUI();
         sendCmd("CMD:hotkey_update");
     }
@@ -7345,7 +7356,7 @@ function toggleSettingsHotkey() {
     var hidden = el("chk-enabled");
     if (hidden) hidden.checked = !on;
     syncSettingsHotkeyUI();
-    sendCmd("CMD:hotkey_update");
+    sendCmd("CMD:hotkey_update " + (on ? "0" : "1"));
 }
 
 function startSettingsCapture() {
