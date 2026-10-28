@@ -989,6 +989,11 @@
         <div class="np-label">НАЗВАНИЕ</div>
         <input class="field-input np-name" id="np-name" type="text" placeholder="Название пресета..."
                maxlength="32" spellcheck="false" autocomplete="off">
+        <!-- v2.4: dedicated preset-share code field — paste a RVL1: code
+             copied from a friend and the whole form fills itself. -->
+        <div class="np-label" id="np-share-code-label">КОД ПРЕСЕТА (для импорта)</div>
+        <input class="field-input np-inp" id="np-share-code" type="text"
+               spellcheck="false" autocomplete="off" placeholder="RVL1:...">
         <div class="method-tabs np-tabs">
           <button type="button" class="method-tab method-tab-active" id="np-tab-1">СП 1</button>
           <button type="button" class="method-tab" id="np-tab-2">СП 2</button>

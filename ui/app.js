@@ -5833,7 +5833,12 @@ function duplicatePreset(id) {
     if (idx >= 0) presets.splice(idx + 1, 0, copy);
     else presets.push(copy);
     flushPresetsOut();
+    setDirty();
+    sendCmd("CMD:save_preset");
     renderPresets(); /* renderPresets already calls sendResize internally */
+    /* v2.4: duplicating usually means "I want to tweak the copy" — open
+       the editor on the new duplicate right away. */
+    setTimeout(function () { openPresetEditModal(copy.id); }, 60);
 }
 function makeIdEditor(id) {
     return function (e) { e = e || window.event; cancelEv(e); openPresetEditModal(id); };
@@ -7283,6 +7288,7 @@ function openNewPresetModal() {
     if (el("np-link")) el("np-link").value = "";
     if (el("np-share")) el("np-share").value = "";
     if (el("np-place-public")) el("np-place-public").value = "";
+    if (el("np-share-code")) el("np-share-code").value = "";
     /* §duplicate-warning: fresh form — re-arm the duplicate warning. */
     var npSave = el("np-save");
     if (npSave) npSave.removeAttribute("data-dup-ok");
@@ -7407,6 +7413,24 @@ function initNewPresetWindow() {
         /* §preset-share: pasting a RVL1: code fills the entire form. */
         nameInp.onpaste = function () {
             setTimeout(function () { maybeImportPresetShare("np-name", "np-name"); }, 0);
+        };
+    }
+    /* v2.4: dedicated share-code field in the New Preset window. Typing or
+       pasting a RVL1: code here instantly fills name/method/fields. */
+    var shareCodeInp = el("np-share-code");
+    if (shareCodeInp) {
+        shareCodeInp.oninput = function () {
+            if (!isPresetShareCode(el("np-share-code") ? el("np-share-code").value : "")) return;
+            if (maybeImportPresetShare("np-share-code", "np-name")) {
+                /* Clear the code field after import — it did its job and
+                   shouldn't be saved as part of the preset. */
+                el("np-share-code").value = "";
+                try { if (el("np-name")) el("np-name").focus(); } catch (e) {}
+            }
+        };
+        shareCodeInp.onkeydown = function (e) {
+            e = e || window.event;
+            if ((e.keyCode || e.which) === 13) confirmNewPresetWindow();
         };
     }
     var shareInp = el("np-share");
@@ -9083,21 +9107,16 @@ function clearDirty() {
     if (appInitialized) captureDirtyBaseline();
 }
 
-/* ── §D2 · Exit confirmation ─────────────────────────────── */
+/* ── §D2 · Exit — v2.4: AUTOSAVE, no confirmation dialog ──────
+   The user asked for the unsaved-changes prompt to be gone entirely:
+   exiting now flushes pending preset/group state to the host and closes.
+   Data loss is impossible — everything edited is written on the way out. */
 function requestExit() {
-    /* A stale dirty flag must not block exit when the actual editable state
-       is identical to the last clean baseline. */
-    if (!dirtyState || (dirtyBaseline !== null && getDirtySignature() === dirtyBaseline)) {
-        clearDirty();
-        sendCmd("CMD:close");
-        return;
-    }
-    var S = STRINGS[currentLang] || STRINGS.ru;
-    showToast(S.exitConfirmMsg, S.exitConfirmSave, function () {
-        sendCmd("CMD:close");
-    }, 12000, S.exitConfirmDiscard, function () {
-        sendCmd("CMD:close_discard");
-    });
+    try {
+        flushPresetsOut();
+    } catch (e) {}
+    clearDirty();
+    sendCmd("CMD:close");
 }
 
 /* ── §F1 · History modal ─────────────────────────────────── */

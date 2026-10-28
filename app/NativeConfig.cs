@@ -115,7 +115,7 @@ internal sealed class NativeConfig
         SaveIni();
         var backup = new
         {
-            version = "2.3.4",
+            version = "2.4.1",
             timestamp = DateTime.Now.ToString("yyyyMMddHHmmss"),
             config = File.Exists(Storage.ConfigPath) ? File.ReadAllText(Storage.ConfigPath, Encoding.UTF8) : "",
             presets,

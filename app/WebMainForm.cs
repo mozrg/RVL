@@ -20,7 +20,7 @@ namespace RVL;
 /// </summary>
 public sealed class WebMainForm : Form
 {
-    private const string AppVersion = "2.3.4";
+    private const string AppVersion = "2.4.1";
     private const int MaxTrayFavorites = 5;
     private const int MainHotKeyId = 42001;
     private const int ShowHideHotKeyId = 42002;
@@ -490,7 +490,7 @@ public sealed class WebMainForm : Form
             ["__cfg_method"] = _config.Get("Method", "1"),
             ["__cfg_presets"] = _config.PresetsJson,
             ["__presets_out"] = _config.PresetsJson,
-            ["__cfg_theme_mode"] = _config.Get("ThemeMode", "dark"),
+            ["__cfg_theme_mode"] = _config.Get("ThemeMode", "dark"),
             ["__cfg_theme_bg"] = _config.Get("ThemeBg", "#0A0A0A"),
             ["__cfg_theme_surface"] = _config.Get("ThemeSurface", "#111111"),
             ["__cfg_theme_text"] = _config.Get("ThemeText", "#E8E8E8"),
@@ -1713,7 +1713,13 @@ public sealed class WebMainForm : Form
 
     private static long VersionNumber(string value)
     {
-        var numbers = Regex.Matches(value, "\\d+").Select(m => long.Parse(m.Value)).Take(4).ToArray();
+        /* §v24-version-fix: "2.3.4" used to compare as 2003004 while "2.4"
+           compared as 2004 — different component counts shift the decimal
+           weights, so 2.3.4 appeared NEWER than 2.4 and the updater said
+           "latest". Normalize every version to exactly 4 components before
+           packing so 2.4 -> 2004000000000 vs 2.3.4 -> 2003004000000. */
+        var numbers = Regex.Matches(value, "\\d+").Select(m => long.Parse(m.Value)).Take(4).ToList();
+        while (numbers.Count < 4) numbers.Add(0);
         long result = 0; foreach (var n in numbers) result = result * 1000 + n; return result;
     }
 
