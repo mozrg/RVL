@@ -923,6 +923,7 @@ var renamingGroupId       = null;
 var sortMode          = "manual";  /* manual | name | date | launches | fav */
 var undoStack         = [];        /* [{type, data, prevIndex}] — 1-step undo for delete */
 var compactMode       = false;
+var closeToTray       = false;   /* §close-to-tray: X hides the window instead of exiting */
 var avatarsEnabled    = true;        /* false = never fetch game avatars (index-number fallback) */
 var dirtyState        = false;     /* unsaved changes flag for exit confirm */
 var dirtyBaseline     = null;      /* serialized state after the last clean save */
@@ -982,6 +983,11 @@ function initApp(skipStartupPreset) {
     var cm = el("__cfg_compact_mode") ? el("__cfg_compact_mode").value : "0";
     compactMode = (cm === "1");
     applyCompactMode();
+
+    /* §close-to-tray: restore the persisted preference and sync the toggle. */
+    var ctt = el("__cfg_close_to_tray") ? el("__cfg_close_to_tray").value : "0";
+    closeToTray = (ctt === "1");
+    syncCloseToTrayToggle(true);
 
     /* Enhancement: Sort mode — read from config */
     var sm = el("__cfg_sort_mode") ? el("__cfg_sort_mode").value : "manual";
@@ -1257,6 +1263,9 @@ function bootRvlUi() {
     ─────────────────────────────────────────────────────────────────────── */
     function parseRobloxURL(raw) {
         raw = trim(raw);
+        /* §preset-share: RVL1:<base64> one-line preset codes pass through
+           with raw so applyParsedRobloxURL can decode them. */
+        if (isPresetShareCode(raw)) return { raw: raw };
         /* Method 1: full old-style game URL with privateServerLinkCode */
         var m1Place = raw.match(/roblox\.com\/games\/(\d+)/i);
         var m1Link  = raw.match(/[?&]privateServerLinkCode=([A-Za-z0-9]+)/i);
@@ -1278,6 +1287,26 @@ function bootRvlUi() {
 
     function applyParsedRobloxURL(parsed) {
         if (!parsed) return;
+        /* §preset-share: a RVL1: code pasted into any launcher field opens the
+           new-preset form pre-filled with the whole preset. */
+        var shareCheck = isPresetShareCode(parsed.raw || "");
+        if (shareCheck) {
+            var shared = decodePresetShare(parsed.raw);
+            if (shared) {
+                if (el("np-name")) el("np-name").value = shared.name || "Preset";
+                if (shared.method === 2) {
+                    if (el("np-share")) el("np-share").value = shared.linkCode || "";
+                } else if (shared.method === 3) {
+                    if (el("np-place-public")) el("np-place-public").value = shared.placeId || "";
+                } else {
+                    if (el("np-place")) el("np-place").value = shared.placeId || "";
+                    if (el("np-link")) el("np-link").value = shared.linkCode || "";
+                }
+                if (typeof npSwitchMethod === "function") npSwitchMethod(shared.method);
+                if (typeof openNewPresetModal === "function") openNewPresetModal();
+                return;
+            }
+        }
         var share = parsed.linkCode && parsed.linkCode.match(/^([A-Za-z0-9]+)&type=Server$/i);
         if (share) {
             switchMethod(2);
@@ -1640,6 +1669,17 @@ function bootRvlUi() {
         return false;
     };
 
+    var cttTrack = el("closetotray-track");
+    if (cttTrack) cttTrack.onclick = function (e) {
+        e = e || window.event;
+        cancelEv(e);
+        var chk = el("chk-close-to-tray");
+        chk.checked = !chk.checked;
+        closeToTray = chk.checked;
+        syncCloseToTrayToggle(false);
+        return false;
+    };
+
     var clearAvBtn = el("btn-clear-avatars");
     if (clearAvBtn) clearAvBtn.onclick = function () {
         sendCmd("CMD:clear_avatars");
@@ -1813,6 +1853,8 @@ function bootRvlUi() {
     };
 
     /* Theme Presets Manager bindings */
+    /* §style-lock removed: full-design themes are gone, the palette
+       manager is always available again. */
     el("btn-manage-presets").onclick = openTPManager;
     el("tp-close").onclick = function() { closeTPManager(true); };
     el("btn-tp-cancel").onclick = function() { closeTPManager(false); };
@@ -2214,7 +2256,7 @@ function buildExportPresetRow(p) {
     if ((p.method || 1) === 2) {
         sub.appendChild(document.createTextNode("SC " + abbrev(p.linkCode, 8)));
     } else if (p.method === 3) {
-        sub.appendChild(document.createTextNode((currentLang === "en" ? "M3 ID " : "СП 3 · ID ") + abbrev(p.placeId, 8)));
+        sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     } else {
         sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     }
@@ -2946,6 +2988,21 @@ function syncAvatarsToggle(skipCmd) {
     var wrap = track.parentNode;
     if (wrap) wrap.className = avatarsEnabled ? "chk-wrap chk-on" : "chk-wrap";
     if (!skipCmd && typeof renderPresets === "function") renderPresets();
+}
+
+/* §close-to-tray: the host persists the value on CMD:set_close_to_tray and
+   OnFormClosing turns the X into a hide. skipCmd=true on initial load — the
+   host already injected the saved state. */
+function syncCloseToTrayToggle(skipCmd) {
+    var track = el("closetotray-track");
+    if (!track) return;
+    track.className = closeToTray ? "toggle-track on" : "toggle-track";
+    var chk = el("chk-close-to-tray");
+    if (chk) chk.checked = closeToTray;
+    if (el("__cfg_close_to_tray")) el("__cfg_close_to_tray").value = closeToTray ? "1" : "0";
+    var wrap = track.parentNode;
+    if (wrap) wrap.className = closeToTray ? "chk-wrap chk-on" : "chk-wrap";
+    if (!skipCmd) sendCmd("CMD:set_close_to_tray");
 }
 
 function onSaveClose() {
@@ -5630,7 +5687,7 @@ function buildPresetRow(p, dispIdx, bucketItems, posInBucket) {
     if ((p.method || 1) === 2) {
         sub.appendChild(document.createTextNode("SC " + abbrev(p.linkCode, 8)));
     } else if (p.method === 3) {
-        sub.appendChild(document.createTextNode((currentLang === "en" ? "M3 ID " : "СП 3 · ID ") + abbrev(p.placeId, 8)));
+        sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     } else {
         sub.appendChild(document.createTextNode("ID " + abbrev(p.placeId, 8)));
     }
@@ -6768,7 +6825,7 @@ var SETTINGS_BRIDGE_IDS = [
     "__cfg_theme_grad_angle", "__cfg_tooltips", "__cfg_lang", "__cfg_last_preset", "__last_loaded_preset_id",
     "__cfg_opacity", "__cfg_sh_key", "__cfg_sh_en", "__cfg_mask_inputs",
     "__cfg_always_on_top", "__cfg_autostart", "__cfg_compact_mode", "__cfg_sort_mode",
-    "__cfg_avatars",
+    "__cfg_avatars", "__cfg_close_to_tray",
     "__cfg_theme_presets", "__cfg_preset_groups"
 ];
 var SETTINGS_VISIBLE_IDS = [
@@ -6778,7 +6835,7 @@ var SETTINGS_VISIBLE_IDS = [
 ];
 var SETTINGS_CHECK_IDS = [
     "chk-enabled", "chk-gradient", "chk-auto-minimize", "chk-tooltips",
-    "chk-mask-inputs", "chk-always-on-top", "chk-autostart", "chk-avatars", "chk-compact-mode", "sh-chk-enabled"
+    "chk-mask-inputs", "chk-always-on-top", "chk-autostart", "chk-avatars", "chk-compact-mode", "sh-chk-enabled", "chk-close-to-tray"
 ];
 
 function settingsOpener() {
@@ -7226,6 +7283,9 @@ function openNewPresetModal() {
     if (el("np-link")) el("np-link").value = "";
     if (el("np-share")) el("np-share").value = "";
     if (el("np-place-public")) el("np-place-public").value = "";
+    /* §duplicate-warning: fresh form — re-arm the duplicate warning. */
+    var npSave = el("np-save");
+    if (npSave) npSave.removeAttribute("data-dup-ok");
     overlay.style.display = "flex";
     overlay.className = "np-overlay np-open";
     setTimeout(function () {
@@ -7253,6 +7313,20 @@ function closeNewPresetModal() {
         overlay.className = "np-overlay";
         overlay.style.display = "none";
     }
+}
+
+/* ── §duplicate-warning: find a preset with the same placeId + linkCode ──
+   excludeId lets the EDIT modal compare against everything but itself. */
+function findDuplicatePreset(placeId, linkCode, excludeId) {
+    placeId = trim(placeId || "");
+    linkCode = trim(linkCode || "");
+    if (!placeId && !linkCode) return null;
+    for (var i = 0; i < presets.length; i++) {
+        var p = presets[i];
+        if (excludeId && p.id === excludeId) continue;
+        if (trim(p.placeId || "") === placeId && trim(p.linkCode || "") === linkCode) return p;
+    }
+    return null;
 }
 
 /* Extract a share code from a pasted URL, mirroring the launcher's parser. */
@@ -7286,6 +7360,18 @@ function confirmNewPresetWindow() {
         if (mLink) linkCode = mLink[1];
         if (!placeId || !linkCode) { try { el("np-place").focus(); } catch (e3) {} return; }
     }
+    /* §duplicate-warning: same placeId+linkCode in another preset means the
+       new one is a copy — tell the user before creating it (one confirm per
+       form open, so it never blocks intentional duplicates forever). */
+    var dupExisting = findDuplicatePreset(placeId, linkCode, null);
+    var warnBtn = el("np-save");
+    if (dupExisting && warnBtn && warnBtn.getAttribute("data-dup-ok") !== "1") {
+        var S11 = STRINGS[currentLang] || STRINGS.ru;
+        showToast((S11.duplicateWarning || "Такой сервер уже есть: ") + dupExisting.name, null, null, 4000);
+        warnBtn.setAttribute("data-dup-ok", "1");
+        try { el("np-name").focus(); } catch (e) {}
+        return;
+    }
     presets.push({
         id: uid(),
         name: name,
@@ -7313,10 +7399,16 @@ function initNewPresetWindow() {
     var close = el("np-close");
     if (close) close.onclick = closeNewPresetModal;
     var nameInp = el("np-name");
-    if (nameInp) nameInp.onkeydown = function (e) {
-        e = e || window.event;
-        if ((e.keyCode || e.which) === 13) confirmNewPresetWindow();
-    };
+    if (nameInp) {
+        nameInp.onkeydown = function (e) {
+            e = e || window.event;
+            if ((e.keyCode || e.which) === 13) confirmNewPresetWindow();
+        };
+        /* §preset-share: pasting a RVL1: code fills the entire form. */
+        nameInp.onpaste = function () {
+            setTimeout(function () { maybeImportPresetShare("np-name", "np-name"); }, 0);
+        };
+    }
     var shareInp = el("np-share");
     if (shareInp) shareInp.onpaste = function () {
         setTimeout(function () { if (el("np-share")) el("np-share").value = npNormalizeShare(el("np-share").value); }, 0);
@@ -7970,6 +8062,14 @@ function confirmPresetEdit(id, placeInp, linkInp) {
     var newPlace = trim(placeInp.value);
     var newLink  = trim(linkInp.value);
     if (!newPlace || !newLink) return;
+    /* §duplicate-warning: alert when the edited IDs now collide with another
+       preset. Non-blocking (toast) — the edit still applies, the user just
+       learns the same server is saved twice. */
+    var dupOther = findDuplicatePreset(newPlace, newLink, id);
+    if (dupOther) {
+        var S11 = STRINGS[currentLang] || STRINGS.ru;
+        showToast((S11.duplicateWarning || "Такой сервер уже есть: ") + dupOther.name, null, null, 4000);
+    }
     var noteEl = el("preset-edit-note");
     var newNote = noteEl ? trim(noteEl.value) : "";
     /* Get name, icon, color from edit modal */
@@ -8000,6 +8100,15 @@ function confirmPresetEdit(id, placeInp, linkInp) {
 function confirmPresetEditM2(id, scInp) {
     var newSC = trim(scInp.value);
     if (!newSC) return;
+    /* Strip full URL if pasted */
+    var m = newSC.match(/[?&]code=([A-Za-z0-9]+(?:&type=Server)?)/i);
+    if (m) newSC = m[1];
+    /* §duplicate-warning: same as the M1 editor above. */
+    var dupOtherM2 = findDuplicatePreset("", newSC, id);
+    if (dupOtherM2) {
+        var S11m2 = STRINGS[currentLang] || STRINGS.ru;
+        showToast((S11m2.duplicateWarning || "Такой сервер уже есть: ") + dupOtherM2.name, null, null, 4000);
+    }
     var noteEl = el("preset-edit-note");
     var newNote = noteEl ? trim(noteEl.value) : "";
     /* Strip full URL if pasted */
@@ -9359,7 +9468,8 @@ var SVG_ICONS = {
     zap: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3L5 13h6l-1 8l8-10h-6l1-8Z"/></svg>',
     gift: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="16" height="4" rx="1"/><path d="M6 13v7h12v-7M12 9v11"/><path d="M12 9a3 3 0 1 0-3-3c0 1.5 1 3 3 3ZM12 9a3 3 0 1 1 3-3c0 1.5-1 3-3 3Z"/></svg>',
     palette: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 0 1 0-18c4.97 0 9 3.58 9 8c0 1.06-.47 2.07-1.5 2.07h-2.05a1.95 1.95 0 0 0-1.45 3.25c.18.21.5.55.5 1.18c0 1.27-1.13 1.5-2.5 1.5z"/><path d="M7.5 10.5v.01M12 7.5v.01M16.5 10.5v.01"/></svg>',
-    folder: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H11l-2-2.5"/></svg>'
+    folder: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H11l-2-2.5"/></svg>',
+    share: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.3 10.8 7.4-3.6M8.3 13.2l7.4 3.6"/></svg>'
 };
 
 function rvlSvgIcon(name) {
@@ -9390,13 +9500,13 @@ function refreshRvlIcons() {
         "btn-tp-export":"upload", "btn-tp-import":"download", "pd-empty-icon":"list",
         "delay-minus":"minus", "delay-plus":"plus", "sort-toggle":"chevronUp",
         "pd-copy-place":"copy", "pd-copy-link":"copy", "pd-eye-link":"eye",
-        "pd-hk-assign":"edit", "pd-edit":"edit", "pd-fav":"star",
+        "pd-hk-assign":"edit", "pd-edit":"edit", "pd-fav":"star", "pd-share":"share",
         "pd-del":"trash", "btn-save":"save"
     };
     for (var id in map) if (map.hasOwnProperty(id)) rvlSetIcon(id, map[id]);
     /* Context menu items keep their text label — prepend the SVG, never
        touch the inner span. */
-    var ctxMap = { "ctx-launch":"play", "ctx-copy":"copy", "ctx-duplicate":"copy",
+    var ctxMap = { "ctx-launch":"play", "ctx-copy":"copy", "ctx-share":"share", "ctx-duplicate":"copy",
         "ctx-edit":"edit", "ctx-color":"palette", "ctx-icon":"sparkles", "ctx-delete":"trash" };
     for (var cid in ctxMap) {
         if (!ctxMap.hasOwnProperty(cid)) continue;
@@ -10616,6 +10726,77 @@ function copyFieldToClipboard(text) {
     } catch (e) {}
 }
 
+/* ── §preset-share: one-line preset sharing ─────────────────
+   A preset travels as "RVL1:<base64 JSON>" — compact, safe for any chat
+   client, and self-describing (the prefix keeps it distinguishable from
+   raw share codes). btoa needs a plain ASCII string; UTF-8 preset names
+   are escaped via encodeURIComponent first. IE11 has btoa/atob. */
+function encodePresetShare(p) {
+    var payload = JSON.stringify({
+        n: p.name || "", m: p.method || 1, p: p.placeId || "",
+        l: p.linkCode || "", t: p.note || "", g: p.groupId || "",
+        i: p.icon || "", c: p.color || ""
+    });
+    try {
+        return "RVL1:" + btoa(unescape(encodeURIComponent(payload)));
+    } catch (e) { return ""; }
+}
+
+function decodePresetShare(code) {
+    code = trim(code || "");
+    if (code.indexOf("RVL1:") !== 0) return null;
+    try {
+        var payload = decodeURIComponent(escape(atob(code.slice(5))));
+        var d = JSON.parse(payload);
+        if (!d || typeof d !== "object") return null;
+        if (!d.l && !d.p) return null;
+        return {
+            name: d.n || "", method: (d.m === 2 || d.m === 3) ? d.m : 1,
+            placeId: d.p || "", linkCode: d.l || "", note: d.t || "",
+            groupId: d.g || "", icon: d.i || "", color: d.c || ""
+        };
+    } catch (e) { return null; }
+}
+
+function isPresetShareCode(text) {
+    return /^\s*RVL1:[A-Za-z0-9+\/=]+\s*$/.test(text || "");
+}
+
+/* Copies the preset's one-line code and tells the user what to do with it. */
+function sharePresetById(id) {
+    var p = findPreset(id);
+    if (!p) return;
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    var code = encodePresetShare(p);
+    if (!code) return;
+    el("__clipboard_data").value = code;
+    sendCmd("CMD:copy_clipboard");
+    showToast((S.shareCopied || "Код пресета скопирован") + " \u2014 " + (S.shareHint || "вставь его в поле ссылки у друга"), null, null, 3200);
+}
+
+/* If the user pastes a RVL1: code into the new-preset window's name field,
+   decode it and fill the whole form. Returns true when the paste was a code. */
+function maybeImportPresetShare(inputId, nameInputId) {
+    var raw = trim(el(inputId) ? el(inputId).value : "");
+    if (!isPresetShareCode(raw)) return false;
+    var p = decodePresetShare(raw);
+    if (!p) return false;
+    if (el(nameInputId)) el(nameInputId).value = p.name || "Preset";
+    var npMethod = p.method;
+    if (npMethod === 2) {
+        if (el("np-share")) el("np-share").value = p.linkCode || "";
+    } else if (npMethod === 3) {
+        if (el("np-place-public")) el("np-place-public").value = p.placeId || "";
+    } else {
+        if (el("np-place")) el("np-place").value = p.placeId || "";
+        if (el("np-link")) el("np-link").value = p.linkCode || "";
+    }
+    if (typeof npSwitchMethod === "function") npSwitchMethod(npMethod);
+    var S = STRINGS[currentLang] || STRINGS.ru;
+    showToast(S.shareImported || "Пресет распознан — поля заполнены", null, null, 2200);
+    return true;
+}
+
 function renderDetailPanel(id) {
     var p = findPreset(id);
     var emptyEl = el("pd-empty");
@@ -10691,7 +10872,9 @@ function renderDetailPanel(id) {
        CODE"/"SHARE" — English users got Russian text and Method 2 rows
        still read "PLACE ID" instead of "SHARE". */
     var Sd = STRINGS[currentLang] || STRINGS.ru;
-    el("pd-lbl-place").innerHTML = isM2 ? (Sd.pdShareLabel || "SHARE") : (isM3 ? (currentLang === "en" ? "PLACE ID · M3" : "PLACE ID · СП 3") : (Sd.labelPlace || "PLACE ID"));
+    /* §method-markup-removal: the method suffix (· СП 3 / · M3) was noise —
+       the row already carries the method in the preset's sub-label. */
+    el("pd-lbl-place").innerHTML = isM2 ? (Sd.pdShareLabel || "SHARE") : (Sd.labelPlace || "PLACE ID");
     el("pd-val-place").innerHTML = "";
     el("pd-val-place").appendChild(document.createTextNode(isM2 ? "—" : (p.placeId || "—")));
     el("pd-copy-place").onclick = function () { copyFieldToClipboard(p.placeId || ""); };
@@ -10763,6 +10946,10 @@ function renderDetailPanel(id) {
     favBtn.className = "btn-tool" + (p.favorite ? " pd-fav-on" : "");
     favBtn.onclick = function () { toggleFavorite(id); renderDetailPanel(id); };
     el("pd-edit").onclick = function () { openPresetEditModal(id); };
+    var shareBtn = el("pd-share");
+    if (shareBtn) shareBtn.onclick = function () { sharePresetById(id); };
+    var ctxShare = el("ctx-share");
+    if (ctxShare) { ctxShare.onclick = function () { sharePresetById(id); }; }
     var dupBtn = el("pd-dup"); if (dupBtn) dupBtn.onclick = function () { duplicatePreset(id); };
     el("pd-del").onclick  = function () {
         deletePresetWithUndo(id);

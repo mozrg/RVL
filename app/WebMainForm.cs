@@ -78,6 +78,24 @@ public sealed class WebMainForm : Form
 
     public WebMainForm() : this(new NativeConfig(), "main", null) { }
 
+    /* §cli: parse command-line switches once, before the window exists, so
+       --minimize never even flashes the form. Supported:
+         --launch <name|id>  launch that preset immediately and exit;
+         --launch-last       launch the last/active preset and exit;
+         --minimize          start hidden to the tray. */
+    public WebMainForm(string[] args) : this(new NativeConfig(), "main", null)
+    {
+        var arguments = (args ?? []).Select(a => a?.Trim() ?? "").Where(a => a.Length > 0).ToArray();
+        if (arguments.Contains("--minimize", StringComparer.OrdinalIgnoreCase)) _startHidden = true;
+        var launchIndex = Array.FindIndex(arguments, a => a.Equals("--launch", StringComparison.OrdinalIgnoreCase));
+        if (launchIndex >= 0 && launchIndex + 1 < arguments.Length) _cliLaunch = arguments[launchIndex + 1];
+        else if (arguments.Contains("--launch-last", StringComparer.OrdinalIgnoreCase)) _cliLaunchLast = true;
+    }
+
+    private bool _startHidden;
+    private string _cliLaunch = "";
+    private bool _cliLaunchLast;
+
     private WebMainForm(NativeConfig config, bool settings, WebMainForm? owner)
         : this(config, settings ? "settings" : "main", owner) { }
 
@@ -201,7 +219,47 @@ public sealed class WebMainForm : Form
     {
         base.OnLoad(e);
         ApplyDwmWindowAttributes();
+        /* §cli: --minimize starts directly in the tray — set before the
+           window is shown so no visible flash occurs. */
+        if (_windowKind == "main" && _startHidden)
+        {
+            WindowState = FormWindowState.Minimized;
+            Visible = false;
+        }
         await EnsureWebInitializedAsync();
+        /* §cli: --launch/--launch-last fire once the WebView is live so the
+           launch path can read the full bridge state. */
+        if (_windowKind == "main" && (_cliLaunch.Length > 0 || _cliLaunchLast))
+            _ = CliLaunchAsync();
+    }
+
+    private async Task CliLaunchAsync()
+    {
+        try
+        {
+            /* Let initApp run first — the JS layer needs its startup tick. */
+            for (var i = 0; i < 100 && !_ready; i++) await Task.Delay(50);
+            await Task.Delay(300);
+            var presets = ParsePresets(_config.PresetsJson);
+            if (presets.Count == 0) return;
+            RvlPreset? preset = null;
+            if (_cliLaunchLast)
+            {
+                var lastId = _config.Get("LastPreset");
+                preset = presets.FirstOrDefault(p => p.Id == lastId)
+                    ?? presets.FirstOrDefault(p => p.Favorite);
+            }
+            else
+            {
+                preset = presets.FirstOrDefault(p => string.Equals(p.Id, _cliLaunch, StringComparison.OrdinalIgnoreCase))
+                    ?? presets.FirstOrDefault(p => string.Equals(p.Name, _cliLaunch, StringComparison.OrdinalIgnoreCase));
+            }
+            if (preset is null) return;
+            /* LaunchPreset is async void — fire and let it complete on its
+               own; the WebView state it needs is already live. */
+            LaunchPreset(preset);
+        }
+        catch { /* a bad CLI launch must never crash the app */ }
     }
 
     private Task? _initTask;
@@ -336,7 +394,7 @@ public sealed class WebMainForm : Form
                 case "CMD:launch": await LaunchFromBridgeAsync(payload); break;
                 case "CMD:save_close": SaveBridge(payload); CloseSettingsAndMain(); break;
                 case "CMD:minimize": SaveBridge(payload); Hide(); break;
-                case "CMD:close": SaveBridge(payload); Close(); break;
+                case "CMD:close": SaveBridge(payload); if (MainHost._config.GetBool("CloseToTray")) { MainHost.Hide(); } else Close(); break;
                 case "CMD:close_discard": Close(); break;
                 case "CMD:update_log_seen": _config.Set("UpdateLogSeenVersion", AppVersion); _config.SaveIni(); break;
                 case "CMD:save_preset": SaveBridge(payload); SyncAll(); ApplyPresetHotkeys(payload); break;
@@ -347,6 +405,7 @@ public sealed class WebMainForm : Form
                 case "CMD:settings_live": ApplyLiveBridge(payload); RebuildTrayMenu(); SyncAll(); break;
                 case "CMD:set_opacity": ApplyOpacity(payload); break;
                 case "CMD:set_always_on_top": ApplyAlwaysOnTop(payload); break;
+                case "CMD:set_close_to_tray": ApplyCloseToTray(payload); break;
                 case "CMD:set_autostart": ApplyAutostart(payload); break;
                 case "CMD:sh_capture_start": BeginCapture("show-hide"); break;
                 case "CMD:sh_hotkey_update": SaveBridge(payload); ApplyShowHideHotkey(payload); break;
@@ -367,7 +426,7 @@ public sealed class WebMainForm : Form
                 case "CMD:reload_state": ReloadState(); break;
                 case "CMD:export_stats": ExportStats(payload); break;
                 case "CMD:save_window_pos": SaveWindowPosition(); break;
-                case "CMD:factory_reset": if (TryCreateAutomaticBackup("factory-reset")) FactoryReset(); break;
+                case "CMD:factory_reset": if (TryCreateAutomaticBackup("factory-reset")) { _trulyExiting = true; FactoryReset(); } break;
                 case "CMD:check_update": await CheckUpdateAsync(); break;
                 case "CMD:install_update": await InstallUpdateAsync(); break;
             }
@@ -383,7 +442,7 @@ public sealed class WebMainForm : Form
         if (_web.CoreWebView2 is null) return new Dictionary<string, string>();
         const string script = """
             (function(){
-              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-place-public","inp-link","inp-share-code","__edit_preset_id"];
+              var ids=["__cfg_place","__cfg_link","__cfg_hotkey","__cfg_enabled","__cfg_method","__cfg_theme_mode","__cfg_theme_bg","__cfg_theme_surface","__cfg_theme_text","__cfg_theme_accent","__cfg_auto_minimize","__cfg_scale","__cfg_launch_delay","__cfg_theme_grad_en","__cfg_theme_grad_bg2","__cfg_theme_grad_angle","__cfg_theme_grad_op","__cfg_tooltips","__cfg_lang","__cfg_last_preset","__cfg_opacity","__cfg_sh_key","__cfg_sh_en","__cfg_mask_inputs","__cfg_always_on_top","__cfg_autostart","__cfg_avatars","__cfg_compact_mode","__cfg_sort_mode","__cfg_ui_hidden","__cfg_ui_text","__cfg_ui_nobg","__cfg_presets","__cfg_close_to_tray","__presets_out","__cfg_theme_presets","__theme_presets_out","__cfg_preset_groups","__preset_groups_out","__preset_hk_map","__import_data","__import_theme_data","__clipboard_data","__history_data","__dash_export_req","__resize_req","__last_loaded_preset_id","__update_install_req","inp-place","inp-place-public","inp-link","inp-share-code","__edit_preset_id"];
               var o={}; for(var i=0;i<ids.length;i++){var e=document.getElementById(ids[i]);o[ids[i]]=e?String(e.value||""):"";}
               var checks=["chk-enabled","chk-autostart","chk-always-on-top","chk-avatars","chk-compact-mode","chk-auto-minimize","chk-tooltips","chk-mask-inputs"];
               for(var j=0;j<checks.length;j++){var c=document.getElementById(checks[j]);if(c)o[checks[j]]=c.checked?"1":"0";}
@@ -431,7 +490,7 @@ public sealed class WebMainForm : Form
             ["__cfg_method"] = _config.Get("Method", "1"),
             ["__cfg_presets"] = _config.PresetsJson,
             ["__presets_out"] = _config.PresetsJson,
-            ["__cfg_theme_mode"] = _config.Get("ThemeMode", "dark"),
+            ["__cfg_theme_mode"] = _config.Get("ThemeMode", "dark"),
             ["__cfg_theme_bg"] = _config.Get("ThemeBg", "#0A0A0A"),
             ["__cfg_theme_surface"] = _config.Get("ThemeSurface", "#111111"),
             ["__cfg_theme_text"] = _config.Get("ThemeText", "#E8E8E8"),
@@ -452,6 +511,7 @@ public sealed class WebMainForm : Form
             ["__cfg_mask_inputs"] = _config.Get("MaskInputs", "1"),
             ["__cfg_always_on_top"] = _config.Get("AlwaysOnTop", "0"),
             ["__cfg_autostart"] = _config.Get("Autostart", "0"),
+            ["__cfg_close_to_tray"] = _config.Get("CloseToTray", "0"),
             ["__cfg_avatars"] = _config.Get("AvatarsEnabled", "1"),
             ["__cfg_compact_mode"] = _config.Get("CompactMode", "0"),
             ["__cfg_sort_mode"] = _config.Get("SortMode", "manual"),
@@ -503,7 +563,7 @@ public sealed class WebMainForm : Form
         {
             ["__cfg_theme_mode"] = "ThemeMode", ["__cfg_theme_bg"] = "ThemeBg", ["__cfg_theme_surface"] = "ThemeSurface", ["__cfg_theme_text"] = "ThemeText", ["__cfg_theme_accent"] = "ThemeAccent",
             ["__cfg_auto_minimize"] = "AutoMinimize", ["__cfg_scale"] = "Scale", ["__cfg_launch_delay"] = "LaunchDelay", ["__cfg_theme_grad_en"] = "ThemeGradEn", ["__cfg_theme_grad_bg2"] = "ThemeGradBg2", ["__cfg_theme_grad_angle"] = "ThemeGradAngle", ["__cfg_theme_grad_op"] = "ThemeGradOp",
-            ["__cfg_tooltips"] = "TooltipsEnabled", ["__cfg_lang"] = "Lang", ["__cfg_last_preset"] = "LastPreset", ["__cfg_opacity"] = "Opacity", ["__cfg_sh_key"] = "ShowHideKey", ["__cfg_sh_en"] = "ShowHideEnabled", ["__cfg_mask_inputs"] = "MaskInputs", ["__cfg_always_on_top"] = "AlwaysOnTop", ["__cfg_autostart"] = "Autostart", ["__cfg_avatars"] = "AvatarsEnabled", ["__cfg_compact_mode"] = "CompactMode", ["__cfg_sort_mode"] = "SortMode", ["__cfg_ui_hidden"] = "UiHidden", ["__cfg_ui_text"] = "UiText", ["__cfg_ui_nobg"] = "UiNoBg"
+            ["__cfg_tooltips"] = "TooltipsEnabled", ["__cfg_lang"] = "Lang", ["__cfg_last_preset"] = "LastPreset", ["__cfg_opacity"] = "Opacity", ["__cfg_sh_key"] = "ShowHideKey", ["__cfg_sh_en"] = "ShowHideEnabled", ["__cfg_mask_inputs"] = "MaskInputs", ["__cfg_always_on_top"] = "AlwaysOnTop", ["__cfg_autostart"] = "Autostart", ["__cfg_avatars"] = "AvatarsEnabled", ["__cfg_compact_mode"] = "CompactMode", ["__cfg_sort_mode"] = "SortMode", ["__cfg_ui_hidden"] = "UiHidden", ["__cfg_ui_text"] = "UiText", ["__cfg_ui_nobg"] = "UiNoBg", ["__cfg_close_to_tray"] = "CloseToTray"
         };
         foreach (var pair in map) _config.Set(pair.Value, V(pair.Key, _config.Get(pair.Value)));
         /* A tray or hotkey launch sends only the fields it needs. Missing
@@ -531,7 +591,7 @@ public sealed class WebMainForm : Form
         {
             ["__cfg_theme_mode"] = "ThemeMode", ["__cfg_theme_bg"] = "ThemeBg", ["__cfg_theme_surface"] = "ThemeSurface", ["__cfg_theme_text"] = "ThemeText", ["__cfg_theme_accent"] = "ThemeAccent",
             ["__cfg_auto_minimize"] = "AutoMinimize", ["__cfg_scale"] = "Scale", ["__cfg_launch_delay"] = "LaunchDelay", ["__cfg_theme_grad_en"] = "ThemeGradEn", ["__cfg_theme_grad_bg2"] = "ThemeGradBg2", ["__cfg_theme_grad_angle"] = "ThemeGradAngle", ["__cfg_theme_grad_op"] = "ThemeGradOp",
-            ["__cfg_tooltips"] = "TooltipsEnabled", ["__cfg_lang"] = "Lang", ["__cfg_opacity"] = "Opacity", ["__cfg_sh_key"] = "ShowHideKey", ["__cfg_sh_en"] = "ShowHideEnabled", ["__cfg_mask_inputs"] = "MaskInputs", ["__cfg_always_on_top"] = "AlwaysOnTop", ["__cfg_autostart"] = "Autostart", ["__cfg_avatars"] = "AvatarsEnabled", ["__cfg_compact_mode"] = "CompactMode", ["__cfg_sort_mode"] = "SortMode", ["__cfg_ui_hidden"] = "UiHidden", ["__cfg_ui_text"] = "UiText", ["__cfg_ui_nobg"] = "UiNoBg"
+            ["__cfg_tooltips"] = "TooltipsEnabled", ["__cfg_lang"] = "Lang", ["__cfg_opacity"] = "Opacity", ["__cfg_sh_key"] = "ShowHideKey", ["__cfg_sh_en"] = "ShowHideEnabled", ["__cfg_mask_inputs"] = "MaskInputs", ["__cfg_always_on_top"] = "AlwaysOnTop", ["__cfg_autostart"] = "Autostart", ["__cfg_avatars"] = "AvatarsEnabled", ["__cfg_compact_mode"] = "CompactMode", ["__cfg_sort_mode"] = "SortMode", ["__cfg_ui_hidden"] = "UiHidden", ["__cfg_ui_text"] = "UiText", ["__cfg_ui_nobg"] = "UiNoBg", ["__cfg_close_to_tray"] = "CloseToTray"
         };
         foreach (var pair in map) if (values.TryGetValue(pair.Key, out var value)) _config.Set(pair.Value, value);
     }
@@ -782,6 +842,14 @@ public sealed class WebMainForm : Form
         var host = MainHost;
         host.TopMost = V(values, "__cfg_always_on_top") == "1";
         _config.Set("AlwaysOnTop", host.TopMost ? "1" : "0");
+        _config.SaveIni();
+    }
+
+    /* §close-to-tray: purely a persisted preference — the window acts on it
+       in OnFormClosing, no live visual change is required. */
+    private void ApplyCloseToTray(Dictionary<string, string> values)
+    {
+        _config.Set("CloseToTray", V(values, "__cfg_close_to_tray") == "1" ? "1" : "0");
         _config.SaveIni();
     }
 
@@ -1392,7 +1460,7 @@ public sealed class WebMainForm : Form
             }
         }
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add(isEn ? "Exit" : "Выход", null, (_, _) => Close());
+        menu.Items.Add(isEn ? "Exit" : "Выход", null, (_, _) => { _trulyExiting = true; Close(); });
         var previousMenu = _tray.ContextMenuStrip;
         _tray.ContextMenuStrip = menu;
         previousMenu?.Dispose();
@@ -1459,6 +1527,16 @@ public sealed class WebMainForm : Form
             Directory.CreateDirectory(Path.GetFullPath(_config.AvatarDirectory));
             var safe = Regex.Replace(key, @"\W", "");
             var path = Path.Combine(Path.GetFullPath(_config.AvatarDirectory), "RVL_icon_" + safe + ".png");
+            /* §avatar-ttl: a cached icon is refreshed after 30 days so game
+               covers (which Roblox re-renders) never rot. The write-time
+               query in the pushed URL already busts Chromium's decode cache
+               when the file is replaced. */
+            const double avatarTtlDays = 30;
+            var cacheExpired = File.Exists(path) && (DateTime.UtcNow - File.GetLastWriteTimeUtc(path)).TotalDays > avatarTtlDays;
+            if (cacheExpired)
+            {
+                try { File.Delete(path); } catch { /* locked file just ages on */ }
+            }
             if (!File.Exists(path))
             {
                 /* The page keys share presets as "sc:<code>" — the prefix must
@@ -1677,7 +1755,7 @@ public sealed class WebMainForm : Form
             if (Process.Start(psi) is null) throw new InvalidOperationException("Не удалось запустить установщик обновления.");
             SetStatus("installing", "Установщик запущен. Проверяем и заменяем файлы…", 100);
             await Task.Delay(500);
-            host._settingsForm?.Close(); host.Close();
+            host._settingsForm?.Close(); host._trulyExiting = true; host.Close();
         }
         catch (Exception ex) { SetStatus("error", ex.Message, 0); }
         finally { UpdateInstallGate.Release(); }
@@ -1834,12 +1912,23 @@ public sealed class WebMainForm : Form
         _ = InjectStateAsync(false);
     }
 
+    private bool _trulyExiting;
+
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
     {
         if (_windowKind != "main")
         {
             /* Tool windows reopen where they were closed. */
             SaveToolWindowPosition();
+            return;
+        }
+        /* §close-to-tray: the user asked for the X to minimize to the tray
+           instead of exiting. Only an explicit exit (tray menu, factory
+           reset, installer) sets _trulyExiting and is allowed through. */
+        if (!_trulyExiting && _config.GetBool("CloseToTray") && e.CloseReason == CloseReason.UserClosing)
+        {
+            e.Cancel = true;
+            Hide();
             return;
         }
         SaveWindowPosition();

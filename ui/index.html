@@ -88,6 +88,7 @@
 
   <!-- NEW: Enhancement bridge inputs -->
   <input type="hidden" id="__cfg_compact_mode" value="0">
+  <input type="hidden" id="__cfg_close_to_tray" value="0">
   <input type="hidden" id="__cfg_sort_mode" value="manual">
   <input type="hidden" id="__dirty_state" value="0">
   <input type="hidden" id="__history_data" value="">
@@ -274,6 +275,13 @@
             </span>
             <input type="checkbox" id="chk-compact-mode" class="chk-hidden">
             <span class="chk-txt" id="chk-txt-compact">Компактный режим</span>
+          </div>
+          <div class="chk-wrap" style="margin-top:6px;">
+            <span class="toggle-track" id="closetotray-track">
+              <span class="toggle-thumb" id="closetotray-thumb"></span>
+            </span>
+            <input type="checkbox" id="chk-close-to-tray" class="chk-hidden">
+            <span class="chk-txt" id="chk-txt-closetotray">Закрывать в трей (не выходить)</span>
           </div>
           <div class="chk-wrap" style="margin-top:6px;">
             <span class="toggle-track" id="autostart-track">
@@ -762,6 +770,7 @@
           <button class="btn-primary btn-go" id="btn-launch">ЗАПУСТИТЬ</button>
           <button class="btn-tool" id="pd-edit" data-tooltip="Редактировать"></button>
           <button class="btn-tool" id="pd-fav" data-tooltip="Избранное"></button>
+          <button class="btn-tool" id="pd-share" data-tooltip="Поделиться кодом"></button>
           <button class="btn-tool" id="pd-del" data-tooltip="Удалить"></button>
           <!-- §no-save-close: removed the "Save & close" button from the
                preset panel footer per user request. The panel's data is
@@ -791,6 +800,7 @@
     <div class="ctx-item" id="ctx-launch"><span id="ctx-launch-text">Запустить</span></div>
     <div class="ctx-sep"></div>
     <div class="ctx-item" id="ctx-copy"><span id="ctx-copy-text">Копировать ссылку</span></div>
+    <div class="ctx-item" id="ctx-share"><span id="ctx-share-text">Поделиться кодом</span></div>
     <div class="ctx-item" id="ctx-duplicate"><span id="ctx-dup-text">Дублировать</span></div>
     <div class="ctx-item" id="ctx-edit"><span id="ctx-edit-text">Редактировать</span></div>
     <div class="ctx-sep"></div>
